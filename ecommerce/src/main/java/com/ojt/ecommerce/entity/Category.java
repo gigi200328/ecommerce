@@ -36,9 +36,9 @@ public class Category {
     private LocalDateTime createdAt;
 
     @ManyToOne(fetch = FetchType.LAZY, optional = false)
-    @JoinColumn(name = "modified_by", referencedColumnName = "user_id", nullable = false, foreignKey = @ForeignKey(name = "fk_categories_users2"))
+    @JoinColumn(name = "modified_by", referencedColumnName = "user_id", foreignKey = @ForeignKey(name = "fk_categories_users2"))
     private User modifiedBy;
 
-    @Column(name = "modified_at", nullable = false)
+    @Column(name = "modified_at")
     private LocalDateTime modifiedAt;
 }

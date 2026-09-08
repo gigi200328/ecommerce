@@ -35,10 +35,10 @@ public class ProductVariantImage {
     @JoinColumn(name = "created_by", referencedColumnName = "user_id", nullable = false, foreignKey = @ForeignKey(name = "fk_product_variant_image_users1"))
     private User createdBy;
 
-    @Column(name = "modified_at", nullable = false)
+    @Column(name = "modified_at")
     private LocalDateTime modifiedAt;
 
     @ManyToOne(fetch = FetchType.LAZY, optional = false)
-    @JoinColumn(name = "modified_by", referencedColumnName = "user_id", nullable = false, foreignKey = @ForeignKey(name = "fk_product_variant_image_users2"))
+    @JoinColumn(name = "modified_by", referencedColumnName = "user_id", foreignKey = @ForeignKey(name = "fk_product_variant_image_users2"))
     private User modifiedBy;
 }

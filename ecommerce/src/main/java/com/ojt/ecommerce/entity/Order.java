@@ -54,7 +54,7 @@ public class Order {
     @JoinColumn(name = "created_by", referencedColumnName = "user_id", nullable = true, foreignKey = @ForeignKey(name = "fk_orders_created_by"))
     private User createdBy;
 
-    @Column(name = "modified_at", nullable = false)
+    @Column(name = "modified_at")
     private LocalDateTime modifiedAt;
 
     @ManyToOne(fetch = FetchType.LAZY, optional = true)
