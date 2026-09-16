@@ -42,7 +42,7 @@ public class Product {
     @Column(name = "created_at", nullable = false)
     private LocalDateTime createdAt;
 
-    @ManyToOne(fetch = FetchType.LAZY, optional = false)
+    @ManyToOne(fetch = FetchType.LAZY)
     @JoinColumn(name = "modified_by", referencedColumnName = "user_id", foreignKey = @ForeignKey(name = "fk_products_users2"))
     private User modifiedBy;
 
