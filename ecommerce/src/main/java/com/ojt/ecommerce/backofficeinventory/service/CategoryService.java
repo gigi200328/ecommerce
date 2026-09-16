@@ -12,9 +12,9 @@ import com.ojt.ecommerce.backofficeinventory.dto.CategoryRequestDto;
 import com.ojt.ecommerce.backofficeinventory.dto.CategoryResponseDto;
 import com.ojt.ecommerce.backofficeinventory.mapper.CategoryMapper;
 import com.ojt.ecommerce.backofficeinventory.repository.CategoryRepository;
+import com.ojt.ecommerce.backofficeinventory.repository.UserRepository;
 import com.ojt.ecommerce.entity.Category;
 import com.ojt.ecommerce.entity.User;
-import com.ojt.ecommerce.repository.UserRepository;
 
 import jakarta.persistence.EntityNotFoundException;
 import lombok.RequiredArgsConstructor;
@@ -30,8 +30,9 @@ public class CategoryService {
     // 1. CREATE
     @Transactional
     public CategoryResponseDto createCategory(CategoryRequestDto request) {
-        User user = userRepository.findById(request.getUserId())
-                .orElseThrow(() -> new EntityNotFoundException("User not found: " + request.getUserId()));
+    	
+    	User user = userRepository.findById(request.getUserId().intValue())
+    	        .orElseThrow(() -> new EntityNotFoundException("User not found: " + request.getUserId()));
 
         Category parent = null;
         if (request.getParentId() != null) {
@@ -82,7 +83,8 @@ public class CategoryService {
         Category category = categoryRepository.findById(id)
                 .orElseThrow(() -> new EntityNotFoundException("Category not found: " + id));
 
-        User user = userRepository.findById(request.getUserId())
+
+        User user = userRepository.findById(request.getUserId().intValue())
                 .orElseThrow(() -> new EntityNotFoundException("User not found: " + request.getUserId()));
 
         if (request.getParentId() != null) {
