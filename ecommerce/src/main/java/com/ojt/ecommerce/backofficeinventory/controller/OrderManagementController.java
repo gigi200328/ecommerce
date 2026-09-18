@@ -1,0 +1,42 @@
+package com.ojt.ecommerce.backofficeinventory.controller;
+
+import java.util.List;
+
+import org.springframework.http.ResponseEntity;
+import org.springframework.web.bind.annotation.GetMapping;
+import org.springframework.web.bind.annotation.PathVariable;
+import org.springframework.web.bind.annotation.RequestMapping;
+import org.springframework.web.bind.annotation.RequestParam;
+import org.springframework.web.bind.annotation.RestController;
+
+import com.ojt.ecommerce.backofficeinventory.dto.OrderResponseDto;
+import com.ojt.ecommerce.backofficeinventory.service.OrderManagementService;
+
+import lombok.RequiredArgsConstructor;
+
+@RestController
+@RequestMapping("/api/backoffice/orders")
+@RequiredArgsConstructor
+public class OrderManagementController {
+
+	private final OrderManagementService orderManagementService;
+
+//	@GetMapping
+//	public List<OrderResponseDto> getOrders(@RequestParam(required = false) String status) {
+//		return orderService.getOrders(status);
+//	}
+
+	@GetMapping
+	public ResponseEntity<List<OrderResponseDto>> getOrders(
+			@RequestParam(value = "status", required = false) String status) {
+		List<OrderResponseDto> orders = orderManagementService.getOrders(status);
+		return ResponseEntity.ok(orders);
+	}
+
+	@GetMapping("/{orderNo}")
+	public ResponseEntity<OrderResponseDto> getOrderByOrderNo(@PathVariable String orderNo) {
+		OrderResponseDto orderDetail = orderManagementService.getOrderByOrderNo(orderNo);
+		return ResponseEntity.ok(orderDetail);
+	}
+
+}
