@@ -24,9 +24,10 @@ public class ProductImage {
 
     @Column(name = "image_url", nullable = false, length = 500)
     private String imageUrl;
-
-    @Column(name = "is_primary", nullable = false)
-    private Boolean isPrimary;
+    
+    @Builder.Default
+    @Column(name = "is_primary", nullable = false, columnDefinition = "BOOLEAN DEFAULT false")
+    private Boolean isPrimary = false;
 
     @Column(name = "created_at", nullable = false)
     private LocalDateTime createdAt;
