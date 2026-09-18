@@ -13,7 +13,7 @@ import lombok.NoArgsConstructor;
 @AllArgsConstructor
 public class OrderItemDto {
 	private Long orderItemId; // Entity ပါအတိုင်း
-	// Variant ရဲ့ ID လေးကိုပဲ ဆွဲထုတ်ပေးပါမယ် (Product Variant အလုံးကြီးအစား)
+	// Variant ရဲ့ ID လေးကိုပဲ ဆွဲထုတ်ပေးပါမယ် (Product Variant)
 	private Long variantId;
 	private String productName; // Entity ပါအတိုင်း
 	private String variantAttributes; // ဥပမာ - {"Color": "Red", "Size": "M"}
