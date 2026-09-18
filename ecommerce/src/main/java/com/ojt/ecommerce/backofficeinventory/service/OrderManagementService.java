@@ -21,7 +21,7 @@ public class OrderManagementService {
 
 	public List<OrderResponseDto> getOrders(String status) {
 		List<Order> orders;
-		// Status ပါလာလျှင် 해당 Status ကိုရှာမည်၊ မပါလာလျှင် အားလုံးကို ရှာမည်
+		// Status ပါလာလျှင် Statusအားလုံး ကိုရှာမည်၊ မပါလာလျှင် အားလုံးကို ရှာမည်
 		if (status != null && !status.trim().isEmpty()) {
 			orders = orderRepository.findByOrderStatus(status);
 		} else {
@@ -29,5 +29,11 @@ public class OrderManagementService {
 		}
 		// Mapper ကို အသုံးပြု၍ Entity မှ DTO သို့ ပြောင်းလဲခြင်း
 		return orders.stream().map(orderMapper::toDto).collect(Collectors.toList());
+	}
+
+	public OrderResponseDto getOrderByOrderNo(String orderNo) {
+		Order order = orderRepository.findByOrderNo(orderNo)
+				.orElseThrow(() -> new RuntimeException("Order not found with order number: " + orderNo));
+		return orderMapper.toDto(order);
 	}
 }
