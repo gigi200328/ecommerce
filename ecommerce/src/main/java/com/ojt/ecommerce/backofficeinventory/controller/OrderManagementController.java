@@ -4,14 +4,18 @@ import java.util.List;
 
 import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.GetMapping;
+import org.springframework.web.bind.annotation.PatchMapping;
 import org.springframework.web.bind.annotation.PathVariable;
+import org.springframework.web.bind.annotation.RequestBody;
 import org.springframework.web.bind.annotation.RequestMapping;
 import org.springframework.web.bind.annotation.RequestParam;
 import org.springframework.web.bind.annotation.RestController;
 
 import com.ojt.ecommerce.backofficeinventory.dto.OrderResponseDto;
+import com.ojt.ecommerce.backofficeinventory.dto.OrderStatusUpdateRequestDto;
 import com.ojt.ecommerce.backofficeinventory.service.OrderManagementService;
 
+import jakarta.validation.Valid;
 import lombok.RequiredArgsConstructor;
 
 @RestController
@@ -37,6 +41,14 @@ public class OrderManagementController {
 	public ResponseEntity<OrderResponseDto> getOrderByOrderNo(@PathVariable String orderNo) {
 		OrderResponseDto orderDetail = orderManagementService.getOrderByOrderNo(orderNo);
 		return ResponseEntity.ok(orderDetail);
+	}
+
+	@PatchMapping("/{orderNo}/status")
+	public ResponseEntity<OrderResponseDto> updateOrderStatus(@PathVariable String orderNo,
+			@Valid @RequestBody OrderStatusUpdateRequestDto requestDto) {
+
+		OrderResponseDto updatedOrder = orderManagementService.updateOrderStatus(orderNo, requestDto);
+		return ResponseEntity.ok(updatedOrder);
 	}
 
 }
