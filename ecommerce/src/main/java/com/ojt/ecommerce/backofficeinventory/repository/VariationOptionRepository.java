@@ -8,13 +8,15 @@ import org.springframework.stereotype.Repository;
 import com.ojt.ecommerce.entity.VariationOption;
 
 @Repository
-public interface  VariationOptionRepository extends JpaRepository<VariationOption, Long> {
-	
-	List<VariationOption> findByVariation_Variation(Long variationId);
-	
-	boolean existsByVriation_VariationIdAndValue(
-			Long variationId,
-			String value
-			
-			);
+public interface VariationOptionRepository
+        extends JpaRepository<VariationOption, Long> {
+
+    // Get options by variation
+    List<VariationOption> findByVariation_VariationId(Long variationId);
+
+    // Check duplicate option
+    boolean existsByVariation_VariationIdAndValue(
+            Long variationId,
+            String value
+    );
 }
