@@ -46,7 +46,7 @@ public class ProductService {
         }
 
     
-        User user = userRepository.findById(request.getUserId().intValue())
+        User user = userRepository.findById(request.getUserId())
                 .orElseThrow(() -> new EntityNotFoundException("User not found: " + request.getUserId()));
 
         LocalDateTime now = LocalDateTime.now();
@@ -124,7 +124,7 @@ public class ProductService {
         }
 
 
-        User user = userRepository.findById(request.getUserId().intValue())
+        User user = userRepository.findById(request.getUserId())
                 .orElseThrow(() -> new EntityNotFoundException("User not found: " + request.getUserId()));
 
         product.setProductName(request.getProductName());

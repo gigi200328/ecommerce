@@ -36,4 +36,8 @@ public class Brand {
 
     @Column(name = "modified_at")
     private LocalDateTime modifiedAt;
+    
+    @ManyToOne(fetch = FetchType.LAZY)
+    @JoinColumn(name = "modified_by", referencedColumnName = "user_id")
+    private User modifiedBy;
 }
