@@ -404,6 +404,28 @@
               "path": ["api", "product-variants", "1"]
             }
           }
+        },
+        {
+          "name": "7. Auto-Generate SKU Preview",
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": {
+              "raw": "{{baseUrl}}/api/product-variants/generate-sku?productId=1&optionIds=1,2",
+              "host": ["{{baseUrl}}"],
+              "path": ["api", "product-variants", "generate-sku"],
+              "query": [
+                {
+                  "key": "productId",
+                  "value": "1"
+                },
+                {
+                  "key": "optionIds",
+                  "value": "1,2"
+                }
+              ]
+            }
+          }
         }
       ]
     },
@@ -518,6 +540,155 @@
               "raw": "{{baseUrl}}/api/variant-option-values/1",
               "host": ["{{baseUrl}}"],
               "path": ["api", "variant-option-values", "1"]
+            }
+          }
+        }
+      ]
+    },
+    {
+      "name": "05. Inventory & Stock Management",
+      "item": [
+        {
+          "name": "1. Initialize Variant Inventory",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"variantId\": 1,\n  \"initialQuantity\": 50,\n  \"reorderLevel\": 10\n}"
+            },
+            "url": {
+              "raw": "{{baseUrl}}/api/inventory/initialize",
+              "host": ["{{baseUrl}}"],
+              "path": ["api", "inventory", "initialize"]
+            }
+          }
+        },
+        {
+          "name": "2. Get All Inventory",
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": {
+              "raw": "{{baseUrl}}/api/inventory",
+              "host": ["{{baseUrl}}"],
+              "path": ["api", "inventory"]
+            }
+          }
+        },
+        {
+          "name": "3. Get Inventory by Variant ID (Variant 1)",
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": {
+              "raw": "{{baseUrl}}/api/inventory/variant/1",
+              "host": ["{{baseUrl}}"],
+              "path": ["api", "inventory", "variant", "1"]
+            }
+          }
+        },
+        {
+          "name": "4. Get Low Stock Alerts",
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": {
+              "raw": "{{baseUrl}}/api/inventory/low-stock",
+              "host": ["{{baseUrl}}"],
+              "path": ["api", "inventory", "low-stock"]
+            }
+          }
+        },
+        {
+          "name": "5. Restock Variant (Add 30 units)",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"variantId\": 1,\n  \"quantity\": 30,\n  \"referenceType\": \"PURCHASE_ORDER\",\n  \"referenceId\": 1001,\n  \"remark\": \"Restocked from supplier batch #892\"\n}"
+            },
+            "url": {
+              "raw": "{{baseUrl}}/api/inventory/restock",
+              "host": ["{{baseUrl}}"],
+              "path": ["api", "inventory", "restock"]
+            }
+          }
+        },
+        {
+          "name": "6. Write-off Damaged Stock (Remove 3 units)",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"variantId\": 1,\n  \"quantity\": 3,\n  \"remark\": \"Water damaged in warehouse\"\n}"
+            },
+            "url": {
+              "raw": "{{baseUrl}}/api/inventory/write-off",
+              "host": ["{{baseUrl}}"],
+              "path": ["api", "inventory", "write-off"]
+            }
+          }
+        },
+        {
+          "name": "7. Adjust Stock (Physical Count Audit)",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"variantId\": 1,\n  \"newQuantity\": 75,\n  \"remark\": \"Adjusted after monthly physical stock count\"\n}"
+            },
+            "url": {
+              "raw": "{{baseUrl}}/api/inventory/adjust",
+              "host": ["{{baseUrl}}"],
+              "path": ["api", "inventory", "adjust"]
+            }
+          }
+        },
+        {
+          "name": "8. Get All Inventory Transactions History",
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": {
+              "raw": "{{baseUrl}}/api/inventory/transactions",
+              "host": ["{{baseUrl}}"],
+              "path": ["api", "inventory", "transactions"]
+            }
+          }
+        },
+        {
+          "name": "9. Get Transactions for Variant 1",
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": {
+              "raw": "{{baseUrl}}/api/inventory/transactions/variant/1",
+              "host": ["{{baseUrl}}"],
+              "path": ["api", "inventory", "transactions", "variant", "1"]
             }
           }
         }

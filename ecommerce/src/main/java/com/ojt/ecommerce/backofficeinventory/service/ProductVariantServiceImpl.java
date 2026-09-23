@@ -6,8 +6,10 @@ import org.springframework.stereotype.Service;
 
 import com.ojt.ecommerce.backofficeinventory.repository.ProductRepository;
 import com.ojt.ecommerce.backofficeinventory.repository.ProductVariantRepository;
+import com.ojt.ecommerce.backofficeinventory.repository.VariationOptionRepository;
 import com.ojt.ecommerce.entity.Product;
 import com.ojt.ecommerce.entity.ProductVariant;
+import com.ojt.ecommerce.entity.VariationOption;
 
 import lombok.RequiredArgsConstructor;
 
@@ -17,6 +19,7 @@ public class ProductVariantServiceImpl implements ProductVariantService {
 
     private final ProductVariantRepository productVariantRepository;
     private final ProductRepository productRepository;
+    private final VariationOptionRepository variationOptionRepository;
 
     @Override
     public ProductVariant createProductVariant(ProductVariant productVariant) {
@@ -30,9 +33,14 @@ public class ProductVariantServiceImpl implements ProductVariantService {
         Product product = productRepository.findById(productId)
                 .orElseThrow(() -> new RuntimeException("Product not found with id: " + productId));
 
-        // Prevent duplicate SKU
-        if (productVariantRepository.existsBySku(productVariant.getSku())) {
-            throw new RuntimeException("A product variant with SKU '" + productVariant.getSku() + "' already exists.");
+        // Auto-generate SKU if not provided
+        if (productVariant.getSku() == null || productVariant.getSku().trim().isEmpty()) {
+            productVariant.setSku(generateSku(productId, null));
+        } else {
+            // Prevent duplicate SKU
+            if (productVariantRepository.existsBySku(productVariant.getSku())) {
+                throw new RuntimeException("A product variant with SKU '" + productVariant.getSku() + "' already exists.");
+            }
         }
 
         productVariant.setProduct(product);
@@ -97,5 +105,49 @@ public class ProductVariantServiceImpl implements ProductVariantService {
     public void deleteProductVariant(Long id) {
         ProductVariant variant = getProductVariantById(id);
         productVariantRepository.delete(variant);
+    }
+
+    @Override
+    public String generateSku(Long productId, List<Long> optionIds) {
+        Product product = productRepository.findById(productId)
+                .orElseThrow(() -> new RuntimeException("Product not found with id: " + productId));
+
+        // Create base SKU from product name
+        String baseName = product.getProductName()
+                .trim()
+                .toUpperCase()
+                .replaceAll("[^A-Z0-9]+", "-")
+                .replaceAll("^-+|-+$", "");
+
+        if (baseName.isEmpty()) {
+            baseName = "PROD-" + productId;
+        }
+
+        StringBuilder skuBuilder = new StringBuilder(baseName);
+
+        if (optionIds != null && !optionIds.isEmpty()) {
+            List<VariationOption> options = variationOptionRepository.findAllById(optionIds);
+            for (VariationOption option : options) {
+                String optVal = option.getValue()
+                        .trim()
+                        .toUpperCase()
+                        .replaceAll("[^A-Z0-9]+", "-")
+                        .replaceAll("^-+|-+$", "");
+                if (!optVal.isEmpty()) {
+                    skuBuilder.append("-").append(optVal);
+                }
+            }
+        }
+
+        String candidateSku = skuBuilder.toString();
+        String finalSku = candidateSku;
+        int counter = 1;
+
+        // Prevent collision with existing SKUs
+        while (productVariantRepository.existsBySku(finalSku)) {
+            finalSku = candidateSku + String.format("-%02d", counter++);
+        }
+
+        return finalSku;
     }
 }

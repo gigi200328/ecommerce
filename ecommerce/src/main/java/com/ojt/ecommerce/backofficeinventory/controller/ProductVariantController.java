@@ -9,6 +9,7 @@ import org.springframework.web.bind.annotation.PostMapping;
 import org.springframework.web.bind.annotation.PutMapping;
 import org.springframework.web.bind.annotation.RequestBody;
 import org.springframework.web.bind.annotation.RequestMapping;
+import org.springframework.web.bind.annotation.RequestParam;
 import org.springframework.web.bind.annotation.RestController;
 
 import com.ojt.ecommerce.backofficeinventory.service.ProductVariantService;
@@ -291,5 +292,31 @@ public class ProductVariantController {
     public String deleteProductVariant(@PathVariable Long id) {
         productVariantService.deleteProductVariant(id);
         return "Product variant deleted successfully.";
+    }
+
+    // GENERATE SKU
+    @Operation(
+        summary = "Auto-generate SKU for product variant",
+        description = "Generates a unique SKU suggestion based on Product Name and chosen Variation Options."
+    )
+    @ApiResponses(value = {
+        @ApiResponse(
+            responseCode = "200",
+            description = "SKU generated successfully",
+            content = @Content(
+                mediaType = "text/plain",
+                examples = @ExampleObject(
+                    name = "Generated SKU Example",
+                    value = "NIKE-AIR-MAX-BLK-42"
+                )
+            )
+        ),
+        @ApiResponse(responseCode = "500", description = "Product not found")
+    })
+    @GetMapping("/generate-sku")
+    public String generateSku(
+            @RequestParam Long productId,
+            @RequestParam(required = false) List<Long> optionIds) {
+        return productVariantService.generateSku(productId, optionIds);
     }
 }

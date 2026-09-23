@@ -17,4 +17,6 @@ public interface ProductVariantService {
     ProductVariant updateProductVariant(Long id, ProductVariant productVariant);
 
     void deleteProductVariant(Long id);
+
+    String generateSku(Long productId, List<Long> optionIds);
 }
