@@ -2,6 +2,7 @@ package com.ojt.ecommerce.entity;
 
 import java.math.BigDecimal;
 import java.time.LocalDateTime;
+import java.util.List;
 
 import jakarta.persistence.Column;
 import jakarta.persistence.Entity;
@@ -77,12 +78,12 @@ public class Order {
 	private User modifiedBy;
 
 	@OneToMany(mappedBy = "order", fetch = FetchType.LAZY)
-	private java.util.List<OrderItem> orderItems;
+	private List<OrderItem> orderItems;
 
 	@OneToMany(mappedBy = "order", fetch = FetchType.LAZY)
-	private java.util.List<OrderStatusHistory> statusHistories;
+	private List<OrderStatusHistory> statusHistories;
 
 	@OneToMany(mappedBy = "order", fetch = FetchType.LAZY)
-	private java.util.List<OrderAddress> orderAddresses;
+	private List<OrderAddress> orderAddresses;
 
 }
