@@ -1,11 +1,33 @@
 package com.ojt.ecommerce.entity;
 
-import jakarta.persistence.*;
-import java.time.*;
-import lombok.*;
+import java.time.LocalDateTime;
+
+import jakarta.persistence.Column;
+import jakarta.persistence.Entity;
+import jakarta.persistence.FetchType;
+import jakarta.persistence.ForeignKey;
+import jakarta.persistence.GeneratedValue;
+import jakarta.persistence.GenerationType;
+import jakarta.persistence.Id;
+import jakarta.persistence.Index;
+import jakarta.persistence.JoinColumn;
+import jakarta.persistence.ManyToOne;
+import jakarta.persistence.Table;
+import lombok.AllArgsConstructor;
+import lombok.Builder;
+import lombok.Getter;
+import lombok.NoArgsConstructor;
+import lombok.Setter;
 
 @Entity
-@Table(name = "product_images")
+@Table(
+    name = "product_images",
+    indexes = {
+        @Index(name = "idx_product_images_product_id", columnList = "product_id"),
+        @Index(name = "idx_product_images_product_primary", columnList = "product_id, is_primary")
+    }
+)
+
 @Getter
 @Setter
 @NoArgsConstructor
@@ -24,9 +46,10 @@ public class ProductImage {
 
     @Column(name = "image_url", nullable = false, length = 500)
     private String imageUrl;
-
-    @Column(name = "is_primary", nullable = false)
-    private Boolean isPrimary;
+    
+    @Builder.Default
+    @Column(name = "is_primary", nullable = false, columnDefinition = "BOOLEAN DEFAULT false")
+    private Boolean isPrimary = false;
 
     @Column(name = "created_at", nullable = false)
     private LocalDateTime createdAt;
@@ -35,8 +58,10 @@ public class ProductImage {
     @JoinColumn(name = "created_by", referencedColumnName = "user_id", nullable = false, foreignKey = @ForeignKey(name = "fk_product_images_users1"))
     private User createdBy;
 
-    @ManyToOne(fetch = FetchType.LAZY)
-    @JoinColumn(name = "modified_by", referencedColumnName = "user_id",foreignKey = @ForeignKey(name = "fk_product_images_users2"))
+    @ManyToOne(fetch = FetchType.LAZY, optional = false)
+    @JoinColumn(
+        name = "modified_by",referencedColumnName = "user_id",nullable = false,foreignKey = @ForeignKey(name = "fk_product_images_users2")
+    )
     private User modifiedBy;
 
     @Column(name = "modified_at")
