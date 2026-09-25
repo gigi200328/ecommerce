@@ -35,7 +35,7 @@ public class ProductImage {
     @JoinColumn(name = "created_by", referencedColumnName = "user_id", nullable = false, foreignKey = @ForeignKey(name = "fk_product_images_users1"))
     private User createdBy;
 
-    @ManyToOne(fetch = FetchType.LAZY, optional = false)
+    @ManyToOne(fetch = FetchType.LAZY)
     @JoinColumn(name = "modified_by", referencedColumnName = "user_id",foreignKey = @ForeignKey(name = "fk_product_images_users2"))
     private User modifiedBy;
 
