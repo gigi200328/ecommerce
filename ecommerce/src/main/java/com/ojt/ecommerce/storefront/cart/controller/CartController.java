@@ -1,6 +1,6 @@
 package com.ojt.ecommerce.storefront.cart.controller;
 
-import com.ojt.ecommerce.security.CustomerPrincipal;
+import com.ojt.ecommerce.storefront.security.CustomerPrincipal;
 import com.ojt.ecommerce.storefront.cart.dto.*;
 import com.ojt.ecommerce.storefront.cart.service.CartService;
 import jakarta.validation.Valid;

@@ -1,8 +1,8 @@
 package com.ojt.ecommerce.storefront.cart.service;
 
 import com.ojt.ecommerce.entity.*;
-import com.ojt.ecommerce.exception.InvalidRequestException;
-import com.ojt.ecommerce.exception.ResourceNotFoundException;
+import com.ojt.ecommerce.storefront.exception.InvalidRequestException;
+import com.ojt.ecommerce.storefront.exception.ResourceNotFoundException;
 import com.ojt.ecommerce.storefront.auth.repository.CustomerRepository;
 import com.ojt.ecommerce.storefront.cart.dto.*;
 import com.ojt.ecommerce.storefront.cart.repository.CartItemRepository;
@@ -24,10 +24,10 @@ public class CartServiceImpl implements CartService {
     private final CartRepository cartRepository;
     private final CartItemRepository cartItemRepository;
     private final CustomerRepository customerRepository;
-    private final ProductVariantRepository variantRepository;
-    private final ProductImageRepository imageRepository;
-    private final InventoryRepository inventoryRepository;
-    private final VariantOptionValueRepository optionValueRepository;
+    private final G5ProductVariantRepository variantRepository;
+    private final G5ProductImageRepository imageRepository;
+    private final G5InventoryRepository inventoryRepository;
+    private final G5VariantOptionValueRepository optionValueRepository;
 
     private Cart getActiveCartOrCreate(Long customerId) {
         return cartRepository.findByCustomerCustomerIdAndStatus(customerId, "ACTIVE")
@@ -55,7 +55,7 @@ public class CartServiceImpl implements CartService {
         ProductVariant variant = variantRepository.findById(request.getVariantId())
                 .orElseThrow(() -> new ResourceNotFoundException("Variant not found"));
         
-        if (!"ACTIVE".equals(variant.getStatus()) || !"ACTIVE".equals(variant.getProduct().getStatus())) {
+        if (!"ACTIVE".equals(variant.getStatus().name()) || !"ACTIVE".equals(variant.getProduct().getStatus().name())) {
             throw new InvalidRequestException("Product is not available");
         }
         
@@ -144,9 +144,9 @@ public class CartServiceImpl implements CartService {
             ProductVariant v = ci.getVariant();
             Product p = v.getProduct();
             int qty = inventoryMap.getOrDefault(v.getVariantId(), 0);
-            boolean isAvailable = "ACTIVE".equals(v.getStatus()) && "ACTIVE".equals(p.getStatus()) && qty > 0 && ci.getQuantity() <= qty;
+            boolean isAvailable = "ACTIVE".equals(v.getStatus().name()) && "ACTIVE".equals(p.getStatus().name()) && qty > 0 && ci.getQuantity() <= qty;
             
-            BigDecimal effectivePrice = v.getDiscountPrice() != null ? v.getDiscountPrice() : v.getSellingPrice();
+            BigDecimal effectivePrice =  v.getSellingPrice();
             BigDecimal subtotal = effectivePrice.multiply(BigDecimal.valueOf(ci.getQuantity()));
             
             Map<String, String> opts = new HashMap<>();
@@ -196,7 +196,7 @@ public class CartServiceImpl implements CartService {
                 .orElseThrow(() -> new ResourceNotFoundException("Cart item not found"));
                 
         ProductVariant variant = cartItem.getVariant();
-        if (!"ACTIVE".equals(variant.getStatus()) || !"ACTIVE".equals(variant.getProduct().getStatus())) {
+        if (!"ACTIVE".equals(variant.getStatus().name()) || !"ACTIVE".equals(variant.getProduct().getStatus().name())) {
             throw new InvalidRequestException("Product is no longer available");
         }
         
@@ -266,9 +266,9 @@ public class CartServiceImpl implements CartService {
             
             Product p = v.getProduct();
             int qty = inventoryMap.getOrDefault(v.getVariantId(), 0);
-            boolean isAvailable = "ACTIVE".equals(v.getStatus()) && "ACTIVE".equals(p.getStatus()) && qty > 0 && reqItem.getQuantity() <= qty;
+            boolean isAvailable = "ACTIVE".equals(v.getStatus().name()) && "ACTIVE".equals(p.getStatus().name()) && qty > 0 && reqItem.getQuantity() <= qty;
             
-            BigDecimal effectivePrice = v.getDiscountPrice() != null ? v.getDiscountPrice() : v.getSellingPrice();
+            BigDecimal effectivePrice = v.getSellingPrice();
             BigDecimal subtotal = effectivePrice.multiply(BigDecimal.valueOf(reqItem.getQuantity()));
             
             Map<String, String> opts = new HashMap<>();
@@ -317,7 +317,7 @@ public class CartServiceImpl implements CartService {
         
         for (GuestCartItem reqItem : request.getItems()) {
             ProductVariant variant = variantRepository.findById(reqItem.getVariantId()).orElse(null);
-            if (variant == null || !"ACTIVE".equals(variant.getStatus()) || !"ACTIVE".equals(variant.getProduct().getStatus())) {
+            if (variant == null || !"ACTIVE".equals(variant.getStatus().name()) || !"ACTIVE".equals(variant.getProduct().getStatus().name())) {
                 rejectedItems.add(CartMergeRejectedItem.builder()
                         .variantId(reqItem.getVariantId())
                         .reason("Product or variant not available")
