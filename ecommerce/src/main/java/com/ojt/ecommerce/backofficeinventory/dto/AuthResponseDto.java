@@ -11,8 +11,9 @@ import lombok.NoArgsConstructor;
 @NoArgsConstructor
 public class AuthResponseDto {
     private String token;
-    @Builder.Default
-    private String type = "Bearer";
     private String username;
+    
+    private String email; // <--- ဤစာကြောင်းကို အသစ်ထည့်ပေးပါ
+    
     private String role;
 }
