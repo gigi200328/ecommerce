@@ -1,11 +1,16 @@
 package com.ojt.ecommerce.entity;
 
 import jakarta.persistence.*;
-import java.time.*;
+import java.time.LocalDateTime;
 import lombok.*;
 
 @Entity
-@Table(name = "categories")
+@Table(
+    name = "categories",
+    indexes = {
+        @Index(name = "idx_category_parent_id", columnList = "parent_id")
+    }
+)
 @Getter
 @Setter
 @NoArgsConstructor
@@ -18,7 +23,7 @@ public class Category {
     @Column(name = "category_id", nullable = false)
     private Long categoryId;
 
-    @ManyToOne(fetch = FetchType.LAZY, optional = true)
+    @ManyToOne(fetch = FetchType.LAZY)
     @JoinColumn(name = "parent_id", referencedColumnName = "category_id", nullable = true, foreignKey = @ForeignKey(name = "categories_ibfk_1"))
     private Category parent;
 
@@ -35,7 +40,7 @@ public class Category {
     @Column(name = "created_at", nullable = false)
     private LocalDateTime createdAt;
 
-    @ManyToOne(fetch = FetchType.LAZY, optional = false)
+    @ManyToOne(fetch = FetchType.LAZY)
     @JoinColumn(name = "modified_by", referencedColumnName = "user_id", foreignKey = @ForeignKey(name = "fk_categories_users2"))
     private User modifiedBy;
 

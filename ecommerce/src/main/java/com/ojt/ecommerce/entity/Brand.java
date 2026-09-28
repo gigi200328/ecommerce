@@ -1,7 +1,7 @@
 package com.ojt.ecommerce.entity;
 
 import jakarta.persistence.*;
-import java.time.*;
+import java.time.LocalDateTime;
 import lombok.*;
 
 @Entity
@@ -27,12 +27,17 @@ public class Brand {
     @Column(name = "description", columnDefinition = "TEXT")
     private String description;
 
+    @Enumerated(EnumType.STRING)
     @Column(name = "status", nullable = false, columnDefinition = "ENUM('ACTIVE', 'INACTIVE')")
-    private String status;
+    private BrandStatus status;
 
     @Column(name = "created_at", nullable = false)
     private LocalDateTime createdAt;
 
     @Column(name = "modified_at")
     private LocalDateTime modifiedAt;
+    
+    @ManyToOne(fetch = FetchType.LAZY)
+    @JoinColumn(name = "modified_by", referencedColumnName = "user_id")
+    private User modifiedBy;
 }
