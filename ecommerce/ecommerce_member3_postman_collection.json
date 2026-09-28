@@ -1,0 +1,527 @@
+{
+  "info": {
+    "name": "E-Commerce Back-Office - Member 3 APIs (Yar-Yar)",
+    "description": "Postman Collection for Group 4 Member 3 (Product Variations, Variation Options, Product Variants, and Variant Option Values)",
+    "schema": "https://schema.getpostman.com/json/collection/v2.1.0/collection.json"
+  },
+  "variable": [
+    {
+      "key": "baseUrl",
+      "value": "http://localhost:8080",
+      "type": "string"
+    },
+    {
+      "key": "jwt_token",
+      "value": "",
+      "type": "string"
+    }
+  ],
+  "auth": {
+    "type": "bearer",
+    "bearer": [
+      {
+        "key": "token",
+        "value": "{{jwt_token}}",
+        "type": "string"
+      }
+    ]
+  },
+  "item": [
+    {
+      "name": "00. Authentication",
+      "item": [
+        {
+          "name": "1. Admin Login (Auto-save Token)",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "exec": [
+                  "var jsonData = pm.response.json();",
+                  "if (jsonData.token) {",
+                  "    pm.collectionVariables.set('jwt_token', jsonData.token);",
+                  "    console.log('JWT Token successfully saved:', jsonData.token);",
+                  "}"
+                ],
+                "type": "text/javascript"
+              }
+            }
+          ],
+          "request": {
+            "auth": {
+              "type": "noauth"
+            },
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"email\": \"admin@ecommerce.com\",\n  \"password\": \"admin123\"\n}"
+            },
+            "url": {
+              "raw": "{{baseUrl}}/api/v1/auth/login",
+              "host": ["{{baseUrl}}"],
+              "path": ["api", "v1", "auth", "login"]
+            }
+          }
+        }
+      ]
+    },
+    {
+      "name": "01. Variations",
+      "item": [
+        {
+          "name": "1. Create Variation (Color)",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"name\": \"Color\"\n}"
+            },
+            "url": {
+              "raw": "{{baseUrl}}/api/variations",
+              "host": ["{{baseUrl}}"],
+              "path": ["api", "variations"]
+            }
+          }
+        },
+        {
+          "name": "2. Create Variation (Size)",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"name\": \"Size\"\n}"
+            },
+            "url": {
+              "raw": "{{baseUrl}}/api/variations",
+              "host": ["{{baseUrl}}"],
+              "path": ["api", "variations"]
+            }
+          }
+        },
+        {
+          "name": "3. Get All Variations",
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": {
+              "raw": "{{baseUrl}}/api/variations",
+              "host": ["{{baseUrl}}"],
+              "path": ["api", "variations"]
+            }
+          }
+        },
+        {
+          "name": "4. Get Variation by ID",
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": {
+              "raw": "{{baseUrl}}/api/variations/1",
+              "host": ["{{baseUrl}}"],
+              "path": ["api", "variations", "1"]
+            }
+          }
+        },
+        {
+          "name": "5. Update Variation",
+          "request": {
+            "method": "PUT",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"name\": \"Colour\"\n}"
+            },
+            "url": {
+              "raw": "{{baseUrl}}/api/variations/1",
+              "host": ["{{baseUrl}}"],
+              "path": ["api", "variations", "1"]
+            }
+          }
+        },
+        {
+          "name": "6. Delete Variation",
+          "request": {
+            "method": "DELETE",
+            "header": [],
+            "url": {
+              "raw": "{{baseUrl}}/api/variations/1",
+              "host": ["{{baseUrl}}"],
+              "path": ["api", "variations", "1"]
+            }
+          }
+        }
+      ]
+    },
+    {
+      "name": "02. Variation Options",
+      "item": [
+        {
+          "name": "1. Create Option (Black for Color)",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"variation\": {\n    \"variationId\": 1\n  },\n  \"value\": \"Black\"\n}"
+            },
+            "url": {
+              "raw": "{{baseUrl}}/api/variation-options",
+              "host": ["{{baseUrl}}"],
+              "path": ["api", "variation-options"]
+            }
+          }
+        },
+        {
+          "name": "2. Create Option (White for Color)",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"variation\": {\n    \"variationId\": 1\n  },\n  \"value\": \"White\"\n}"
+            },
+            "url": {
+              "raw": "{{baseUrl}}/api/variation-options",
+              "host": ["{{baseUrl}}"],
+              "path": ["api", "variation-options"]
+            }
+          }
+        },
+        {
+          "name": "3. Create Option (M for Size)",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"variation\": {\n    \"variationId\": 2\n  },\n  \"value\": \"M\"\n}"
+            },
+            "url": {
+              "raw": "{{baseUrl}}/api/variation-options",
+              "host": ["{{baseUrl}}"],
+              "path": ["api", "variation-options"]
+            }
+          }
+        },
+        {
+          "name": "4. Get All Variation Options",
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": {
+              "raw": "{{baseUrl}}/api/variation-options",
+              "host": ["{{baseUrl}}"],
+              "path": ["api", "variation-options"]
+            }
+          }
+        },
+        {
+          "name": "5. Get Option by ID",
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": {
+              "raw": "{{baseUrl}}/api/variation-options/1",
+              "host": ["{{baseUrl}}"],
+              "path": ["api", "variation-options", "1"]
+            }
+          }
+        },
+        {
+          "name": "6. Get Options by Variation ID",
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": {
+              "raw": "{{baseUrl}}/api/variation-options/variation/1",
+              "host": ["{{baseUrl}}"],
+              "path": ["api", "variation-options", "variation", "1"]
+            }
+          }
+        },
+        {
+          "name": "7. Update Variation Option",
+          "request": {
+            "method": "PUT",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"value\": \"Midnight Black\"\n}"
+            },
+            "url": {
+              "raw": "{{baseUrl}}/api/variation-options/1",
+              "host": ["{{baseUrl}}"],
+              "path": ["api", "variation-options", "1"]
+            }
+          }
+        },
+        {
+          "name": "8. Delete Variation Option",
+          "request": {
+            "method": "DELETE",
+            "header": [],
+            "url": {
+              "raw": "{{baseUrl}}/api/variation-options/1",
+              "host": ["{{baseUrl}}"],
+              "path": ["api", "variation-options", "1"]
+            }
+          }
+        }
+      ]
+    },
+    {
+      "name": "03. Product Variants",
+      "item": [
+        {
+          "name": "1. Create Product Variant (TS-BLK-M)",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"product\": {\n    \"productId\": 1\n  },\n  \"sku\": \"TS-BLK-M\",\n  \"sellingPrice\": 25.00,\n  \"costPrice\": 12.50,\n  \"status\": \"ACTIVE\"\n}"
+            },
+            "url": {
+              "raw": "{{baseUrl}}/api/product-variants",
+              "host": ["{{baseUrl}}"],
+              "path": ["api", "product-variants"]
+            }
+          }
+        },
+        {
+          "name": "2. Get All Product Variants",
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": {
+              "raw": "{{baseUrl}}/api/product-variants",
+              "host": ["{{baseUrl}}"],
+              "path": ["api", "product-variants"]
+            }
+          }
+        },
+        {
+          "name": "3. Get Product Variant by ID",
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": {
+              "raw": "{{baseUrl}}/api/product-variants/1",
+              "host": ["{{baseUrl}}"],
+              "path": ["api", "product-variants", "1"]
+            }
+          }
+        },
+        {
+          "name": "4. Get Variants by Product ID",
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": {
+              "raw": "{{baseUrl}}/api/product-variants/product/1",
+              "host": ["{{baseUrl}}"],
+              "path": ["api", "product-variants", "product", "1"]
+            }
+          }
+        },
+        {
+          "name": "5. Update Product Variant",
+          "request": {
+            "method": "PUT",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"sku\": \"TS-BLK-M-V2\",\n  \"sellingPrice\": 28.00,\n  \"costPrice\": 13.00,\n  \"status\": \"ACTIVE\"\n}"
+            },
+            "url": {
+              "raw": "{{baseUrl}}/api/product-variants/1",
+              "host": ["{{baseUrl}}"],
+              "path": ["api", "product-variants", "1"]
+            }
+          }
+        },
+        {
+          "name": "6. Delete Product Variant",
+          "request": {
+            "method": "DELETE",
+            "header": [],
+            "url": {
+              "raw": "{{baseUrl}}/api/product-variants/1",
+              "host": ["{{baseUrl}}"],
+              "path": ["api", "product-variants", "1"]
+            }
+          }
+        }
+      ]
+    },
+    {
+      "name": "04. Variant Option Values (Mapping)",
+      "item": [
+        {
+          "name": "1. Map Variant 1 to Color Black (Option 1)",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"variant\": {\n    \"variantId\": 1\n  },\n  \"option\": {\n    \"optionId\": 1\n  }\n}"
+            },
+            "url": {
+              "raw": "{{baseUrl}}/api/variant-option-values",
+              "host": ["{{baseUrl}}"],
+              "path": ["api", "variant-option-values"]
+            }
+          }
+        },
+        {
+          "name": "2. Map Variant 1 to Size M (Option 3)",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"variant\": {\n    \"variantId\": 1\n  },\n  \"option\": {\n    \"optionId\": 3\n  }\n}"
+            },
+            "url": {
+              "raw": "{{baseUrl}}/api/variant-option-values",
+              "host": ["{{baseUrl}}"],
+              "path": ["api", "variant-option-values"]
+            }
+          }
+        },
+        {
+          "name": "3. Get All Mappings",
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": {
+              "raw": "{{baseUrl}}/api/variant-option-values",
+              "host": ["{{baseUrl}}"],
+              "path": ["api", "variant-option-values"]
+            }
+          }
+        },
+        {
+          "name": "4. Get Options by Variant ID (Variant 1)",
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": {
+              "raw": "{{baseUrl}}/api/variant-option-values/variant/1",
+              "host": ["{{baseUrl}}"],
+              "path": ["api", "variant-option-values", "variant", "1"]
+            }
+          }
+        },
+        {
+          "name": "5. Get Variants by Option ID (Option 1)",
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": {
+              "raw": "{{baseUrl}}/api/variant-option-values/option/1",
+              "host": ["{{baseUrl}}"],
+              "path": ["api", "variant-option-values", "option", "1"]
+            }
+          }
+        },
+        {
+          "name": "6. Update Mapping",
+          "request": {
+            "method": "PUT",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"variant\": {\n    \"variantId\": 1\n  },\n  \"option\": {\n    \"optionId\": 2\n  }\n}"
+            },
+            "url": {
+              "raw": "{{baseUrl}}/api/variant-option-values/1",
+              "host": ["{{baseUrl}}"],
+              "path": ["api", "variant-option-values", "1"]
+            }
+          }
+        },
+        {
+          "name": "7. Delete Mapping",
+          "request": {
+            "method": "DELETE",
+            "header": [],
+            "url": {
+              "raw": "{{baseUrl}}/api/variant-option-values/1",
+              "host": ["{{baseUrl}}"],
+              "path": ["api", "variant-option-values", "1"]
+            }
+          }
+        }
+      ]
+    }
+  ]
+}

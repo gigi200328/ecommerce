@@ -31,7 +31,7 @@ public class CategoryService {
     @Transactional
     public CategoryResponseDto createCategory(CategoryRequestDto request) {
     	
-    	User user = userRepository.findById(request.getUserId().intValue())
+    	User user = userRepository.findById(request.getUserId())
     	        .orElseThrow(() -> new EntityNotFoundException("User not found: " + request.getUserId()));
 
         Category parent = null;
@@ -84,7 +84,7 @@ public class CategoryService {
                 .orElseThrow(() -> new EntityNotFoundException("Category not found: " + id));
 
 
-        User user = userRepository.findById(request.getUserId().intValue())
+        User user = userRepository.findById(request.getUserId())
                 .orElseThrow(() -> new EntityNotFoundException("User not found: " + request.getUserId()));
 
         if (request.getParentId() != null) {

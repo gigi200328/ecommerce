@@ -13,6 +13,7 @@ import org.springframework.web.bind.annotation.RestController;
 
 import com.ojt.ecommerce.backofficeinventory.dto.OrderResponseDto;
 import com.ojt.ecommerce.backofficeinventory.dto.OrderStatusUpdateRequestDto;
+import com.ojt.ecommerce.backofficeinventory.dto.PaymentVerificationDto;
 import com.ojt.ecommerce.backofficeinventory.service.OrderManagementService;
 
 import jakarta.validation.Valid;
@@ -49,6 +50,13 @@ public class OrderManagementController {
 
 		OrderResponseDto updatedOrder = orderManagementService.updateOrderStatus(orderNo, requestDto);
 		return ResponseEntity.ok(updatedOrder);
+	}
+
+	@GetMapping("/{orderNo}/payment-info")
+	public ResponseEntity<PaymentVerificationDto> getPaymentVerificationInfo(@PathVariable("orderNo") String orderNo) {
+
+		PaymentVerificationDto paymentInfo = orderManagementService.getPaymentInfoByOrderNo(orderNo);
+		return ResponseEntity.ok(paymentInfo);
 	}
 
 }

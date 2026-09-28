@@ -12,12 +12,16 @@ import org.springframework.transaction.annotation.Transactional;
 
 import com.ojt.ecommerce.backofficeinventory.dto.OrderResponseDto;
 import com.ojt.ecommerce.backofficeinventory.dto.OrderStatusUpdateRequestDto;
+import com.ojt.ecommerce.backofficeinventory.dto.PaymentVerificationDto;
 import com.ojt.ecommerce.backofficeinventory.mapper.OrderMapper;
+import com.ojt.ecommerce.backofficeinventory.mapper.PaymentMapper;
 import com.ojt.ecommerce.backofficeinventory.repository.OrderRepository;
 import com.ojt.ecommerce.backofficeinventory.repository.OrderStatusHistoryRepository;
+import com.ojt.ecommerce.backofficeinventory.repository.PaymentRepository;
 import com.ojt.ecommerce.backofficeinventory.security.CustomUserDetails;
 import com.ojt.ecommerce.entity.Order;
 import com.ojt.ecommerce.entity.OrderStatusHistory;
+import com.ojt.ecommerce.entity.Payment;
 import com.ojt.ecommerce.entity.User;
 
 import jakarta.persistence.EntityNotFoundException;
@@ -30,6 +34,8 @@ public class OrderManagementService {
 	private final OrderRepository orderRepository;
 	private final OrderMapper orderMapper;
 	private final OrderStatusHistoryRepository orderStatusHistoryRepository;
+	private final PaymentRepository paymentRepository;
+	private final PaymentMapper paymentMapper;
 
 	@Transactional(readOnly = true)
 	public List<OrderResponseDto> getOrders(String status) {
@@ -90,6 +96,13 @@ public class OrderManagementService {
 
 		// ၆။ ပြောင်းလဲသွားတဲ့ အော်ဒါအချက်အလက်ကို DTO ပြောင်းပြီး ပြန်ပေးမည်
 		return orderMapper.toDto(updatedOrder);
+	}
+
+	@Transactional(readOnly = true)
+	public PaymentVerificationDto getPaymentInfoByOrderNo(String orderNo) {
+		Payment payment = paymentRepository.findByOrder_OrderNo(orderNo).orElseThrow(
+				() -> new EntityNotFoundException("Payment information not found for order number: " + orderNo));
+		return paymentMapper.toDto(payment);
 	}
 
 }
