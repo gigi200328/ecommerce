@@ -21,6 +21,7 @@ import org.springframework.web.multipart.MultipartFile;
 
 @RestController
 @RequestMapping("/api/brands")
+
 @RequiredArgsConstructor
 public class BrandController {
 
