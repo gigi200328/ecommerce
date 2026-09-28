@@ -19,7 +19,6 @@ import org.springframework.web.cors.CorsConfiguration;
 import org.springframework.web.cors.CorsConfigurationSource;
 import org.springframework.web.cors.UrlBasedCorsConfigurationSource;
 
-import java.util.List;
 import com.ojt.ecommerce.backofficeinventory.security.JwtAuthenticationFilter;
 
 import lombok.RequiredArgsConstructor;
@@ -44,7 +43,7 @@ public class SecurityConfig {
 	@Bean
 	public SecurityFilterChain securityFilterChain(HttpSecurity http) throws Exception {
 		http.cors(Customizer.withDefaults()).csrf(AbstractHttpConfigurer::disable).authorizeHttpRequests(auth -> auth
-				.requestMatchers("/api/v1/auth/**", "/error", "/api-docs/**", "/swagger-ui/**","/api/categories/**", "/swagger-ui.html")
+				.requestMatchers("/api/v1/auth/**", "/error", "/api-docs/**", "/swagger-ui/**","/api/categories/**","/api/products/**", "/swagger-ui.html")
 				.permitAll().anyRequest().authenticated())
 				.sessionManagement(sess -> sess.sessionCreationPolicy(SessionCreationPolicy.STATELESS))
 				.addFilterBefore(jwtAuthFilter, UsernamePasswordAuthenticationFilter.class);
