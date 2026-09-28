@@ -17,7 +17,7 @@ import java.util.Collections;
 
 @Component("storefrontJwtAuthFilter")
 @RequiredArgsConstructor
-public class JwtAuthenticationFilter extends OncePerRequestFilter {
+public class G5JwtAuthenticationFilter extends OncePerRequestFilter {
 
     private final JwtUtil jwtUtil;
 
