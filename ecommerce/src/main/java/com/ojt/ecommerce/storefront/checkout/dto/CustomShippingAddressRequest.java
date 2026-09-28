@@ -1,8 +1,6 @@
-package com.ojt.ecommerce.storefront.dto;
+package com.ojt.ecommerce.storefront.checkout.dto;
 import lombok.Data;
-@Data public class CustomerAddressResponse {
-    private Long addressId;
-    private String label;
+@Data public class CustomShippingAddressRequest {
     private String recipientName;
     private String phoneNumber;
     private String addressLine1;
@@ -10,6 +8,4 @@ import lombok.Data;
     private String township;
     private String city;
     private String regionOrState;
-    private String postalCode;
-    private Boolean isDefault;
 }
