@@ -1,4 +1,4 @@
-package com.ojt.ecommerce.backofficeinventory.exception;
+package com.ojt.ecommerce.exception;
 
 import java.time.LocalDateTime;
 import java.util.HashMap;
