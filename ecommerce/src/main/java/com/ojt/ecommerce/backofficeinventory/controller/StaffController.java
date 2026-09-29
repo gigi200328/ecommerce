@@ -13,7 +13,7 @@ import org.springframework.web.bind.annotation.PathVariable;
 import org.springframework.web.bind.annotation.RequestParam;
 import java.util.Map;
 @RestController
-@RequestMapping("/api/v1/staff")
+@RequestMapping("/api/backoffice/staff")
 @RequiredArgsConstructor
 public class StaffController {
 

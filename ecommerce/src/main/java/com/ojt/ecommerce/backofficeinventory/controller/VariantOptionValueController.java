@@ -24,7 +24,7 @@ import io.swagger.v3.oas.annotations.tags.Tag;
 import lombok.RequiredArgsConstructor;
 
 @RestController
-@RequestMapping("/api/variant-option-values")
+@RequestMapping("/api/backoffice/variant-option-values")
 @RequiredArgsConstructor
 @Tag(name = "Variant Option Value Management", description = "Back-Office APIs for mapping Product Variants to Variation Options")
 public class VariantOptionValueController {

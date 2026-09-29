@@ -1,4 +1,4 @@
-package com.ojt.ecommerce.backofficeinventory.enums;
+package com.ojt.ecommerce.enums;
 
 import lombok.Getter;
 
