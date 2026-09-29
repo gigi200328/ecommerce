@@ -1,6 +1,7 @@
 package com.ojt.ecommerce.backofficeinventory.dto;
 
-import com.ojt.ecommerce.entity.BrandStatus;
+import com.ojt.ecommerce.enums.BrandStatus;
+
 import jakarta.validation.constraints.NotBlank;
 import jakarta.validation.constraints.NotNull;
 import jakarta.validation.constraints.Size;

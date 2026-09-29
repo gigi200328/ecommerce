@@ -2,7 +2,6 @@ package com.ojt.ecommerce.backofficeinventory.service;
 
 import com.ojt.ecommerce.backofficeinventory.dto.ProductImageRequestDto;
 import com.ojt.ecommerce.backofficeinventory.dto.ProductImageResponseDto;
-import com.ojt.ecommerce.backofficeinventory.enums.UploadType;
 import com.ojt.ecommerce.backofficeinventory.mapper.ProductImageMapper;
 import com.ojt.ecommerce.backofficeinventory.repository.ProductImageRepository;
 import com.ojt.ecommerce.backofficeinventory.repository.ProductRepository;
@@ -10,6 +9,7 @@ import com.ojt.ecommerce.backofficeinventory.repository.UserRepository;
 import com.ojt.ecommerce.entity.Product;
 import com.ojt.ecommerce.entity.ProductImage;
 import com.ojt.ecommerce.entity.User;
+import com.ojt.ecommerce.enums.UploadType;
 
 import jakarta.persistence.EntityNotFoundException;
 import lombok.RequiredArgsConstructor;

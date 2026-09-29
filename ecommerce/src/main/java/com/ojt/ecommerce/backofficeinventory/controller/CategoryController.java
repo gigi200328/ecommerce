@@ -25,7 +25,7 @@ import jakarta.validation.Valid;
 import lombok.RequiredArgsConstructor;
 
 @RestController
-@RequestMapping("/api/categories")
+@RequestMapping("/api/backoffice/categories")
 
 @RequiredArgsConstructor
 public class CategoryController {
