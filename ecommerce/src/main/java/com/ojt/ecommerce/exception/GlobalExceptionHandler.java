@@ -1,5 +1,6 @@
 package com.ojt.ecommerce.exception;
 
+
 import java.time.LocalDateTime;
 import java.util.HashMap;
 import java.util.Map;
@@ -12,6 +13,10 @@ import org.springframework.web.bind.annotation.ExceptionHandler;
 import org.springframework.web.bind.annotation.RestControllerAdvice;
 
 import com.ojt.ecommerce.backofficeinventory.dto.ErrorResponse;
+import com.ojt.ecommerce.storefront.exception.AccessDeniedException;
+import com.ojt.ecommerce.storefront.exception.ConflictException;
+import com.ojt.ecommerce.storefront.exception.InvalidRequestException;
+import com.ojt.ecommerce.storefront.exception.ResourceNotFoundException;
 
 import jakarta.persistence.EntityNotFoundException;
 
@@ -67,5 +72,31 @@ public class GlobalExceptionHandler {
 
 		return new ResponseEntity<>(errorResponse, HttpStatus.INTERNAL_SERVER_ERROR);
 	}
+	
+	
+	  @ExceptionHandler(ResourceNotFoundException.class)
+	    public ResponseEntity<Map<String, String>> handleNotFound(ResourceNotFoundException ex) {
+	        return buildErrorResponse(HttpStatus.NOT_FOUND, ex.getMessage());
+	    }
+
+	    @ExceptionHandler(InvalidRequestException.class)
+	    public ResponseEntity<Map<String, String>> handleInvalidRequest(InvalidRequestException ex) {
+	        return buildErrorResponse(HttpStatus.BAD_REQUEST, ex.getMessage());
+	    }
+
+	    @ExceptionHandler(AccessDeniedException.class)
+	    public ResponseEntity<Map<String, String>> handleAccessDenied(AccessDeniedException ex) {
+	        return buildErrorResponse(HttpStatus.FORBIDDEN, ex.getMessage());
+	    }
+	    
+	    @ExceptionHandler(ConflictException.class)
+	    public ResponseEntity<Map<String, String>> handleConflict(ConflictException ex) {
+	        return buildErrorResponse(HttpStatus.CONFLICT, ex.getMessage());
+	    }
+	    private ResponseEntity<Map<String, String>> buildErrorResponse(HttpStatus status, String message) {
+	        Map<String, String> response = new HashMap<>();
+	        response.put("message", message);
+	        return new ResponseEntity<>(response, status);
+	    }
 
 }
