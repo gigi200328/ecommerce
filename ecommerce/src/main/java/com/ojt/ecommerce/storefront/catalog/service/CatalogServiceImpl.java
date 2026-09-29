@@ -1,6 +1,7 @@
 package com.ojt.ecommerce.storefront.catalog.service;
 
 import com.ojt.ecommerce.entity.*;
+import com.ojt.ecommerce.enums.BrandStatus;
 import com.ojt.ecommerce.storefront.exception.ResourceNotFoundException;
 import com.ojt.ecommerce.storefront.catalog.dto.*;
 import com.ojt.ecommerce.storefront.catalog.repository.*;
@@ -66,7 +67,7 @@ public class CatalogServiceImpl implements CatalogService {
     @Override
     @Transactional(readOnly = true)
     public List<BrandResponse> getActiveBrands() {
-        return brandRepository.findByStatus("ACTIVE").stream().map(b -> 
+        return brandRepository.findByStatus(BrandStatus.ACTIVE).stream().map(b -> 
             BrandResponse.builder()
                 .brandId(b.getBrandId())
                 .brandName(b.getBrandName())
