@@ -18,7 +18,7 @@ import com.ojt.ecommerce.storefront.security.CustomerPrincipal;
 import lombok.RequiredArgsConstructor;
 
 @RestController
-@RequestMapping("/api/v1/storefront/orders")
+@RequestMapping("/api/storefront/v1/orders")
 @RequiredArgsConstructor
 public class OrderHistoryController {
 

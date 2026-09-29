@@ -20,7 +20,11 @@ import org.springframework.web.cors.CorsConfiguration;
 import org.springframework.web.cors.CorsConfigurationSource;
 import org.springframework.web.cors.UrlBasedCorsConfigurationSource;
 
+import com.ojt.ecommerce.backofficeinventory.security.CustomUserDetailsService;
 import com.ojt.ecommerce.backofficeinventory.security.JwtAuthenticationFilter;
+import com.ojt.ecommerce.backofficeinventory.security.JwtUtil;
+import com.ojt.ecommerce.storefront.security.G5JwtAuthenticationFilter;
+import com.ojt.ecommerce.storefront.security.G5JwtUtil;
 
 import lombok.RequiredArgsConstructor;
 
@@ -29,7 +33,6 @@ import lombok.RequiredArgsConstructor;
 @RequiredArgsConstructor
 public class SecurityConfig {
 
-	private final JwtAuthenticationFilter jwtAuthFilter;
 
 	@Bean
 	public PasswordEncoder passwordEncoder() {
@@ -43,20 +46,27 @@ public class SecurityConfig {
 
 	@Bean
 	@Order(1)
-	public SecurityFilterChain securityFilterChain(HttpSecurity http) throws Exception {
+	public SecurityFilterChain securityFilterChain(HttpSecurity http,JwtUtil jwtUtil,
+	        CustomUserDetailsService userDetailsService) throws Exception {
+		   JwtAuthenticationFilter backofficeFilter =
+		            new JwtAuthenticationFilter(
+		                    jwtUtil,
+		                    userDetailsService
+		            );
 		http.securityMatcher("/api/v1/**")
 		.cors(Customizer.withDefaults()).csrf(AbstractHttpConfigurer::disable).authorizeHttpRequests(auth -> auth
 				.requestMatchers("/api/v1/auth/**", "/error", "/api-docs/**", "/swagger-ui/**", "/swagger-ui.html")
 				.permitAll().anyRequest().authenticated())
 				.sessionManagement(sess -> sess.sessionCreationPolicy(SessionCreationPolicy.STATELESS))
-				.addFilterBefore(jwtAuthFilter, UsernamePasswordAuthenticationFilter.class);
+				.addFilterBefore(backofficeFilter, UsernamePasswordAuthenticationFilter.class);
 
 		return http.build();
 	} 
 	
     @Bean
     @Order(2)
-    public SecurityFilterChain g5SecurityFilterChain(HttpSecurity http) throws Exception {
+    public SecurityFilterChain g5SecurityFilterChain(HttpSecurity http,G5JwtUtil g5JwtUtil) throws Exception {
+    	G5JwtAuthenticationFilter storefrontFilter = new G5JwtAuthenticationFilter(g5JwtUtil);
         http
         .securityMatcher("/api/storefront/v1/**")
             .cors(cors -> cors.configurationSource(corsConfigurationSource()))
@@ -68,7 +78,7 @@ public class SecurityConfig {
                 .anyRequest().authenticated()
             )
             .sessionManagement(sess -> sess.sessionCreationPolicy(SessionCreationPolicy.STATELESS))
-            .addFilterBefore(jwtAuthFilter, UsernamePasswordAuthenticationFilter.class);
+            .addFilterBefore(storefrontFilter , UsernamePasswordAuthenticationFilter.class);
 
         return http.build();
     }

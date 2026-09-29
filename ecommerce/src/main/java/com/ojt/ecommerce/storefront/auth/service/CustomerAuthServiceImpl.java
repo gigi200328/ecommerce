@@ -4,7 +4,7 @@ import com.ojt.ecommerce.entity.Customer;
 import com.ojt.ecommerce.storefront.exception.ConflictException;
 import com.ojt.ecommerce.storefront.exception.InvalidRequestException;
 import com.ojt.ecommerce.storefront.exception.ResourceNotFoundException;
-import com.ojt.ecommerce.storefront.security.JwtUtil;
+import com.ojt.ecommerce.storefront.security.G5JwtUtil;
 import com.ojt.ecommerce.storefront.auth.dto.*;
 import com.ojt.ecommerce.storefront.auth.repository.CustomerRepository;
 import lombok.RequiredArgsConstructor;
@@ -18,7 +18,7 @@ import java.time.LocalDateTime;
 public class CustomerAuthServiceImpl implements CustomerAuthService {
     private final CustomerRepository customerRepository;
     private final PasswordEncoder passwordEncoder;
-    private final JwtUtil jwtUtil;
+    private final G5JwtUtil jwtUtil;
 
     @Override
     @Transactional
