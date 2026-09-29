@@ -6,7 +6,6 @@ import org.springframework.context.annotation.Bean;
 import org.springframework.context.annotation.Configuration;
 import org.springframework.core.annotation.Order;
 import org.springframework.security.authentication.AuthenticationManager;
-import org.springframework.security.config.Customizer;
 import org.springframework.security.config.annotation.authentication.configuration.AuthenticationConfiguration;
 import org.springframework.security.config.annotation.web.builders.HttpSecurity;
 import org.springframework.security.config.annotation.web.configuration.EnableWebSecurity;
@@ -65,8 +64,13 @@ public class SecurityConfig {
     // 1. Backoffice APIs Chain
     @Bean
     @Order(1)
-    public SecurityFilterChain securityFilterChain(HttpSecurity http) throws Exception {
-        http
+	public SecurityFilterChain securityFilterChain(HttpSecurity http,JwtUtil jwtUtil,
+	        CustomUserDetailsService userDetailsService) throws Exception {
+		   JwtAuthenticationFilter backofficeFilter =
+		            new JwtAuthenticationFilter(
+		                    jwtUtil,
+		                    userDetailsService
+		            );        http
             .securityMatcher("/api/backoffice/**")
             .cors(cors -> cors.configurationSource(corsConfigurationSource()))
             .csrf(AbstractHttpConfigurer::disable)
@@ -76,7 +80,7 @@ public class SecurityConfig {
                 .anyRequest().authenticated()
             )
             .sessionManagement(sess -> sess.sessionCreationPolicy(SessionCreationPolicy.STATELESS))
-            .addFilterBefore(jwtAuthFilter, UsernamePasswordAuthenticationFilter.class);
+            .addFilterBefore(backofficeFilter, UsernamePasswordAuthenticationFilter.class);
 
         return http.build();
     }
