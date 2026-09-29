@@ -1,7 +1,8 @@
 package com.ojt.ecommerce.backofficeinventory.repository;
 
 import com.ojt.ecommerce.entity.Product;
-import com.ojt.ecommerce.entity.ProductStatus;
+import com.ojt.ecommerce.enums.ProductStatus;
+
 import org.springframework.data.domain.Page;
 import org.springframework.data.domain.Pageable;
 import org.springframework.data.jpa.repository.JpaRepository;

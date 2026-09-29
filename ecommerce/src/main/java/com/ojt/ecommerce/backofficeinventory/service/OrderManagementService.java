@@ -77,7 +77,7 @@ public class OrderManagementService {
 				.orElseThrow(() -> new EntityNotFoundException("Order not found with order number: " + orderNo));
 
 		String oldStatus = order.getOrderStatus();
-		String newStatus = requestDto.getNewStatus().toUpperCase();
+		String newStatus = requestDto.getNewStatus();
 
 		if (oldStatus.equals(newStatus)) {
 			throw new IllegalArgumentException("Order is already in " + newStatus + " status.");

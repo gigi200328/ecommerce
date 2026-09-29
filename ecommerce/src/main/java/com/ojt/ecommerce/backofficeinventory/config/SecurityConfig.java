@@ -45,23 +45,41 @@ public class SecurityConfig {
 	}
 
 	@Bean
-	@Order(1)
-	public SecurityFilterChain securityFilterChain(HttpSecurity http,JwtUtil jwtUtil,
-	        CustomUserDetailsService userDetailsService) throws Exception {
-		   JwtAuthenticationFilter backofficeFilter =
-		            new JwtAuthenticationFilter(
-		                    jwtUtil,
-		                    userDetailsService
-		            );
-		http.securityMatcher("/api/v1/**")
-		.cors(Customizer.withDefaults()).csrf(AbstractHttpConfigurer::disable).authorizeHttpRequests(auth -> auth
-				.requestMatchers("/api/v1/auth/**", "/error", "/api-docs/**", "/swagger-ui/**", "/swagger-ui.html")
-				.permitAll().anyRequest().authenticated())
-				.sessionManagement(sess -> sess.sessionCreationPolicy(SessionCreationPolicy.STATELESS))
-				.addFilterBefore(backofficeFilter, UsernamePasswordAuthenticationFilter.class);
+    @Order(0)
+    public SecurityFilterChain swaggerSecurityFilterChain(HttpSecurity http) throws Exception {
+        http
+            .securityMatcher(
+                "/v3/api-docs/**",
+                "/swagger-ui/**",
+                "/swagger-ui.html",
+                "/swagger-resources/**",
+                "/webjars/**"
+            )
+            .cors(cors -> cors.configurationSource(corsConfigurationSource()))
+            .csrf(AbstractHttpConfigurer::disable)
+            .authorizeHttpRequests(auth -> auth.anyRequest().permitAll());
 
-		return http.build();
-	} 
+        return http.build();
+    }
+
+    // 1. Backoffice APIs Chain
+    @Bean
+    @Order(1)
+    public SecurityFilterChain securityFilterChain(HttpSecurity http) throws Exception {
+        http
+            .securityMatcher("/api/backoffice/**")
+            .cors(cors -> cors.configurationSource(corsConfigurationSource()))
+            .csrf(AbstractHttpConfigurer::disable)
+            .authorizeHttpRequests(auth -> auth
+                .requestMatchers("/api/backoffice/auth/**").permitAll()
+                .requestMatchers("/api/backoffice/categories/**", "/api/backoffice/products/**").permitAll()
+                .anyRequest().authenticated()
+            )
+            .sessionManagement(sess -> sess.sessionCreationPolicy(SessionCreationPolicy.STATELESS))
+            .addFilterBefore(jwtAuthFilter, UsernamePasswordAuthenticationFilter.class);
+
+        return http.build();
+    }
 	
     @Bean
     @Order(2)
@@ -89,7 +107,8 @@ public class SecurityConfig {
         CorsConfiguration configuration = new CorsConfiguration();
         configuration.setAllowedOrigins(List.of("http://localhost:5173", "http://localhost:3000"));
         configuration.setAllowedMethods(List.of("GET", "POST", "PUT", "DELETE", "PATCH", "OPTIONS"));
-        configuration.setAllowedHeaders(List.of("Authorization", "Content-Type", "Cache-Control"));
+        configuration.setAllowedHeaders(List.of("Authorization", "Content-Type", "Cache-Control","Accept", "X-Requested-With"));
+		configuration.setAllowCredentials(true);
         UrlBasedCorsConfigurationSource source = new UrlBasedCorsConfigurationSource();
         source.registerCorsConfiguration("/**", configuration);
         return source;

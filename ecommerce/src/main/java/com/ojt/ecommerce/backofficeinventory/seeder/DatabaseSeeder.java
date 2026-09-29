@@ -22,15 +22,25 @@ public class DatabaseSeeder implements CommandLineRunner {
     @Override
     public void run(String... args) throws Exception {
 
+        // ၁။ Admin Role
         Role adminRole = roleRepository.findByRoleName("ADMIN").orElseGet(() -> {
             Role newRole = Role.builder().roleName("ADMIN").build();
             return roleRepository.save(newRole);
         });
 
-        roleRepository.findByRoleName("STAFF").orElseGet(() -> {
-            Role newRole = Role.builder().roleName("STAFF").build();
+        // ၂။ Inventory Staff Role
+        Role inventoryRole = roleRepository.findByRoleName("INVENTORY_STAFF").orElseGet(() -> {
+            Role newRole = Role.builder().roleName("INVENTORY_STAFF").build();
             return roleRepository.save(newRole);
         });
+
+        // ၃။ Sales Staff Role
+        Role salesRole = roleRepository.findByRoleName("SALES_STAFF").orElseGet(() -> {
+            Role newRole = Role.builder().roleName("SALES_STAFF").build();
+            return roleRepository.save(newRole);
+        });
+
+        // Admin User
         if (userRepository.findByEmail("admin@ecommerce.com").isEmpty()) {
             User adminUser = User.builder()
                     .userName("System Admin")
@@ -43,6 +53,36 @@ public class DatabaseSeeder implements CommandLineRunner {
             
             userRepository.save(adminUser);
             System.out.println("✅ Default Admin User created successfully!");
+        }
+
+        // Inventory Staff User
+        if (userRepository.findByEmail("inventory@ecommerce.com").isEmpty()) {
+            User inventoryUser = User.builder()
+                    .userName("Inventory Manager")
+                    .email("inventory@ecommerce.com")
+                    .passwordHash(passwordEncoder.encode("inv123"))
+                    .status("ACTIVE")
+                    .createdAt(LocalDateTime.now())
+                    .userRole(inventoryRole)
+                    .build();
+            
+            userRepository.save(inventoryUser);
+            System.out.println("✅ Default Inventory Staff created successfully!");
+        }
+
+        // Sales Staff User
+        if (userRepository.findByEmail("sales@ecommerce.com").isEmpty()) {
+            User salesUser = User.builder()
+                    .userName("Sales Representative")
+                    .email("sales@ecommerce.com")
+                    .passwordHash(passwordEncoder.encode("sales123"))
+                    .status("ACTIVE")
+                    .createdAt(LocalDateTime.now())
+                    .userRole(salesRole)
+                    .build();
+            
+            userRepository.save(salesUser);
+            System.out.println("✅ Default Sales Staff created successfully!");
         }
     }
 }
