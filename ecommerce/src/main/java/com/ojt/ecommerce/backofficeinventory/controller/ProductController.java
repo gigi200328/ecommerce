@@ -10,13 +10,13 @@ import org.springframework.web.bind.annotation.*;
 import com.ojt.ecommerce.backofficeinventory.dto.ProductRequestDto;
 import com.ojt.ecommerce.backofficeinventory.dto.ProductResponseDto;
 import com.ojt.ecommerce.backofficeinventory.service.ProductService;
-import com.ojt.ecommerce.entity.ProductStatus;
+import com.ojt.ecommerce.enums.ProductStatus;
 
 import jakarta.validation.Valid;
 import lombok.RequiredArgsConstructor;
 
 @RestController
-@RequestMapping("/api/products")
+@RequestMapping("/api/backoffice/products")
 
 @RequiredArgsConstructor
 public class ProductController {

@@ -17,8 +17,8 @@ import com.ojt.ecommerce.backofficeinventory.repository.UserRepository;
 import com.ojt.ecommerce.entity.Brand;
 import com.ojt.ecommerce.entity.Category;
 import com.ojt.ecommerce.entity.Product;
-import com.ojt.ecommerce.entity.ProductStatus;
 import com.ojt.ecommerce.entity.User;
+import com.ojt.ecommerce.enums.ProductStatus;
 
 import jakarta.persistence.EntityNotFoundException;
 import lombok.RequiredArgsConstructor;

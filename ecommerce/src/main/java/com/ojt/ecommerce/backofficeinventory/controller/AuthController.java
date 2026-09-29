@@ -17,7 +17,7 @@ import java.security.Principal;
 import java.util.Map;
 
 @RestController
-@RequestMapping("/api/v1/auth")
+@RequestMapping("/api/backoffice/auth")
 @RequiredArgsConstructor
 public class AuthController {
 
