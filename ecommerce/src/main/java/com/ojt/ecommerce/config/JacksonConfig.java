@@ -1,4 +1,4 @@
-package com.ojt.ecommerce.backofficeinventory.config;
+package com.ojt.ecommerce.config;
 
 import java.time.format.DateTimeFormatter;
 
