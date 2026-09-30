@@ -52,7 +52,8 @@ public class SecurityConfig {
                 "/swagger-ui/**",
                 "/swagger-ui.html",
                 "/swagger-resources/**",
-                "/webjars/**"
+                "/webjars/**",
+                "/uploads/**"
             )
             .cors(cors -> cors.configurationSource(corsConfigurationSource()))
             .csrf(AbstractHttpConfigurer::disable)
@@ -76,7 +77,17 @@ public class SecurityConfig {
             .csrf(AbstractHttpConfigurer::disable)
             .authorizeHttpRequests(auth -> auth
                 .requestMatchers("/api/backoffice/auth/**").permitAll()
-                .requestMatchers("/api/backoffice/categories/**", "/api/backoffice/products/**").permitAll()
+                .requestMatchers(
+                    "/api/backoffice/categories/**",
+                    "/api/backoffice/brands/**",
+                    "/api/backoffice/products/**",
+                    "/api/backoffice/product-images/**",
+                    "/api/backoffice/variations/**",
+                    "/api/backoffice/variation-options/**",
+                    "/api/backoffice/product-variants/**",
+                    "/api/backoffice/variant-option-values/**",
+                    "/api/backoffice/inventory/**"
+                ).permitAll()
                 .anyRequest().authenticated()
             )
             .sessionManagement(sess -> sess.sessionCreationPolicy(SessionCreationPolicy.STATELESS))

@@ -47,7 +47,7 @@ public class ProductVariant {
 
     @ManyToOne(fetch = FetchType.LAZY, optional = false)
     @JoinColumn(name = "product_id", referencedColumnName = "product_id", nullable = false, foreignKey = @ForeignKey(name = "fk_variant_product"))
-    @JsonIgnoreProperties({"hibernateLazyInitializer", "handler", "createdBy", "modifiedBy"})
+    @JsonIgnoreProperties({"hibernateLazyInitializer", "handler", "createdBy", "modifiedBy", "category", "brand"})
     @Schema(description = "Associated Product")
     private Product product;
 
