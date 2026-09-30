@@ -3,6 +3,8 @@ package com.ojt.ecommerce.backofficeinventory.repository;
 import java.util.List;
 import java.util.Optional;
 
+import org.springframework.data.domain.Sort;
+import org.springframework.data.jpa.repository.EntityGraph;
 import org.springframework.data.jpa.repository.JpaRepository;
 import org.springframework.data.jpa.repository.Query;
 import org.springframework.stereotype.Repository;
@@ -12,7 +14,15 @@ import com.ojt.ecommerce.entity.Inventory;
 @Repository
 public interface InventoryRepository extends JpaRepository<Inventory, Long> {
 
+    @EntityGraph(attributePaths = {"variant", "variant.product"})
+    List<Inventory> findAll(Sort sort);
+
+    @Override
+    @EntityGraph(attributePaths = {"variant", "variant.product"})
+    List<Inventory> findAll();
+
     // Find inventory for a specific variant
+    @EntityGraph(attributePaths = {"variant", "variant.product"})
     Optional<Inventory> findByVariant_VariantId(Long variantId);
 
     // Check if inventory exists for a variant

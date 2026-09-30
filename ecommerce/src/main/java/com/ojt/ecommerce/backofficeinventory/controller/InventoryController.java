@@ -31,7 +31,7 @@ import jakarta.validation.Valid;
 import lombok.RequiredArgsConstructor;
 
 @RestController
-@RequestMapping("/api/inventory")
+@RequestMapping("/api/backoffice/inventory")
 @RequiredArgsConstructor
 @Tag(name = "Inventory Management", description = "Back-Office APIs for managing stock, low-stock alerts, restock, write-off, and inventory transactions")
 public class InventoryController {

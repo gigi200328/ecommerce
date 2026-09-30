@@ -2,6 +2,7 @@ package com.ojt.ecommerce.backofficeinventory.controller;
 
 import org.springframework.data.domain.Page;
 import org.springframework.data.domain.Pageable;
+import org.springframework.data.domain.Sort;
 import org.springframework.data.web.PageableDefault;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
@@ -30,7 +31,7 @@ public class ProductController {
 
     @GetMapping
     public ResponseEntity<Page<ProductResponseDto>> getAllProducts(
-            @PageableDefault(size = 20, sort = "productName") Pageable pageable) {
+            @PageableDefault(size = 50, sort = "productId", direction = Sort.Direction.DESC) Pageable pageable) {
         return ResponseEntity.ok(productService.getAllProducts(pageable));
     }
 
@@ -42,21 +43,21 @@ public class ProductController {
     @GetMapping("/category/{categoryId}")
     public ResponseEntity<Page<ProductResponseDto>> getProductsByCategoryId(
             @PathVariable Long categoryId,
-            @PageableDefault(size = 20, sort = "productName") Pageable pageable) {
+            @PageableDefault(size = 50, sort = "productId", direction = Sort.Direction.DESC) Pageable pageable) {
         return ResponseEntity.ok(productService.getProductsByCategoryId(categoryId, pageable));
     }
 
     @GetMapping("/brand/{brandId}")
     public ResponseEntity<Page<ProductResponseDto>> getProductsByBrandId(
             @PathVariable Long brandId,
-            @PageableDefault(size = 20, sort = "productName") Pageable pageable) {
+            @PageableDefault(size = 50, sort = "productId", direction = Sort.Direction.DESC) Pageable pageable) {
         return ResponseEntity.ok(productService.getProductsByBrandId(brandId, pageable));
     }
 
     @GetMapping("/status/{status}")
     public ResponseEntity<Page<ProductResponseDto>> getProductsByStatus(
             @PathVariable ProductStatus status,
-            @PageableDefault(size = 20, sort = "productName") Pageable pageable) {
+            @PageableDefault(size = 50, sort = "productId", direction = Sort.Direction.DESC) Pageable pageable) {
         return ResponseEntity.ok(productService.getProductsByStatus(status, pageable));
     }
 

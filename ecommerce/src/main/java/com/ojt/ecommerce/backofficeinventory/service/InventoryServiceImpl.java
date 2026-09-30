@@ -4,6 +4,7 @@ import java.time.LocalDateTime;
 import java.util.List;
 import java.util.stream.Collectors;
 
+import org.springframework.data.domain.Sort;
 import org.springframework.security.core.Authentication;
 import org.springframework.security.core.context.SecurityContextHolder;
 import org.springframework.stereotype.Service;
@@ -44,7 +45,7 @@ public class InventoryServiceImpl implements InventoryService {
     @Override
     @Transactional(readOnly = true)
     public List<InventoryResponseDto> getAllInventory() {
-        return inventoryRepository.findAll().stream()
+        return inventoryRepository.findAll(Sort.by(Sort.Direction.DESC, "inventoryId")).stream()
                 .map(inventoryMapper::toResponseDto)
                 .collect(Collectors.toList());
     }

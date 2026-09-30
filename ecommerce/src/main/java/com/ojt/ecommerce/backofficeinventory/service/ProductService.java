@@ -1,6 +1,9 @@
 package com.ojt.ecommerce.backofficeinventory.service;
 
 import java.time.LocalDateTime;
+import java.util.HashMap;
+import java.util.List;
+import java.util.Map;
 
 import org.springframework.data.domain.Page;
 import org.springframework.data.domain.Pageable;
@@ -12,11 +15,13 @@ import com.ojt.ecommerce.backofficeinventory.dto.ProductResponseDto;
 import com.ojt.ecommerce.backofficeinventory.mapper.ProductMapper;
 import com.ojt.ecommerce.backofficeinventory.repository.BrandRepository;
 import com.ojt.ecommerce.backofficeinventory.repository.CategoryRepository;
+import com.ojt.ecommerce.backofficeinventory.repository.ProductImageRepository;
 import com.ojt.ecommerce.backofficeinventory.repository.ProductRepository;
 import com.ojt.ecommerce.backofficeinventory.repository.UserRepository;
 import com.ojt.ecommerce.entity.Brand;
 import com.ojt.ecommerce.entity.Category;
 import com.ojt.ecommerce.entity.Product;
+import com.ojt.ecommerce.entity.ProductImage;
 import com.ojt.ecommerce.entity.User;
 import com.ojt.ecommerce.enums.ProductStatus;
 
@@ -32,6 +37,7 @@ public class ProductService {
     private final BrandRepository brandRepository;
     private final UserRepository userRepository;
     private final ProductMapper productMapper;
+    private final ProductImageRepository productImageRepository;
 
     // 1. CREATE
     @Transactional
@@ -66,11 +72,25 @@ public class ProductService {
         return productMapper.toResponseDto(productRepository.save(product));
     }
 
+    private Page<ProductResponseDto> mapPageWithImages(Page<Product> productPage) {
+        List<Long> productIds = productPage.getContent().stream().map(Product::getProductId).toList();
+        Map<Long, String> imageMap = new HashMap<>();
+        if (!productIds.isEmpty()) {
+            List<ProductImage> images = productImageRepository.findByProductProductIdIn(productIds);
+            for (ProductImage img : images) {
+                Long pId = img.getProduct().getProductId();
+                if (!imageMap.containsKey(pId) || Boolean.TRUE.equals(img.getIsPrimary())) {
+                    imageMap.put(pId, img.getImageUrl());
+                }
+            }
+        }
+        return productPage.map(p -> productMapper.toResponseDto(p, imageMap.get(p.getProductId())));
+    }
+
     // 2. READ ALL (PAGINATED)
     @Transactional(readOnly = true)
     public Page<ProductResponseDto> getAllProducts(Pageable pageable) {
-        return productRepository.findAll(pageable)
-                .map(productMapper::toResponseDto);
+        return mapPageWithImages(productRepository.findAll(pageable));
     }
 
     // 3. READ BY ID
@@ -78,7 +98,10 @@ public class ProductService {
     public ProductResponseDto getProductById(Long id) {
         Product product = productRepository.findById(id)
                 .orElseThrow(() -> new EntityNotFoundException("Product not found: " + id));
-        return productMapper.toResponseDto(product);
+        String imageUrl = productImageRepository.findFirstByProductProductIdOrderByIsPrimaryDescImageIdAsc(id)
+                .map(ProductImage::getImageUrl)
+                .orElse(null);
+        return productMapper.toResponseDto(product, imageUrl);
     }
 
     // 4. READ BY CATEGORY
@@ -87,8 +110,7 @@ public class ProductService {
         if (!categoryRepository.existsById(categoryId)) {
             throw new EntityNotFoundException("Category not found: " + categoryId);
         }
-        return productRepository.findByCategoryCategoryId(categoryId, pageable)
-                .map(productMapper::toResponseDto);
+        return mapPageWithImages(productRepository.findByCategoryCategoryId(categoryId, pageable));
     }
 
     // 5. READ BY BRAND
@@ -97,15 +119,13 @@ public class ProductService {
         if (!brandRepository.existsById(brandId)) {
             throw new EntityNotFoundException("Brand not found: " + brandId);
         }
-        return productRepository.findByBrandBrandId(brandId, pageable)
-                .map(productMapper::toResponseDto);
+        return mapPageWithImages(productRepository.findByBrandBrandId(brandId, pageable));
     }
 
     // 6. READ BY STATUS
     @Transactional(readOnly = true)
     public Page<ProductResponseDto> getProductsByStatus(ProductStatus status, Pageable pageable) {
-        return productRepository.findByStatus(status, pageable)
-                .map(productMapper::toResponseDto);
+        return mapPageWithImages(productRepository.findByStatus(status, pageable));
     }
 
     // 7. UPDATE
@@ -135,7 +155,11 @@ public class ProductService {
         product.setModifiedBy(user);
         product.setModifiedAt(LocalDateTime.now());
 
-        return productMapper.toResponseDto(productRepository.save(product));
+        Product saved = productRepository.save(product);
+        String imageUrl = productImageRepository.findFirstByProductProductIdOrderByIsPrimaryDescImageIdAsc(id)
+                .map(ProductImage::getImageUrl)
+                .orElse(null);
+        return productMapper.toResponseDto(saved, imageUrl);
     }
 
     // 8. DELETE

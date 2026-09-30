@@ -2,6 +2,7 @@ package com.ojt.ecommerce.backofficeinventory.service;
 
 import java.util.List;
 
+import org.springframework.data.domain.Sort;
 import org.springframework.stereotype.Service;
 
 import com.ojt.ecommerce.backofficeinventory.repository.ProductRepository;
@@ -49,7 +50,7 @@ public class ProductVariantServiceImpl implements ProductVariantService {
 
     @Override
     public List<ProductVariant> getAllProductVariants() {
-        return productVariantRepository.findAll();
+        return productVariantRepository.findAll(Sort.by(Sort.Direction.DESC, "variantId"));
     }
 
     @Override
