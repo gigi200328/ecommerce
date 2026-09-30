@@ -1,7 +1,9 @@
 package com.ojt.ecommerce.backofficeinventory.dto;
 
-import com.ojt.ecommerce.entity.ProductStatus;
 import java.time.LocalDateTime;
+
+import com.ojt.ecommerce.enums.ProductStatus;
+
 import lombok.*;
 
 @Data

@@ -2,6 +2,8 @@ package com.ojt.ecommerce.entity;
 
 import java.time.LocalDateTime;
 
+import com.ojt.ecommerce.enums.ProductStatus;
+
 import jakarta.persistence.Column;
 import jakarta.persistence.Entity;
 import jakarta.persistence.EnumType;

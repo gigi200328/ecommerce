@@ -1,9 +1,10 @@
 package com.ojt.ecommerce.backofficeinventory.service;
 
-import com.ojt.ecommerce.backofficeinventory.enums.UploadType;
 import org.springframework.beans.factory.annotation.Value;
 import org.springframework.stereotype.Service;
 import org.springframework.web.multipart.MultipartFile;
+
+import com.ojt.ecommerce.enums.UploadType;
 
 import javax.imageio.ImageIO;
 import javax.imageio.ImageReader;

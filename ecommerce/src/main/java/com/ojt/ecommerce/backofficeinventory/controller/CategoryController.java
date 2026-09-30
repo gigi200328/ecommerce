@@ -25,8 +25,8 @@ import jakarta.validation.Valid;
 import lombok.RequiredArgsConstructor;
 
 @RestController
-@RequestMapping("/api/categories")
-@CrossOrigin(origins = "http://localhost:5173", allowedHeaders = "*")
+@RequestMapping("/api/backoffice/categories")
+
 @RequiredArgsConstructor
 public class CategoryController {
 
