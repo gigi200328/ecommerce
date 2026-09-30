@@ -16,7 +16,6 @@ import lombok.NoArgsConstructor;
 public class OrderResponseDto {
 	private Long orderId; // Entity ပါအတိုင်း
 	private String orderNo; // Entity ပါအတိုင်း
-	// Customer Entity ထဲကနေ Frontend ကို နာမည် သို့မဟုတ် Email လေးပဲ ပို့ပေးရန်
 	private String customerName;
 	private BigDecimal totalAmount; // Entity ပါအတိုင်း
 	private String orderStatus; // Entity ပါအတိုင်း (PENDING, PROCESSING, SHIPPED, etc.)
@@ -26,4 +25,5 @@ public class OrderResponseDto {
 	private List<OrderItemDto> items;
 	// အော်ဒါ၏ အဆင့်ဆင့် ပြောင်းလဲခဲ့မှု သမိုင်းကြောင်းများ (Tracking)
 	private List<OrderStatusHistoryDto> statusHistories;
+	private OrderAddressDto shippingAddress;
 }

@@ -1,8 +1,25 @@
 package com.ojt.ecommerce.entity;
 
-import jakarta.persistence.*;
 import java.time.LocalDateTime;
-import lombok.*;
+
+import com.ojt.ecommerce.enums.BrandStatus;
+
+import jakarta.persistence.Column;
+import jakarta.persistence.Entity;
+import jakarta.persistence.EnumType;
+import jakarta.persistence.Enumerated;
+import jakarta.persistence.FetchType;
+import jakarta.persistence.GeneratedValue;
+import jakarta.persistence.GenerationType;
+import jakarta.persistence.Id;
+import jakarta.persistence.JoinColumn;
+import jakarta.persistence.ManyToOne;
+import jakarta.persistence.Table;
+import lombok.AllArgsConstructor;
+import lombok.Builder;
+import lombok.Getter;
+import lombok.NoArgsConstructor;
+import lombok.Setter;
 
 @Entity
 @Table(name = "brands")
@@ -36,4 +53,8 @@ public class Brand {
 
     @Column(name = "modified_at")
     private LocalDateTime modifiedAt;
+    
+    @ManyToOne(fetch = FetchType.LAZY)
+    @JoinColumn(name = "modified_by", referencedColumnName = "user_id")
+    private User modifiedBy;
 }

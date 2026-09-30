@@ -18,7 +18,7 @@ public class Tag {
     @Column(name = "tag_id", nullable = false)
     private Long tagId;
 
-    @Column(name = "tag_name", nullable = false, length = 100)
+    @Column(name = "tag_name", nullable = false, length = 100, unique = true)
     private String tagName;
 
     @Column(name = "created_at", nullable = false)

@@ -17,8 +17,8 @@ import com.ojt.ecommerce.backofficeinventory.repository.UserRepository;
 import com.ojt.ecommerce.entity.Brand;
 import com.ojt.ecommerce.entity.Category;
 import com.ojt.ecommerce.entity.Product;
-import com.ojt.ecommerce.entity.ProductStatus;
 import com.ojt.ecommerce.entity.User;
+import com.ojt.ecommerce.enums.ProductStatus;
 
 import jakarta.persistence.EntityNotFoundException;
 import lombok.RequiredArgsConstructor;
@@ -46,7 +46,7 @@ public class ProductService {
         }
 
     
-        User user = userRepository.findById(request.getUserId().intValue())
+        User user = userRepository.findById(request.getUserId())
                 .orElseThrow(() -> new EntityNotFoundException("User not found: " + request.getUserId()));
 
         LocalDateTime now = LocalDateTime.now();
@@ -124,7 +124,7 @@ public class ProductService {
         }
 
 
-        User user = userRepository.findById(request.getUserId().intValue())
+        User user = userRepository.findById(request.getUserId())
                 .orElseThrow(() -> new EntityNotFoundException("User not found: " + request.getUserId()));
 
         product.setProductName(request.getProductName());
