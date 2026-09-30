@@ -1,4 +1,4 @@
-package com.ojt.ecommerce.backofficeinventory.config;
+package com.ojt.ecommerce.config;
 
 import java.util.List;
 
@@ -6,7 +6,6 @@ import org.springframework.context.annotation.Bean;
 import org.springframework.context.annotation.Configuration;
 import org.springframework.core.annotation.Order;
 import org.springframework.security.authentication.AuthenticationManager;
-import org.springframework.security.config.Customizer;
 import org.springframework.security.config.annotation.authentication.configuration.AuthenticationConfiguration;
 import org.springframework.security.config.annotation.web.builders.HttpSecurity;
 import org.springframework.security.config.annotation.web.configuration.EnableWebSecurity;
@@ -20,7 +19,11 @@ import org.springframework.web.cors.CorsConfiguration;
 import org.springframework.web.cors.CorsConfigurationSource;
 import org.springframework.web.cors.UrlBasedCorsConfigurationSource;
 
+import com.ojt.ecommerce.backofficeinventory.security.CustomUserDetailsService;
 import com.ojt.ecommerce.backofficeinventory.security.JwtAuthenticationFilter;
+import com.ojt.ecommerce.backofficeinventory.security.JwtUtil;
+import com.ojt.ecommerce.storefront.security.G5JwtAuthenticationFilter;
+import com.ojt.ecommerce.storefront.security.G5JwtUtil;
 
 import lombok.RequiredArgsConstructor;
 
@@ -29,7 +32,6 @@ import lombok.RequiredArgsConstructor;
 @RequiredArgsConstructor
 public class SecurityConfig {
 
-	private final JwtAuthenticationFilter jwtAuthFilter;
 
 	@Bean
 	public PasswordEncoder passwordEncoder() {
@@ -62,8 +64,13 @@ public class SecurityConfig {
     // 1. Backoffice APIs Chain
     @Bean
     @Order(1)
-    public SecurityFilterChain securityFilterChain(HttpSecurity http) throws Exception {
-        http
+	public SecurityFilterChain securityFilterChain(HttpSecurity http,JwtUtil jwtUtil,
+	        CustomUserDetailsService userDetailsService) throws Exception {
+		   JwtAuthenticationFilter backofficeFilter =
+		            new JwtAuthenticationFilter(
+		                    jwtUtil,
+		                    userDetailsService
+		            );        http
             .securityMatcher("/api/backoffice/**")
             .cors(cors -> cors.configurationSource(corsConfigurationSource()))
             .csrf(AbstractHttpConfigurer::disable)
@@ -73,25 +80,29 @@ public class SecurityConfig {
                 .anyRequest().authenticated()
             )
             .sessionManagement(sess -> sess.sessionCreationPolicy(SessionCreationPolicy.STATELESS))
-            .addFilterBefore(jwtAuthFilter, UsernamePasswordAuthenticationFilter.class);
+            .addFilterBefore(backofficeFilter, UsernamePasswordAuthenticationFilter.class);
 
         return http.build();
     }
 	
     @Bean
     @Order(2)
-    public SecurityFilterChain g5SecurityFilterChain(HttpSecurity http) throws Exception {
+    public SecurityFilterChain g5SecurityFilterChain(HttpSecurity http,G5JwtUtil g5JwtUtil) throws Exception {
+    	G5JwtAuthenticationFilter storefrontFilter = new G5JwtAuthenticationFilter(g5JwtUtil);
         http
+        .securityMatcher("/api/storefront/v1/**")
             .cors(cors -> cors.configurationSource(corsConfigurationSource()))
             .csrf(csrf -> csrf.disable())
             .authorizeHttpRequests(auth -> auth
-                .requestMatchers("/api/v1/auth/customer/login", "/api/v1/auth/customer/register").permitAll()
-                .requestMatchers("/api/v1/products/**", "/api/v1/categories/**", "/api/v1/cart/guest/**").permitAll()
-                .requestMatchers("/api/v1/delivery-zones/**", "/api/v1/shipping/quote/**", "/api/v1/payment-callbacks/g3").permitAll()
+                .requestMatchers("/api/storefront/v1/auth/customer/login", "/api/storefront/v1/auth/customer/register").permitAll()
+                .requestMatchers("/api/storefront/v1/products/**", "/api/storefront/v1/categories/**", "/api/storefront/v1/cart/guest/**").permitAll()
+                .requestMatchers("/api/storefront/v1/tags/**", "/api/storefront/v1/brands/**").permitAll()
+
+//                .requestMatchers("/api/storefront/v1/delivery-zones/**", "/api/storefront/v1/shipping/quote/**", "/api/storefront/v1/payment-callbacks/g3").permitAll()
                 .anyRequest().authenticated()
             )
             .sessionManagement(sess -> sess.sessionCreationPolicy(SessionCreationPolicy.STATELESS))
-            .addFilterBefore(jwtAuthFilter, UsernamePasswordAuthenticationFilter.class);
+            .addFilterBefore(storefrontFilter , UsernamePasswordAuthenticationFilter.class);
 
         return http.build();
     }

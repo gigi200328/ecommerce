@@ -1,4 +1,4 @@
-package com.ojt.ecommerce.backofficeinventory.config;
+package com.ojt.ecommerce.config;
 
 import org.springframework.beans.factory.annotation.Value;
 import org.springframework.context.annotation.Configuration;

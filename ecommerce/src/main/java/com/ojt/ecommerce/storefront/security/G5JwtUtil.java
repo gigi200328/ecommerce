@@ -15,7 +15,7 @@ import java.util.Map;
 import java.util.function.Function;
 
 @Component("storefrontJwtUtil")
-public class JwtUtil {
+public class G5JwtUtil {
 
     @Value("${jwt.secret}")
     private String secret;
