@@ -30,7 +30,11 @@ public class PaymentController {
     public ResponseEntity<PaymentDetailResponse> getLatestPayment(
             @AuthenticationPrincipal CustomerPrincipal principal,
             @PathVariable Long orderId) {
-        return ResponseEntity.ok(paymentService.getLatestPayment(principal.getCustomerId(), orderId));
+        PaymentDetailResponse response = paymentService.getLatestPayment(principal.getCustomerId(), orderId);
+        if (response == null) {
+            return ResponseEntity.noContent().build();
+        }
+        return ResponseEntity.ok(response);
     }
 
     @PostMapping("/payment-callbacks/g3")
