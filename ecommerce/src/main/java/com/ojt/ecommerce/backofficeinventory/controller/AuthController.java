@@ -39,7 +39,7 @@ public class AuthController {
         AuthResponseDto response = AuthResponseDto.builder()
                 .token(token)
                 .username(userDetails.getUser().getUserName())
-                .email(userDetails.getUser().getEmail()) // <--- ဤစာကြောင်းကို အသစ်ထည့်ထားပါသည်
+                .email(userDetails.getUser().getEmail()) 
                 .role(userDetails.getUser().getUserRole().getRoleName())
                 .build();
 
