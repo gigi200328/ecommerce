@@ -23,6 +23,8 @@ public class ProductResponseDto {
     private Long brandId;
     private String brandName;
 
+    private String imageUrl;
+
     private Long createdByUserId;
     private LocalDateTime createdAt;
     private Long modifiedByUserId;
