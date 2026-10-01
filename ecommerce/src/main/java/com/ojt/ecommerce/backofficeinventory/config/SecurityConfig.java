@@ -52,23 +52,28 @@ public class SecurityConfig {
 		return http.build();
 	} 
 	
-    @Bean
-    @Order(2)
-    public SecurityFilterChain g5SecurityFilterChain(HttpSecurity http) throws Exception {
-        http
-            .cors(cors -> cors.configurationSource(corsConfigurationSource()))
-            .csrf(csrf -> csrf.disable())
-            .authorizeHttpRequests(auth -> auth
-                .requestMatchers("/api/v1/auth/customer/login", "/api/v1/auth/customer/register").permitAll()
-                .requestMatchers("/api/v1/products/**", "/api/v1/categories/**", "/api/v1/cart/guest/**").permitAll()
-                .requestMatchers("/api/v1/delivery-zones/**", "/api/v1/shipping/quote/**", "/api/v1/payment-callbacks/g3").permitAll()
-                .anyRequest().authenticated()
-            )
-            .sessionManagement(sess -> sess.sessionCreationPolicy(SessionCreationPolicy.STATELESS))
-            .addFilterBefore(jwtAuthFilter, UsernamePasswordAuthenticationFilter.class);
+	@Bean
+	@Order(2)
+	public SecurityFilterChain g5SecurityFilterChain(HttpSecurity http) throws Exception {
+	    http
+	        .cors(cors -> cors.configurationSource(corsConfigurationSource()))
+	        .csrf(csrf -> csrf.disable())
+	        .authorizeHttpRequests(auth -> auth
+	            .requestMatchers(
+	                "/api/v1/auth/customer/login", 
+	                "/api/v1/auth/customer/register",
+	                "/api/v1/auth/customer/forgot-password", 
+	                "/api/v1/auth/customer/reset-password"   
+	            ).permitAll()
+	            .requestMatchers("/api/v1/products/**", "/api/v1/categories/**", "/api/v1/cart/guest/**").permitAll()
+	            .requestMatchers("/api/v1/delivery-zones/**", "/api/v1/shipping/quote/**", "/api/v1/payment-callbacks/g3").permitAll()
+	            .anyRequest().authenticated()
+	        )
+	        .sessionManagement(sess -> sess.sessionCreationPolicy(SessionCreationPolicy.STATELESS))
+	        .addFilterBefore(jwtAuthFilter, UsernamePasswordAuthenticationFilter.class);
 
-        return http.build();
-    }
+	    return http.build();
+	}
 
 	
 	@Bean
