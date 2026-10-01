@@ -1,6 +1,7 @@
 package com.ojt.ecommerce.entity;
 
 import java.time.LocalDateTime;
+import java.util.List;
 
 import com.ojt.ecommerce.enums.ProductStatus;
 
@@ -16,7 +17,9 @@ import jakarta.persistence.Id;
 import jakarta.persistence.Index;
 import jakarta.persistence.JoinColumn;
 import jakarta.persistence.ManyToOne;
+import jakarta.persistence.OneToMany;
 import jakarta.persistence.Table;
+
 import lombok.AllArgsConstructor;
 import lombok.Builder;
 import lombok.Getter;
@@ -45,11 +48,21 @@ public class Product {
     private Long productId;
 
     @ManyToOne(fetch = FetchType.LAZY, optional = false)
-    @JoinColumn(name = "category_id", referencedColumnName = "category_id", nullable = false, foreignKey = @ForeignKey(name = "products_ibfk_1"))
+    @JoinColumn(
+        name = "category_id",
+        referencedColumnName = "category_id",
+        nullable = false,
+        foreignKey = @ForeignKey(name = "products_ibfk_1")
+    )
     private Category category;
 
     @ManyToOne(fetch = FetchType.LAZY)
-    @JoinColumn(name = "brand_id", referencedColumnName = "brand_id", nullable = true, foreignKey = @ForeignKey(name = "fk_product_brand"))
+    @JoinColumn(
+        name = "brand_id",
+        referencedColumnName = "brand_id",
+        nullable = true,
+        foreignKey = @ForeignKey(name = "fk_product_brand")
+    )
     private Brand brand;
 
     @Column(name = "product_name", nullable = false, length = 200)
@@ -59,18 +72,38 @@ public class Product {
     private String description;
 
     @Enumerated(EnumType.STRING)
-    @Column(name = "status", nullable = false, columnDefinition = "ENUM('ACTIVE', 'INACTIVE', 'DRAFT')")
+    @Column(
+        name = "status",
+        nullable = false,
+        columnDefinition = "ENUM('ACTIVE', 'INACTIVE', 'DRAFT')"
+    )
     private ProductStatus status;
 
+    
+    @OneToMany(
+        mappedBy = "product",
+        fetch = FetchType.LAZY
+    )
+    private List<ProductVariant> variants;
+
     @ManyToOne(fetch = FetchType.LAZY, optional = false)
-    @JoinColumn(name = "created_by", referencedColumnName = "user_id", nullable = false, foreignKey = @ForeignKey(name = "fk_products_users1"))
+    @JoinColumn(
+        name = "created_by",
+        referencedColumnName = "user_id",
+        nullable = false,
+        foreignKey = @ForeignKey(name = "fk_products_users1")
+    )
     private User createdBy;
 
     @Column(name = "created_at", nullable = false)
     private LocalDateTime createdAt;
 
     @ManyToOne(fetch = FetchType.LAZY)
-    @JoinColumn(name = "modified_by", referencedColumnName = "user_id", foreignKey = @ForeignKey(name = "fk_products_users2"))
+    @JoinColumn(
+        name = "modified_by",
+        referencedColumnName = "user_id",
+        foreignKey = @ForeignKey(name = "fk_products_users2")
+    )
     private User modifiedBy;
 
     @Column(name = "modified_at")
