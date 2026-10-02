@@ -105,7 +105,7 @@ public class SecurityConfig {
             .cors(cors -> cors.configurationSource(corsConfigurationSource()))
             .csrf(csrf -> csrf.disable())
             .authorizeHttpRequests(auth -> auth
-                .requestMatchers("/api/storefront/v1/auth/customer/login", "/api/storefront/v1/auth/customer/register").permitAll()
+                .requestMatchers("/api/storefront/v1/auth/customer/login", "/api/storefront/v1/auth/customer/register","/api/storefront/v1/auth/customer/forgot-password","/api/storefront/v1/auth/customer/reset-password","/api/storefront/v1/auth/customer/verify-code").permitAll()
                 .requestMatchers("/api/storefront/v1/products/**", "/api/storefront/v1/categories/**", "/api/storefront/v1/cart/guest/**").permitAll()
                 .requestMatchers("/api/storefront/v1/tags/**", "/api/storefront/v1/brands/**").permitAll()
 
