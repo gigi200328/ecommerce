@@ -1,8 +1,22 @@
 package com.ojt.ecommerce.entity;
 
-import jakarta.persistence.*;
-import java.time.*;
-import lombok.*;
+import java.time.LocalDateTime;
+
+import jakarta.persistence.Column;
+import jakarta.persistence.Entity;
+import jakarta.persistence.FetchType;
+import jakarta.persistence.ForeignKey;
+import jakarta.persistence.GeneratedValue;
+import jakarta.persistence.GenerationType;
+import jakarta.persistence.Id;
+import jakarta.persistence.JoinColumn;
+import jakarta.persistence.ManyToOne;
+import jakarta.persistence.Table;
+import lombok.AllArgsConstructor;
+import lombok.Builder;
+import lombok.Getter;
+import lombok.NoArgsConstructor;
+import lombok.Setter;
 
 @Entity
 @Table(name = "shipments")
@@ -13,33 +27,34 @@ import lombok.*;
 @Builder
 public class Shipment {
 
-    @Id
-    @GeneratedValue(strategy = GenerationType.IDENTITY)
-    @Column(name = "shipment_id", nullable = false)
-    private Long shipmentId;
+	@Id
+	@GeneratedValue(strategy = GenerationType.IDENTITY)
+	@Column(name = "shipment_id", nullable = false)
+	private Long shipmentId;
 
-    @ManyToOne(fetch = FetchType.LAZY, optional = false)
-    @JoinColumn(name = "order_id", referencedColumnName = "order_id", nullable = false, foreignKey = @ForeignKey(name = "fk_shipment_order"))
-    private Order order;
+	@ManyToOne(fetch = FetchType.LAZY, optional = false)
+	@JoinColumn(name = "order_id", referencedColumnName = "order_id", nullable = false, foreignKey = @ForeignKey(name = "fk_shipment_order"))
+	private Order order;
 
-    @Column(name = "courier_name", length = 100)
-    private String courierName;
+//	@Enumerated(EnumType.STRING)
+	@Column(name = "courier_name", length = 100, nullable = false)
+	private String courierName;
 
-    @Column(name = "tracking_number", length = 100)
-    private String trackingNumber;
+	@Column(name = "tracking_number", length = 100)
+	private String trackingNumber;
 
-    @Column(name = "shipment_status", nullable = false, columnDefinition = "ENUM('PENDING', 'SHIPPED', 'DELIVERED', 'FAILED')")
-    private String shipmentStatus;
+	@Column(name = "shipment_status", nullable = false, columnDefinition = "ENUM('PENDING', 'SHIPPED', 'DELIVERED', 'FAILED')")
+	private String shipmentStatus;
 
-    @Column(name = "shipped_at")
-    private LocalDateTime shippedAt;
+	@Column(name = "shipped_at")
+	private LocalDateTime shippedAt;
 
-    @Column(name = "delivered_at")
-    private LocalDateTime deliveredAt;
+	@Column(name = "delivered_at")
+	private LocalDateTime deliveredAt;
 
-    @Column(name = "created_at", nullable = false)
-    private LocalDateTime createdAt;
+	@Column(name = "created_at", nullable = false)
+	private LocalDateTime createdAt;
 
-    @Column(name = "modified_at")
-    private LocalDateTime modifiedAt;
+	@Column(name = "modified_at")
+	private LocalDateTime modifiedAt;
 }
