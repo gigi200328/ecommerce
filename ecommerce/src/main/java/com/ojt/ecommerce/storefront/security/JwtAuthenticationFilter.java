@@ -19,42 +19,36 @@ import java.util.Collections;
 @RequiredArgsConstructor
 public class JwtAuthenticationFilter extends OncePerRequestFilter {
 
-    private final JwtUtil jwtUtil;
+	private final JwtUtil jwtUtil;
 
-    @Override
-    protected void doFilterInternal(
-            @NonNull HttpServletRequest request,
-            @NonNull HttpServletResponse response,
-            @NonNull FilterChain filterChain
-    ) throws ServletException, IOException {
-        final String authHeader = request.getHeader("Authorization");
-        final String jwt;
-        final String userEmail;
+	@Override
+	protected void doFilterInternal(@NonNull HttpServletRequest request, @NonNull HttpServletResponse response,
+			@NonNull FilterChain filterChain) throws ServletException, IOException {
+		final String authHeader = request.getHeader("Authorization");
+		final String jwt;
+		final String userEmail;
 
-        if (authHeader == null || !authHeader.startsWith("Bearer ")) {
-            filterChain.doFilter(request, response);
-            return;
-        }
+		if (authHeader == null || !authHeader.startsWith("Bearer ")) {
+			filterChain.doFilter(request, response);
+			return;
+		}
 
-        jwt = authHeader.substring(7);
-        try {
-            userEmail = jwtUtil.extractUsername(jwt);
-            if (userEmail != null && SecurityContextHolder.getContext().getAuthentication() == null) {
-                if (jwtUtil.isTokenValid(jwt, userEmail)) {
-                    Long customerId = jwtUtil.extractCustomerId(jwt);
-                    CustomerPrincipal principal = new CustomerPrincipal(customerId, userEmail);
-                    UsernamePasswordAuthenticationToken authToken = new UsernamePasswordAuthenticationToken(
-                            principal,
-                            null,
-                            Collections.emptyList()
-                    );
-                    authToken.setDetails(new WebAuthenticationDetailsSource().buildDetails(request));
-                    SecurityContextHolder.getContext().setAuthentication(authToken);
-                }
-            }
-        } catch (Exception e) {
-            // Invalid token
-        }
-        filterChain.doFilter(request, response);
-    }
+		jwt = authHeader.substring(7);
+		try {
+			userEmail = jwtUtil.extractUsername(jwt);
+			if (userEmail != null && SecurityContextHolder.getContext().getAuthentication() == null) {
+				if (jwtUtil.isTokenValid(jwt, userEmail)) {
+					Long customerId = jwtUtil.extractCustomerId(jwt);
+					CustomerPrincipal principal = new CustomerPrincipal(customerId, userEmail);
+					UsernamePasswordAuthenticationToken authToken = new UsernamePasswordAuthenticationToken(principal,
+							null, Collections.emptyList());
+					authToken.setDetails(new WebAuthenticationDetailsSource().buildDetails(request));
+					SecurityContextHolder.getContext().setAuthentication(authToken);
+				}
+			}
+		} catch (Exception e) {
+			// Invalid token
+		}
+		filterChain.doFilter(request, response);
+	}
 }

@@ -13,7 +13,7 @@ import org.springframework.web.bind.annotation.*;
 @RequestMapping("/api/storefront/v1/auth/customer")
 @RequiredArgsConstructor
 public class CustomerAuthController {
-	private final CustomerAuthService authService;
+	private final CustomerAuthService authService; // Variable Name သည် authService ဖြစ်ပါသည်
 
 	@PostMapping("/register")
 	public ResponseEntity<AuthResponse> register(@Valid @RequestBody RegisterRequest request) {
@@ -46,6 +46,12 @@ public class CustomerAuthController {
 	@PostMapping("/reset-password")
 	public ResponseEntity<Void> resetPassword(@Valid @RequestBody ResetPasswordRequest request) {
 		authService.resetPassword(request);
+		return ResponseEntity.ok().build();
+	}
+
+	@PostMapping("/verify-code")
+	public ResponseEntity<Void> verifyCode(@Valid @RequestBody VerifyCodeRequest request) {
+		authService.verifyResetCode(request); // <--- customerAuthService အစား authService ဟု ပြင်လိုက်ပါ
 		return ResponseEntity.ok().build();
 	}
 }

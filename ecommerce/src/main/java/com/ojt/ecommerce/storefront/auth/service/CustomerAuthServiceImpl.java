@@ -8,25 +8,33 @@ import com.ojt.ecommerce.storefront.security.JwtUtil;
 import com.ojt.ecommerce.storefront.auth.dto.*;
 import com.ojt.ecommerce.storefront.auth.repository.CustomerRepository;
 import lombok.RequiredArgsConstructor;
+import org.springframework.mail.SimpleMailMessage;
+import org.springframework.mail.javamail.JavaMailSender;
 import org.springframework.security.crypto.password.PasswordEncoder;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
+
+import java.security.SecureRandom;
 import java.time.LocalDateTime;
 
 @Service
 @RequiredArgsConstructor
 public class CustomerAuthServiceImpl implements CustomerAuthService {
+
 	private final CustomerRepository customerRepository;
 	private final PasswordEncoder passwordEncoder;
 	private final JwtUtil jwtUtil;
+	private final JavaMailSender mailSender;
 
 	@Override
 	@Transactional
 	public AuthResponse register(RegisterRequest request) {
-		if (customerRepository.existsByEmail(request.getEmail())) {
+		String cleanEmail = request.getEmail().trim().toLowerCase();
+
+		if (customerRepository.existsByEmail(cleanEmail)) {
 			throw new ConflictException("Email already in use");
 		}
-		Customer customer = Customer.builder().fullName(request.getFullName()).email(request.getEmail())
+		Customer customer = Customer.builder().fullName(request.getFullName()).email(cleanEmail)
 				.phone(request.getPhone()).passwordHash(passwordEncoder.encode(request.getPassword())).status("ACTIVE")
 				.createdAt(LocalDateTime.now()).build();
 		customer = customerRepository.save(customer);
@@ -38,7 +46,9 @@ public class CustomerAuthServiceImpl implements CustomerAuthService {
 	@Override
 	@Transactional(readOnly = true)
 	public AuthResponse login(LoginRequest request) {
-		Customer customer = customerRepository.findByEmail(request.getEmail())
+		String cleanEmail = request.getEmail().trim().toLowerCase();
+
+		Customer customer = customerRepository.findByEmailIgnoreCase(cleanEmail)
 				.orElseThrow(() -> new InvalidRequestException("Invalid email or password"));
 
 		if (!"ACTIVE".equals(customer.getStatus())) {
@@ -79,25 +89,65 @@ public class CustomerAuthServiceImpl implements CustomerAuthService {
 	@Override
 	@Transactional
 	public void processForgotPassword(ForgotPasswordRequest request) {
-		Customer customer = customerRepository.findByEmail(request.getEmail())
+		String cleanEmail = request.getEmail().trim().toLowerCase();
+
+		Customer customer = customerRepository.findByEmailIgnoreCase(cleanEmail)
+				.orElseThrow(() -> new ResourceNotFoundException("ဤ အီးမေးလ်ဖြင့် Register ပြုလုပ်ထားခြင်း မရှိပါ။"));
+
+		SecureRandom random = new SecureRandom();
+		String otpCode = String.format("%06d", random.nextInt(1000000));
+
+		customer.setResetPasswordCode(otpCode);
+		customer.setResetCodeExpiry(LocalDateTime.now().plusMinutes(5));
+		customerRepository.save(customer);
+
+		SimpleMailMessage message = new SimpleMailMessage();
+		message.setTo(customer.getEmail());
+		message.setSubject("Password Reset Code - 6SYNC Store");
+		message.setText("Hi " + customer.getFullName() + ",\n\n" + "Your Password Reset Code is: " + otpCode + "\n\n"
+				+ "This code will expire in 5 minutes.\n" + "If you did not request this, please ignore this email.");
+
+		mailSender.send(message);
+	}
+
+	@Override
+	@Transactional(readOnly = true)
+	public void verifyResetCode(VerifyCodeRequest request) {
+		String cleanEmail = request.getEmail().trim().toLowerCase();
+
+		Customer customer = customerRepository.findByEmailIgnoreCase(cleanEmail)
 				.orElseThrow(() -> new ResourceNotFoundException("User not found with provided email"));
 
-		String resetToken = jwtUtil.generateToken(customer.getEmail(), customer.getCustomerId());
+		if (customer.getResetPasswordCode() == null
+				|| !customer.getResetPasswordCode().equals(request.getCode().trim())) {
+			throw new InvalidRequestException("Invalid verification code.");
+		}
 
-		String resetLink = "http://localhost:3000/reset-password?token=" + resetToken;
-
-		System.out.println("Password Reset Link sent to " + customer.getEmail() + ": " + resetLink);
+		if (customer.getResetCodeExpiry() == null || customer.getResetCodeExpiry().isBefore(LocalDateTime.now())) {
+			throw new InvalidRequestException("Verification code has expired. Please request a new one.");
+		}
 	}
 
 	@Override
 	@Transactional
 	public void resetPassword(ResetPasswordRequest request) {
-		String email = jwtUtil.extractUsername(request.getToken());
+		String cleanEmail = request.getEmail().trim().toLowerCase();
 
-		Customer customer = customerRepository.findByEmail(email)
-				.orElseThrow(() -> new ResourceNotFoundException("Invalid or expired reset token"));
+		Customer customer = customerRepository.findByEmailIgnoreCase(cleanEmail)
+				.orElseThrow(() -> new ResourceNotFoundException("User not found with provided email"));
+
+		if (customer.getResetPasswordCode() == null
+				|| !customer.getResetPasswordCode().equals(request.getCode().trim())) {
+			throw new InvalidRequestException("Invalid verification code.");
+		}
+
+		if (customer.getResetCodeExpiry() == null || customer.getResetCodeExpiry().isBefore(LocalDateTime.now())) {
+			throw new InvalidRequestException("Verification code has expired. Please request a new one.");
+		}
 
 		customer.setPasswordHash(passwordEncoder.encode(request.getNewPassword()));
+		customer.setResetPasswordCode(null);
+		customer.setResetCodeExpiry(null);
 		customer.setModifiedAt(LocalDateTime.now());
 		customerRepository.save(customer);
 	}
