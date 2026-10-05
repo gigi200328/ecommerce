@@ -6,6 +6,8 @@ import com.ojt.ecommerce.enums.CourierName;
 
 import jakarta.persistence.Column;
 import jakarta.persistence.Entity;
+import jakarta.persistence.EnumType;
+import jakarta.persistence.Enumerated;
 import jakarta.persistence.FetchType;
 import jakarta.persistence.ForeignKey;
 import jakarta.persistence.GeneratedValue;
@@ -38,7 +40,7 @@ public class Shipment {
 	@JoinColumn(name = "order_id", referencedColumnName = "order_id", nullable = false, foreignKey = @ForeignKey(name = "fk_shipment_order"))
 	private Order order;
 
-//	@Enumerated(EnumType.STRING)
+	@Enumerated(EnumType.STRING)
 	@Column(name = "courier_name", length = 100, nullable = false)
 	private CourierName courierName;
 
