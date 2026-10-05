@@ -1,6 +1,8 @@
 package com.ojt.ecommerce.backofficeinventory.controller;
 
+import java.util.Arrays;
 import java.util.List;
+import java.util.stream.Collectors;
 
 import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.GetMapping;
@@ -15,6 +17,7 @@ import com.ojt.ecommerce.backofficeinventory.dto.OrderResponseDto;
 import com.ojt.ecommerce.backofficeinventory.dto.OrderStatusUpdateRequestDto;
 import com.ojt.ecommerce.backofficeinventory.dto.PaymentVerificationDto;
 import com.ojt.ecommerce.backofficeinventory.service.OrderManagementService;
+import com.ojt.ecommerce.enums.CourierName;
 
 import jakarta.validation.Valid;
 import lombok.RequiredArgsConstructor;
@@ -57,6 +60,14 @@ public class OrderManagementController {
 
 		PaymentVerificationDto paymentInfo = orderManagementService.getPaymentInfoByOrderNo(orderNo);
 		return ResponseEntity.ok(paymentInfo);
+	}
+
+	@GetMapping("/couriers")
+	public ResponseEntity<List<String>> getAllCouriers() {
+		List<String> courierList = Arrays.stream(CourierName.values()).map(CourierName::name)
+				.collect(Collectors.toList());
+
+		return ResponseEntity.ok(courierList);
 	}
 
 }
