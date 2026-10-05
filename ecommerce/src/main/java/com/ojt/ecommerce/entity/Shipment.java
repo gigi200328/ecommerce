@@ -2,6 +2,8 @@ package com.ojt.ecommerce.entity;
 
 import java.time.LocalDateTime;
 
+import com.ojt.ecommerce.enums.CourierName;
+
 import jakarta.persistence.Column;
 import jakarta.persistence.Entity;
 import jakarta.persistence.FetchType;
@@ -38,7 +40,7 @@ public class Shipment {
 
 //	@Enumerated(EnumType.STRING)
 	@Column(name = "courier_name", length = 100, nullable = false)
-	private String courierName;
+	private CourierName courierName;
 
 	@Column(name = "tracking_number", length = 100)
 	private String trackingNumber;
