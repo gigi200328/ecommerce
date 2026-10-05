@@ -43,6 +43,10 @@ public class Customer {
     @Column(name = "failed_login_attempts", nullable = false)
     private Integer failedLoginAttempts = 0;
 
+    // Database ထဲရှိ account_locked_until column နှင့် Mapping လုပ်ခြင်း
+    @Column(name = "account_locked_until")
+    private LocalDateTime accountLockedUntil;
+
     @Column(name = "created_at", nullable = false)
     private LocalDateTime createdAt;
 

@@ -36,7 +36,7 @@ public class CustomerAuthServiceImpl implements CustomerAuthService {
 		}
 		Customer customer = Customer.builder().fullName(request.getFullName()).email(cleanEmail)
 				.phone(request.getPhone()).passwordHash(passwordEncoder.encode(request.getPassword())).status("ACTIVE")
-				.createdAt(LocalDateTime.now()).build();
+				.failedLoginAttempts(0).createdAt(LocalDateTime.now()).build();
 		customer = customerRepository.save(customer);
 		String token = jwtUtil.generateToken(customer.getEmail(), customer.getCustomerId());
 		return AuthResponse.builder().token(token).customerId(customer.getCustomerId()).fullName(customer.getFullName())
@@ -44,7 +44,7 @@ public class CustomerAuthServiceImpl implements CustomerAuthService {
 	}
 
 	@Override
-	@Transactional(readOnly = true)
+	@Transactional(noRollbackFor = InvalidRequestException.class)
 	public AuthResponse login(LoginRequest request) {
 		String cleanEmail = request.getEmail().trim().toLowerCase();
 
@@ -55,8 +55,40 @@ public class CustomerAuthServiceImpl implements CustomerAuthService {
 			throw new InvalidRequestException("Account is not active");
 		}
 
+		if (customer.getAccountLockedUntil() != null) {
+			if (customer.getAccountLockedUntil().isAfter(LocalDateTime.now())) {
+				throw new InvalidRequestException(
+						"Account locked due to multiple failed login attempts. Please try again in 5 minutes.");
+			} else {
+				customer.setAccountLockedUntil(null);
+				customer.setFailedLoginAttempts(0);
+				customerRepository.saveAndFlush(customer);
+			}
+		}
+
 		if (!passwordEncoder.matches(request.getPassword(), customer.getPasswordHash())) {
-			throw new InvalidRequestException("Invalid email or password");
+			int currentAttempts = (customer.getFailedLoginAttempts() == null ? 0 : customer.getFailedLoginAttempts())
+					+ 1;
+			customer.setFailedLoginAttempts(currentAttempts);
+
+			if (currentAttempts >= 5) {
+				customer.setAccountLockedUntil(LocalDateTime.now().plusMinutes(5));
+				customerRepository.saveAndFlush(customer);
+				throw new InvalidRequestException(
+						"Account locked due to 5 consecutive failed login attempts. Please try again in 5 minutes.");
+			}
+
+			customerRepository.saveAndFlush(customer);
+			int remainingAttempts = 5 - currentAttempts;
+			throw new InvalidRequestException(
+					"Invalid email or password. (" + remainingAttempts + " attempt(s) remaining)");
+		}
+
+		if ((customer.getFailedLoginAttempts() != null && customer.getFailedLoginAttempts() > 0)
+				|| customer.getAccountLockedUntil() != null) {
+			customer.setFailedLoginAttempts(0);
+			customer.setAccountLockedUntil(null);
+			customerRepository.saveAndFlush(customer);
 		}
 
 		String token = jwtUtil.generateToken(customer.getEmail(), customer.getCustomerId());
@@ -92,7 +124,7 @@ public class CustomerAuthServiceImpl implements CustomerAuthService {
 		String cleanEmail = request.getEmail().trim().toLowerCase();
 
 		Customer customer = customerRepository.findByEmailIgnoreCase(cleanEmail)
-				.orElseThrow(() -> new ResourceNotFoundException("ဤ အီးမေးလ်ဖြင့် Register ပြုလုပ်ထားခြင်း မရှိပါ။"));
+				.orElseThrow(() -> new ResourceNotFoundException("This email is not registered."));
 
 		SecureRandom random = new SecureRandom();
 		String otpCode = String.format("%06d", random.nextInt(1000000));
@@ -148,6 +180,23 @@ public class CustomerAuthServiceImpl implements CustomerAuthService {
 		customer.setPasswordHash(passwordEncoder.encode(request.getNewPassword()));
 		customer.setResetPasswordCode(null);
 		customer.setResetCodeExpiry(null);
+		customer.setFailedLoginAttempts(0);
+		customer.setAccountLockedUntil(null);
+		customer.setModifiedAt(LocalDateTime.now());
+		customerRepository.save(customer);
+	}
+
+	@Override
+	@Transactional
+	public void changePassword(Long customerId, ChangePasswordRequest request) {
+		Customer customer = customerRepository.findById(customerId)
+				.orElseThrow(() -> new ResourceNotFoundException("Customer not found"));
+
+		if (!passwordEncoder.matches(request.getCurrentPassword(), customer.getPasswordHash())) {
+			throw new InvalidRequestException("Current password is incorrect.");
+		}
+
+		customer.setPasswordHash(passwordEncoder.encode(request.getNewPassword()));
 		customer.setModifiedAt(LocalDateTime.now());
 		customerRepository.save(customer);
 	}

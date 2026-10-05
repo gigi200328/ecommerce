@@ -13,7 +13,9 @@ public interface CustomerAuthService {
 
 	void processForgotPassword(ForgotPasswordRequest request);
 
-	void verifyResetCode(VerifyCodeRequest request); // <--- ဤ Line အသစ် ထည့်ပါ
+	void verifyResetCode(VerifyCodeRequest request);
 
 	void resetPassword(ResetPasswordRequest request);
+
+	void changePassword(Long customerId, ChangePasswordRequest request);
 }
