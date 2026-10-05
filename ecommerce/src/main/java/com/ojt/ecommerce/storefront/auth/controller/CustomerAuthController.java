@@ -13,7 +13,7 @@ import org.springframework.web.bind.annotation.*;
 @RequestMapping("/api/storefront/v1/auth/customer")
 @RequiredArgsConstructor
 public class CustomerAuthController {
-	private final CustomerAuthService authService; // Variable Name သည် authService ဖြစ်ပါသည်
+	private final CustomerAuthService authService;
 
 	@PostMapping("/register")
 	public ResponseEntity<AuthResponse> register(@Valid @RequestBody RegisterRequest request) {
@@ -37,6 +37,14 @@ public class CustomerAuthController {
 		return ResponseEntity.ok(authService.updateCustomerProfile(principal.getCustomerId(), request));
 	}
 
+	// Change Password Endpoint အသစ် ထည့်သွင်းထားပါသည်
+	@PutMapping("/change-password")
+	public ResponseEntity<Void> changePassword(@AuthenticationPrincipal CustomerPrincipal principal,
+			@Valid @RequestBody ChangePasswordRequest request) {
+		authService.changePassword(principal.getCustomerId(), request);
+		return ResponseEntity.ok().build();
+	}
+
 	@PostMapping("/forgot-password")
 	public ResponseEntity<Void> forgotPassword(@Valid @RequestBody ForgotPasswordRequest request) {
 		authService.processForgotPassword(request);
@@ -51,7 +59,7 @@ public class CustomerAuthController {
 
 	@PostMapping("/verify-code")
 	public ResponseEntity<Void> verifyCode(@Valid @RequestBody VerifyCodeRequest request) {
-		authService.verifyResetCode(request); // <--- customerAuthService အစား authService ဟု ပြင်လိုက်ပါ
+		authService.verifyResetCode(request);
 		return ResponseEntity.ok().build();
 	}
 }
