@@ -52,7 +52,8 @@ public class SecurityConfig {
                 "/swagger-ui/**",
                 "/swagger-ui.html",
                 "/swagger-resources/**",
-                "/webjars/**"
+                "/webjars/**",
+                "/uploads/**"
             )
             .cors(cors -> cors.configurationSource(corsConfigurationSource()))
             .csrf(AbstractHttpConfigurer::disable)
@@ -76,7 +77,17 @@ public class SecurityConfig {
             .csrf(AbstractHttpConfigurer::disable)
             .authorizeHttpRequests(auth -> auth
                 .requestMatchers("/api/backoffice/auth/**").permitAll()
-                .requestMatchers("/api/backoffice/categories/**", "/api/backoffice/products/**").permitAll()
+                .requestMatchers(
+                    "/api/backoffice/categories/**",
+                    "/api/backoffice/brands/**",
+                    "/api/backoffice/products/**",
+                    "/api/backoffice/product-images/**",
+                    "/api/backoffice/variations/**",
+                    "/api/backoffice/variation-options/**",
+                    "/api/backoffice/product-variants/**",
+                    "/api/backoffice/variant-option-values/**",
+                    "/api/backoffice/inventory/**"
+                ).permitAll()
                 .anyRequest().authenticated()
             )
             .sessionManagement(sess -> sess.sessionCreationPolicy(SessionCreationPolicy.STATELESS))
@@ -94,7 +105,7 @@ public class SecurityConfig {
             .cors(cors -> cors.configurationSource(corsConfigurationSource()))
             .csrf(csrf -> csrf.disable())
             .authorizeHttpRequests(auth -> auth
-                .requestMatchers("/api/storefront/v1/auth/customer/login", "/api/storefront/v1/auth/customer/register").permitAll()
+                .requestMatchers("/api/storefront/v1/auth/customer/login", "/api/storefront/v1/auth/customer/register","/api/storefront/v1/auth/customer/forgot-password","/api/storefront/v1/auth/customer/reset-password","/api/storefront/v1/auth/customer/verify-code").permitAll()
                 .requestMatchers("/api/storefront/v1/products/**", "/api/storefront/v1/categories/**", "/api/storefront/v1/cart/guest/**").permitAll()
                 .requestMatchers("/api/storefront/v1/tags/**", "/api/storefront/v1/brands/**").permitAll()
 
