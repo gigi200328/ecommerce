@@ -24,7 +24,7 @@ public class Customer {
     @Column(name = "email", nullable = false, length = 180)
     private String email;
 
-    @Column(name = "phone", length = 50)
+    @Column(name = "phone", length = 50,unique = true)
     private String phone;
 
     @Column(name = "password_hash", nullable = false, length = 255)
