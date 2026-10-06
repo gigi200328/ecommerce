@@ -54,6 +54,7 @@ public class JasperReportService {
     }
 
     public byte[] generateDailyProductSalesReport(LocalDate startDate, LocalDate endDate, String format) throws Exception {
+        // Fetch data from the database using the Stored Procedure
         List<DailyProductSalesDTO> salesData = reportRepository.getDailyProductSales(startDate, endDate);
 
         InputStream reportStream = getClass().getResourceAsStream("/reports/DailyProductSalesReport.jrxml");
