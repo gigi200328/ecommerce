@@ -9,6 +9,7 @@ import jakarta.persistence.Entity;
 import jakarta.persistence.EnumType;
 import jakarta.persistence.Enumerated;
 import jakarta.persistence.FetchType;
+import jakarta.persistence.ForeignKey;
 import jakarta.persistence.GeneratedValue;
 import jakarta.persistence.GenerationType;
 import jakarta.persistence.Id;
@@ -47,6 +48,15 @@ public class Brand {
     @Enumerated(EnumType.STRING)
     @Column(name = "status", nullable = false, columnDefinition = "ENUM('ACTIVE', 'INACTIVE')")
     private BrandStatus status;
+    
+    @ManyToOne(fetch = FetchType.LAZY)
+    @JoinColumn(
+        name = "created_by",
+        referencedColumnName = "user_id",
+        
+        foreignKey = @ForeignKey(name = "fk_brands_created_by")
+    )
+    private User createdBy;
 
     @Column(name = "created_at", nullable = false)
     private LocalDateTime createdAt;
