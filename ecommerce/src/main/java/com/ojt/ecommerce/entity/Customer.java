@@ -24,28 +24,17 @@ public class Customer {
     @Column(name = "email", nullable = false, length = 180)
     private String email;
 
-    @Column(name = "phone", length = 50)
+    @Column(name = "phone", length = 50,unique = true)
     private String phone;
 
     @Column(name = "password_hash", nullable = false, length = 255)
     private String passwordHash;
 
+    @Column(name = "profile_image_url", length = 500)
+    private String profileImageUrl;
+
     @Column(name = "status", nullable = false, columnDefinition = "ENUM('ACTIVE', 'INACTIVE', 'SUSPENDED')")
     private String status;
-
-    @Column(name = "reset_password_code", length = 6)
-    private String resetPasswordCode;
-
-    @Column(name = "reset_code_expiry")
-    private LocalDateTime resetCodeExpiry;
-
-    @Builder.Default
-    @Column(name = "failed_login_attempts", nullable = false)
-    private Integer failedLoginAttempts = 0;
-
-    // Database ထဲရှိ account_locked_until column နှင့် Mapping လုပ်ခြင်း
-    @Column(name = "account_locked_until")
-    private LocalDateTime accountLockedUntil;
 
     @Column(name = "created_at", nullable = false)
     private LocalDateTime createdAt;
@@ -57,9 +46,6 @@ public class Customer {
     protected void onCreate() {
         if (this.createdAt == null) {
             this.createdAt = LocalDateTime.now();
-        }
-        if (this.failedLoginAttempts == null) {
-            this.failedLoginAttempts = 0;
         }
     }
 }

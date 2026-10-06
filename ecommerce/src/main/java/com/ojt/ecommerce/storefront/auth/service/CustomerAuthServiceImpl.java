@@ -26,6 +26,16 @@ public class CustomerAuthServiceImpl implements CustomerAuthService {
 
 	private final JavaMailSender mailSender;
 
+	private static class ResetCodeInfo {
+		final String code;
+		final LocalDateTime expiry;
+		ResetCodeInfo(String code, LocalDateTime expiry) {
+			this.code = code;
+			this.expiry = expiry;
+		}
+	}
+	private final java.util.concurrent.ConcurrentHashMap<String, ResetCodeInfo> resetCodeMap = new java.util.concurrent.ConcurrentHashMap<>();
+
 	@Override
 	@Transactional
 	public AuthResponse register(RegisterRequest request) {
@@ -36,11 +46,11 @@ public class CustomerAuthServiceImpl implements CustomerAuthService {
 		}
 		Customer customer = Customer.builder().fullName(request.getFullName()).email(cleanEmail)
 				.phone(request.getPhone()).passwordHash(passwordEncoder.encode(request.getPassword())).status("ACTIVE")
-				.failedLoginAttempts(0).createdAt(LocalDateTime.now()).build();
+				.createdAt(LocalDateTime.now()).build();
 		customer = customerRepository.save(customer);
 		String token = jwtUtil.generateToken(customer.getEmail(), customer.getCustomerId());
 		return AuthResponse.builder().token(token).customerId(customer.getCustomerId()).fullName(customer.getFullName())
-				.email(customer.getEmail()).build();
+				.email(customer.getEmail()).phone(customer.getPhone()).profileImageUrl(customer.getProfileImageUrl()).build();
 	}
 
 	@Override
@@ -55,45 +65,13 @@ public class CustomerAuthServiceImpl implements CustomerAuthService {
 			throw new InvalidRequestException("Account is not active");
 		}
 
-		if (customer.getAccountLockedUntil() != null) {
-			if (customer.getAccountLockedUntil().isAfter(LocalDateTime.now())) {
-				throw new InvalidRequestException(
-						"Account locked due to multiple failed login attempts. Please try again in 5 minutes.");
-			} else {
-				customer.setAccountLockedUntil(null);
-				customer.setFailedLoginAttempts(0);
-				customerRepository.saveAndFlush(customer);
-			}
-		}
-
 		if (!passwordEncoder.matches(request.getPassword(), customer.getPasswordHash())) {
-			int currentAttempts = (customer.getFailedLoginAttempts() == null ? 0 : customer.getFailedLoginAttempts())
-					+ 1;
-			customer.setFailedLoginAttempts(currentAttempts);
-
-			if (currentAttempts >= 5) {
-				customer.setAccountLockedUntil(LocalDateTime.now().plusMinutes(5));
-				customerRepository.saveAndFlush(customer);
-				throw new InvalidRequestException(
-						"Account locked due to 5 consecutive failed login attempts. Please try again in 5 minutes.");
-			}
-
-			customerRepository.saveAndFlush(customer);
-			int remainingAttempts = 5 - currentAttempts;
-			throw new InvalidRequestException(
-					"Invalid email or password. (" + remainingAttempts + " attempt(s) remaining)");
-		}
-
-		if ((customer.getFailedLoginAttempts() != null && customer.getFailedLoginAttempts() > 0)
-				|| customer.getAccountLockedUntil() != null) {
-			customer.setFailedLoginAttempts(0);
-			customer.setAccountLockedUntil(null);
-			customerRepository.saveAndFlush(customer);
+			throw new InvalidRequestException("Invalid email or password");
 		}
 
 		String token = jwtUtil.generateToken(customer.getEmail(), customer.getCustomerId());
 		return AuthResponse.builder().token(token).customerId(customer.getCustomerId()).fullName(customer.getFullName())
-				.email(customer.getEmail()).build();
+				.email(customer.getEmail()).phone(customer.getPhone()).profileImageUrl(customer.getProfileImageUrl()).build();
 	}
 
 	@Override
@@ -102,7 +80,8 @@ public class CustomerAuthServiceImpl implements CustomerAuthService {
 		Customer customer = customerRepository.findById(customerId)
 				.orElseThrow(() -> new ResourceNotFoundException("Customer not found"));
 		return CustomerMeResponse.builder().customerId(customer.getCustomerId()).fullName(customer.getFullName())
-				.email(customer.getEmail()).phone(customer.getPhone()).build();
+				.email(customer.getEmail()).phone(customer.getPhone())
+				.profileImageUrl(customer.getProfileImageUrl()).build();
 	}
 
 	@Override
@@ -115,7 +94,8 @@ public class CustomerAuthServiceImpl implements CustomerAuthService {
 		customer.setModifiedAt(LocalDateTime.now());
 		customer = customerRepository.save(customer);
 		return CustomerMeResponse.builder().customerId(customer.getCustomerId()).fullName(customer.getFullName())
-				.email(customer.getEmail()).phone(customer.getPhone()).build();
+				.email(customer.getEmail()).phone(customer.getPhone())
+				.profileImageUrl(customer.getProfileImageUrl()).build();
 	}
 
 	@Override
@@ -129,9 +109,7 @@ public class CustomerAuthServiceImpl implements CustomerAuthService {
 		SecureRandom random = new SecureRandom();
 		String otpCode = String.format("%06d", random.nextInt(1000000));
 
-		customer.setResetPasswordCode(otpCode);
-		customer.setResetCodeExpiry(LocalDateTime.now().plusMinutes(5));
-		customerRepository.save(customer);
+		resetCodeMap.put(cleanEmail, new ResetCodeInfo(otpCode, LocalDateTime.now().plusMinutes(5)));
 
 		SimpleMailMessage message = new SimpleMailMessage();
 		message.setTo(customer.getEmail());
@@ -143,19 +121,19 @@ public class CustomerAuthServiceImpl implements CustomerAuthService {
 	}
 
 	@Override
-	@Transactional(readOnly = true)
 	public void verifyResetCode(VerifyCodeRequest request) {
 		String cleanEmail = request.getEmail().trim().toLowerCase();
 
-		Customer customer = customerRepository.findByEmailIgnoreCase(cleanEmail)
-				.orElseThrow(() -> new ResourceNotFoundException("User not found with provided email"));
+		if (!customerRepository.existsByEmail(cleanEmail)) {
+			throw new ResourceNotFoundException("User not found with provided email");
+		}
 
-		if (customer.getResetPasswordCode() == null
-				|| !customer.getResetPasswordCode().equals(request.getCode().trim())) {
+		ResetCodeInfo info = resetCodeMap.get(cleanEmail);
+		if (info == null || !info.code.equals(request.getCode().trim())) {
 			throw new InvalidRequestException("Invalid verification code.");
 		}
 
-		if (customer.getResetCodeExpiry() == null || customer.getResetCodeExpiry().isBefore(LocalDateTime.now())) {
+		if (info.expiry == null || info.expiry.isBefore(LocalDateTime.now())) {
 			throw new InvalidRequestException("Verification code has expired. Please request a new one.");
 		}
 	}
@@ -168,22 +146,19 @@ public class CustomerAuthServiceImpl implements CustomerAuthService {
 		Customer customer = customerRepository.findByEmailIgnoreCase(cleanEmail)
 				.orElseThrow(() -> new ResourceNotFoundException("User not found with provided email"));
 
-		if (customer.getResetPasswordCode() == null
-				|| !customer.getResetPasswordCode().equals(request.getCode().trim())) {
+		ResetCodeInfo info = resetCodeMap.get(cleanEmail);
+		if (info == null || !info.code.equals(request.getCode().trim())) {
 			throw new InvalidRequestException("Invalid verification code.");
 		}
 
-		if (customer.getResetCodeExpiry() == null || customer.getResetCodeExpiry().isBefore(LocalDateTime.now())) {
+		if (info.expiry == null || info.expiry.isBefore(LocalDateTime.now())) {
 			throw new InvalidRequestException("Verification code has expired. Please request a new one.");
 		}
 
 		customer.setPasswordHash(passwordEncoder.encode(request.getNewPassword()));
-		customer.setResetPasswordCode(null);
-		customer.setResetCodeExpiry(null);
-		customer.setFailedLoginAttempts(0);
-		customer.setAccountLockedUntil(null);
 		customer.setModifiedAt(LocalDateTime.now());
 		customerRepository.save(customer);
+		resetCodeMap.remove(cleanEmail);
 	}
 
 	@Override
