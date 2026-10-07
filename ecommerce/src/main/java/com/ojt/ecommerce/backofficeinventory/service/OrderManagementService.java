@@ -3,8 +3,11 @@ package com.ojt.ecommerce.backofficeinventory.service;
 import java.time.LocalDateTime;
 import java.util.Arrays;
 import java.util.List;
-import java.util.stream.Collectors;
 
+import org.springframework.data.domain.Page;
+import org.springframework.data.domain.PageRequest;
+import org.springframework.data.domain.Pageable;
+import org.springframework.data.domain.Sort;
 import org.springframework.security.core.Authentication;
 import org.springframework.security.core.context.SecurityContextHolder;
 import org.springframework.stereotype.Service;
@@ -12,6 +15,7 @@ import org.springframework.transaction.annotation.Transactional;
 
 import com.ojt.ecommerce.backofficeinventory.dto.OrderResponseDto;
 import com.ojt.ecommerce.backofficeinventory.dto.OrderStatusUpdateRequestDto;
+import com.ojt.ecommerce.backofficeinventory.dto.PaginatedResponseDto;
 import com.ojt.ecommerce.backofficeinventory.dto.PaymentVerificationDto;
 import com.ojt.ecommerce.backofficeinventory.dto.ShipmentRequestDto;
 import com.ojt.ecommerce.backofficeinventory.mapper.OrderMapper;
@@ -44,8 +48,9 @@ public class OrderManagementService {
 	private final ShipmentMapper shipmentMapper;
 
 	@Transactional(readOnly = true)
-	public List<OrderResponseDto> getOrders(String status) {
-		List<Order> orders;
+	public PaginatedResponseDto<OrderResponseDto> getOrders(String status, int pageNo, int pageSize) {
+		Pageable pageable = PageRequest.of(pageNo, pageSize, Sort.by("createdAt").descending());
+		Page<Order> orders;
 		// Status ပါလာလျှင် Statusအားလုံး ကိုရှာမည်၊ မပါလာလျှင် အားလုံးကို ရှာမည်
 		if (status != null && !status.trim().isEmpty()) {
 			String upperStatus = status.toUpperCase();
@@ -57,12 +62,13 @@ public class OrderManagementService {
 				throw new IllegalArgumentException(
 						"Invalid order status: '" + status + "'. Allowed values are: " + validStatuses);
 			}
-			orders = orderRepository.findByOrderStatus(status);
+			orders = orderRepository.findByOrderStatus(status, pageable);
 		} else {
-			orders = orderRepository.findAll();
+			orders = orderRepository.findAll(pageable);
 		}
 		// Mapper ကို အသုံးပြု၍ Entity မှ DTO သို့ ပြောင်းလဲခြင်း
-		return orders.stream().map(orderMapper::toDto).collect(Collectors.toList());
+//		return orders.stream().map(orderMapper::toDto).collect(Collectors.toList());
+		return orderMapper.toPaginatedDto(orders);
 	}
 
 	@Transactional(readOnly = true)

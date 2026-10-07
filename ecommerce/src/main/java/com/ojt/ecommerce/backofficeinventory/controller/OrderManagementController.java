@@ -17,6 +17,7 @@ import org.springframework.web.bind.annotation.RestController;
 
 import com.ojt.ecommerce.backofficeinventory.dto.OrderResponseDto;
 import com.ojt.ecommerce.backofficeinventory.dto.OrderStatusUpdateRequestDto;
+import com.ojt.ecommerce.backofficeinventory.dto.PaginatedResponseDto;
 import com.ojt.ecommerce.backofficeinventory.dto.PaymentVerificationDto;
 import com.ojt.ecommerce.backofficeinventory.dto.ShipmentRequestDto;
 import com.ojt.ecommerce.backofficeinventory.service.OrderManagementService;
@@ -38,9 +39,10 @@ public class OrderManagementController {
 //	}
 
 	@GetMapping
-	public ResponseEntity<List<OrderResponseDto>> getOrders(
-			@RequestParam(value = "status", required = false) String status) {
-		List<OrderResponseDto> orders = orderManagementService.getOrders(status);
+	public ResponseEntity<PaginatedResponseDto<OrderResponseDto>> getOrders(
+			@RequestParam(value = "status", required = false) String status, @RequestParam(defaultValue = "0") int page,
+			@RequestParam(defaultValue = "10") int pageSize) {
+		PaginatedResponseDto<OrderResponseDto> orders = orderManagementService.getOrders(status, page, pageSize);
 		return ResponseEntity.ok(orders);
 	}
 
