@@ -1,21 +1,32 @@
 package com.ojt.ecommerce.storefront.auth.service;
 
-import com.ojt.ecommerce.entity.Customer;
-import com.ojt.ecommerce.storefront.exception.ConflictException;
-import com.ojt.ecommerce.storefront.exception.InvalidRequestException;
-import com.ojt.ecommerce.storefront.exception.ResourceNotFoundException;
-import com.ojt.ecommerce.storefront.security.G5JwtUtil;
-import com.ojt.ecommerce.storefront.auth.dto.*;
-import com.ojt.ecommerce.storefront.auth.repository.CustomerRepository;
-import lombok.RequiredArgsConstructor;
+import java.security.SecureRandom;
+import java.time.LocalDateTime;
+
+import org.springframework.beans.factory.annotation.Value;
 import org.springframework.mail.SimpleMailMessage;
 import org.springframework.mail.javamail.JavaMailSender;
 import org.springframework.security.crypto.password.PasswordEncoder;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
-import java.security.SecureRandom;
-import java.time.LocalDateTime;
+import com.ojt.ecommerce.entity.Customer;
+import com.ojt.ecommerce.storefront.auth.dto.AuthResponse;
+import com.ojt.ecommerce.storefront.auth.dto.ChangePasswordRequest;
+import com.ojt.ecommerce.storefront.auth.dto.CustomerMeResponse;
+import com.ojt.ecommerce.storefront.auth.dto.CustomerProfileUpdateRequest;
+import com.ojt.ecommerce.storefront.auth.dto.ForgotPasswordRequest;
+import com.ojt.ecommerce.storefront.auth.dto.LoginRequest;
+import com.ojt.ecommerce.storefront.auth.dto.RegisterRequest;
+import com.ojt.ecommerce.storefront.auth.dto.ResetPasswordRequest;
+import com.ojt.ecommerce.storefront.auth.dto.VerifyCodeRequest;
+import com.ojt.ecommerce.storefront.auth.repository.CustomerRepository;
+import com.ojt.ecommerce.storefront.exception.ConflictException;
+import com.ojt.ecommerce.storefront.exception.InvalidRequestException;
+import com.ojt.ecommerce.storefront.exception.ResourceNotFoundException;
+import com.ojt.ecommerce.storefront.security.G5JwtUtil;
+
+import lombok.RequiredArgsConstructor;
 
 @Service
 @RequiredArgsConstructor
@@ -26,37 +37,42 @@ public class CustomerAuthServiceImpl implements CustomerAuthService {
 
 	private final JavaMailSender mailSender;
 
-	private static class ResetCodeInfo {
-		final String code;
-		final LocalDateTime expiry;
-		ResetCodeInfo(String code, LocalDateTime expiry) {
-			this.code = code;
-			this.expiry = expiry;
-		}
-	}
-	private final java.util.concurrent.ConcurrentHashMap<String, ResetCodeInfo> resetCodeMap = new java.util.concurrent.ConcurrentHashMap<>();
-
 	@Override
 	@Transactional
 	public AuthResponse register(RegisterRequest request) {
-		String cleanEmail = request.getEmail().trim().toLowerCase();
+		String cleanEmail = request.getEmail()
+				.trim()
+				.toLowerCase();
 
 		if (customerRepository.existsByEmail(cleanEmail)) {
 			throw new ConflictException("Email already in use");
 		}
-		Customer customer = Customer.builder().fullName(request.getFullName()).email(cleanEmail)
-				.phone(request.getPhone()).passwordHash(passwordEncoder.encode(request.getPassword())).status("ACTIVE")
-				.createdAt(LocalDateTime.now()).build();
+		Customer customer = Customer.builder()
+				.fullName(request.getFullName())
+				.email(cleanEmail)
+				.phone(request.getPhone())
+				.passwordHash(passwordEncoder.encode(request.getPassword()))
+				.status("ACTIVE")
+				.createdAt(LocalDateTime.now())
+				.build();
 		customer = customerRepository.save(customer);
 		String token = jwtUtil.generateToken(customer.getEmail(), customer.getCustomerId());
-		return AuthResponse.builder().token(token).customerId(customer.getCustomerId()).fullName(customer.getFullName())
-				.email(customer.getEmail()).phone(customer.getPhone()).profileImageUrl(customer.getProfileImageUrl()).build();
+		return AuthResponse.builder()
+				.token(token)
+				.customerId(customer.getCustomerId())
+				.fullName(customer.getFullName())
+				.email(customer.getEmail())
+				.phone(customer.getPhone())
+				.profileImageUrl(customer.getProfileImageUrl())
+				.build();
 	}
 
 	@Override
 	@Transactional(noRollbackFor = InvalidRequestException.class)
 	public AuthResponse login(LoginRequest request) {
-		String cleanEmail = request.getEmail().trim().toLowerCase();
+		String cleanEmail = request.getEmail()
+				.trim()
+				.toLowerCase();
 
 		Customer customer = customerRepository.findByEmailIgnoreCase(cleanEmail)
 				.orElseThrow(() -> new InvalidRequestException("Invalid email or password"));
@@ -70,8 +86,14 @@ public class CustomerAuthServiceImpl implements CustomerAuthService {
 		}
 
 		String token = jwtUtil.generateToken(customer.getEmail(), customer.getCustomerId());
-		return AuthResponse.builder().token(token).customerId(customer.getCustomerId()).fullName(customer.getFullName())
-				.email(customer.getEmail()).phone(customer.getPhone()).profileImageUrl(customer.getProfileImageUrl()).build();
+		return AuthResponse.builder()
+				.token(token)
+				.customerId(customer.getCustomerId())
+				.fullName(customer.getFullName())
+				.email(customer.getEmail())
+				.phone(customer.getPhone())
+				.profileImageUrl(customer.getProfileImageUrl())
+				.build();
 	}
 
 	@Override
@@ -79,9 +101,13 @@ public class CustomerAuthServiceImpl implements CustomerAuthService {
 	public CustomerMeResponse getCurrentCustomer(Long customerId) {
 		Customer customer = customerRepository.findById(customerId)
 				.orElseThrow(() -> new ResourceNotFoundException("Customer not found"));
-		return CustomerMeResponse.builder().customerId(customer.getCustomerId()).fullName(customer.getFullName())
-				.email(customer.getEmail()).phone(customer.getPhone())
-				.profileImageUrl(customer.getProfileImageUrl()).build();
+		return CustomerMeResponse.builder()
+				.customerId(customer.getCustomerId())
+				.fullName(customer.getFullName())
+				.email(customer.getEmail())
+				.phone(customer.getPhone())
+				.profileImageUrl(customer.getProfileImageUrl())
+				.build();
 	}
 
 	@Override
@@ -93,15 +119,24 @@ public class CustomerAuthServiceImpl implements CustomerAuthService {
 		customer.setPhone(request.getPhone());
 		customer.setModifiedAt(LocalDateTime.now());
 		customer = customerRepository.save(customer);
-		return CustomerMeResponse.builder().customerId(customer.getCustomerId()).fullName(customer.getFullName())
-				.email(customer.getEmail()).phone(customer.getPhone())
-				.profileImageUrl(customer.getProfileImageUrl()).build();
+		return CustomerMeResponse.builder()
+				.customerId(customer.getCustomerId())
+				.fullName(customer.getFullName())
+				.email(customer.getEmail())
+				.phone(customer.getPhone())
+				.profileImageUrl(customer.getProfileImageUrl())
+				.build();
 	}
+
+	@Value("${app.mail.from}")
+	private String senderEmail;
 
 	@Override
 	@Transactional
 	public void processForgotPassword(ForgotPasswordRequest request) {
-		String cleanEmail = request.getEmail().trim().toLowerCase();
+		String cleanEmail = request.getEmail()
+				.trim()
+				.toLowerCase();
 
 		Customer customer = customerRepository.findByEmailIgnoreCase(cleanEmail)
 				.orElseThrow(() -> new ResourceNotFoundException("This email is not registered."));
@@ -109,9 +144,13 @@ public class CustomerAuthServiceImpl implements CustomerAuthService {
 		SecureRandom random = new SecureRandom();
 		String otpCode = String.format("%06d", random.nextInt(1000000));
 
-		resetCodeMap.put(cleanEmail, new ResetCodeInfo(otpCode, LocalDateTime.now().plusMinutes(5)));
+		customer.setResetPasswordCode(otpCode);
+		customer.setResetCodeExpiry(LocalDateTime.now()
+				.plusMinutes(5));
+		customerRepository.save(customer);
 
 		SimpleMailMessage message = new SimpleMailMessage();
+		message.setFrom("6sync store <" + senderEmail + ">");
 		message.setTo(customer.getEmail());
 		message.setSubject("Password Reset Code - 6SYNC Store");
 		message.setText("Hi " + customer.getFullName() + ",\n\n" + "Your Password Reset Code is: " + otpCode + "\n\n"
@@ -122,18 +161,21 @@ public class CustomerAuthServiceImpl implements CustomerAuthService {
 
 	@Override
 	public void verifyResetCode(VerifyCodeRequest request) {
-		String cleanEmail = request.getEmail().trim().toLowerCase();
+		String cleanEmail = request.getEmail()
+				.trim()
+				.toLowerCase();
 
-		if (!customerRepository.existsByEmail(cleanEmail)) {
-			throw new ResourceNotFoundException("User not found with provided email");
-		}
+		Customer customer = customerRepository.findByEmailIgnoreCase(cleanEmail)
+				.orElseThrow(() -> new ResourceNotFoundException("User not found with provided email"));
 
-		ResetCodeInfo info = resetCodeMap.get(cleanEmail);
-		if (info == null || !info.code.equals(request.getCode().trim())) {
+		if (customer.getResetPasswordCode() == null || !customer.getResetPasswordCode()
+				.equals(request.getCode()
+						.trim())) {
 			throw new InvalidRequestException("Invalid verification code.");
 		}
 
-		if (info.expiry == null || info.expiry.isBefore(LocalDateTime.now())) {
+		if (customer.getResetCodeExpiry() == null || customer.getResetCodeExpiry()
+				.isBefore(LocalDateTime.now())) {
 			throw new InvalidRequestException("Verification code has expired. Please request a new one.");
 		}
 	}
@@ -141,24 +183,29 @@ public class CustomerAuthServiceImpl implements CustomerAuthService {
 	@Override
 	@Transactional
 	public void resetPassword(ResetPasswordRequest request) {
-		String cleanEmail = request.getEmail().trim().toLowerCase();
+		String cleanEmail = request.getEmail()
+				.trim()
+				.toLowerCase();
 
 		Customer customer = customerRepository.findByEmailIgnoreCase(cleanEmail)
 				.orElseThrow(() -> new ResourceNotFoundException("User not found with provided email"));
 
-		ResetCodeInfo info = resetCodeMap.get(cleanEmail);
-		if (info == null || !info.code.equals(request.getCode().trim())) {
+		if (customer.getResetPasswordCode() == null || !customer.getResetPasswordCode()
+				.equals(request.getCode()
+						.trim())) {
 			throw new InvalidRequestException("Invalid verification code.");
 		}
 
-		if (info.expiry == null || info.expiry.isBefore(LocalDateTime.now())) {
+		if (customer.getResetCodeExpiry() == null || customer.getResetCodeExpiry()
+				.isBefore(LocalDateTime.now())) {
 			throw new InvalidRequestException("Verification code has expired. Please request a new one.");
 		}
 
 		customer.setPasswordHash(passwordEncoder.encode(request.getNewPassword()));
+		customer.setResetPasswordCode(null);
+		customer.setResetCodeExpiry(null);
 		customer.setModifiedAt(LocalDateTime.now());
 		customerRepository.save(customer);
-		resetCodeMap.remove(cleanEmail);
 	}
 
 	@Override
