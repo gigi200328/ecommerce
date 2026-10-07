@@ -38,6 +38,10 @@ public interface ProductVariantRepository extends JpaRepository<ProductVariant, 
     @EntityGraph(attributePaths = {"product"})
     List<ProductVariant> findByProduct_ProductId(Long productId);
 
+    // Get all variants for multiple products
+    @EntityGraph(attributePaths = {"product"})
+    List<ProductVariant> findByProduct_ProductIdIn(List<Long> productIds);
+
     // Find variants by status
     List<ProductVariant> findByStatus(ProductVariantStatus status);
 }

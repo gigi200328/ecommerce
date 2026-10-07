@@ -24,6 +24,9 @@ public class ProductResponseDto {
     private String brandName;
 
     private String imageUrl;
+    private String sku;
+    private java.math.BigDecimal sellingPrice;
+    private Integer stock;
 
     private Long createdByUserId;
     private LocalDateTime createdAt;
