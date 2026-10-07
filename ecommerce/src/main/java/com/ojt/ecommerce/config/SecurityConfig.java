@@ -86,7 +86,12 @@ public class SecurityConfig {
                     "/api/backoffice/variation-options/**",
                     "/api/backoffice/product-variants/**",
                     "/api/backoffice/variant-option-values/**",
-                    "/api/backoffice/inventory/**"
+                    "/api/backoffice/tags/**",
+                    "/api/backoffice/product-tags/**",
+                    "/api/backoffice/product-variant-images/**",
+                    "/api/backoffice/inventory/**",
+                    "/api/backoffice/staff/**",
+                    "/api/backoffice/orders/**"
                 ).permitAll()
                 .anyRequest().authenticated()
             )
