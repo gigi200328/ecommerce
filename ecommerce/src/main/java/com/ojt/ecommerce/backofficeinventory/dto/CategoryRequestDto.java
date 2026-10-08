@@ -16,6 +16,5 @@ public class CategoryRequestDto {
 
     private Long parentId;
 
-    @NotNull(message = "User ID is required")
-    private Long userId;
+   
 }

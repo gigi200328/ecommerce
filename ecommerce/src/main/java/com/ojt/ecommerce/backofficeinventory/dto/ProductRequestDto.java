@@ -1,6 +1,7 @@
 package com.ojt.ecommerce.backofficeinventory.dto;
 
-import com.ojt.ecommerce.entity.ProductStatus;
+import com.ojt.ecommerce.enums.ProductStatus;
+
 import jakarta.validation.constraints.NotBlank;
 import jakarta.validation.constraints.NotNull;
 import jakarta.validation.constraints.Size;

@@ -8,6 +8,14 @@ import org.springframework.stereotype.Component;
 public class ProductMapper {
 
     public ProductResponseDto toResponseDto(Product product) {
+        return toResponseDto(product, null);
+    }
+
+    public ProductResponseDto toResponseDto(Product product, String imageUrl) {
+        return toResponseDto(product, imageUrl, null, null, null);
+    }
+
+    public ProductResponseDto toResponseDto(Product product, String imageUrl, String sku, java.math.BigDecimal sellingPrice, Integer stock) {
         if (product == null) {
             return null;
         }
@@ -21,6 +29,10 @@ public class ProductMapper {
                 .categoryName(product.getCategory() != null ? product.getCategory().getCategoryName() : null)
                 .brandId(product.getBrand() != null ? product.getBrand().getBrandId() : null)
                 .brandName(product.getBrand() != null ? product.getBrand().getBrandName() : null)
+                .imageUrl(imageUrl)
+                .sku(sku)
+                .sellingPrice(sellingPrice)
+                .stock(stock)
                 .createdByUserId(product.getCreatedBy() != null ? product.getCreatedBy().getUserId() : null)
                 .createdAt(product.getCreatedAt())
                 .modifiedByUserId(product.getModifiedBy() != null ? product.getModifiedBy().getUserId() : null)

@@ -1,7 +1,9 @@
 package com.ojt.ecommerce.backofficeinventory.dto;
 
-import com.ojt.ecommerce.entity.ProductStatus;
 import java.time.LocalDateTime;
+
+import com.ojt.ecommerce.enums.ProductStatus;
+
 import lombok.*;
 
 @Data
@@ -20,6 +22,11 @@ public class ProductResponseDto {
 
     private Long brandId;
     private String brandName;
+
+    private String imageUrl;
+    private String sku;
+    private java.math.BigDecimal sellingPrice;
+    private Integer stock;
 
     private Long createdByUserId;
     private LocalDateTime createdAt;

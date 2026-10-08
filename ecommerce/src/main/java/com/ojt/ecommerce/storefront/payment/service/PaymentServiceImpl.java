@@ -121,19 +121,18 @@ public class PaymentServiceImpl implements PaymentService {
             throw new AccessDeniedException("Order belongs to a different customer");
         }
         
-        Payment payment = paymentRepository.findFirstByOrderOrderIdOrderByCreatedAtDesc(orderId)
-                .orElseThrow(() -> new ResourceNotFoundException("Payment not found for order"));
-                
-        return PaymentDetailResponse.builder()
-                .paymentId(payment.getPaymentId())
-                .orderId(orderId)
-                .paymentStatus(payment.getPaymentStatus())
-                .paymentMethod(payment.getPaymentMethod())
-                .transactionRef(payment.getTransactionRef())
-                .amount(payment.getAmount())
-                .paidAt(payment.getPaidAt() != null ? payment.getPaidAt().toString() : null)
-                .createdAt(payment.getCreatedAt().toString())
-                .build();
+        return paymentRepository.findFirstByOrderOrderIdOrderByCreatedAtDesc(orderId)
+                .map(payment -> PaymentDetailResponse.builder()
+                        .paymentId(payment.getPaymentId())
+                        .orderId(orderId)
+                        .paymentStatus(payment.getPaymentStatus())
+                        .paymentMethod(payment.getPaymentMethod())
+                        .transactionRef(payment.getTransactionRef())
+                        .amount(payment.getAmount())
+                        .paidAt(payment.getPaidAt() != null ? payment.getPaidAt().toString() : null)
+                        .createdAt(payment.getCreatedAt().toString())
+                        .build())
+                .orElse(null);
     }
 
     @Override

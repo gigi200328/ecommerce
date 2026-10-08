@@ -1,14 +1,17 @@
 package com.ojt.ecommerce.backofficeinventory.mapper;
 
 import java.util.Collections;
+import java.util.List;
 import java.util.stream.Collectors;
 
+import org.springframework.data.domain.Page;
 import org.springframework.stereotype.Component;
 
 import com.ojt.ecommerce.backofficeinventory.dto.OrderAddressDto;
 import com.ojt.ecommerce.backofficeinventory.dto.OrderItemDto;
 import com.ojt.ecommerce.backofficeinventory.dto.OrderResponseDto;
 import com.ojt.ecommerce.backofficeinventory.dto.OrderStatusHistoryDto;
+import com.ojt.ecommerce.backofficeinventory.dto.PaginatedResponseDto;
 import com.ojt.ecommerce.entity.Order;
 import com.ojt.ecommerce.entity.OrderAddress;
 import com.ojt.ecommerce.entity.OrderItem;
@@ -60,6 +63,14 @@ public class OrderMapper {
 		return OrderStatusHistoryDto.builder().historyId(history.getHistoryId()).oldStatus(history.getOldStatus())
 				.newStatus(history.getNewStatus()).remark(history.getRemark()).changedAt(history.getChangedAt())
 				.changedByName(history.getChangedBy() != null ? history.getChangedBy().getUserName() : null).build();
+	}
+
+	public PaginatedResponseDto<OrderResponseDto> toPaginatedDto(Page<Order> orderPage) {
+		List<OrderResponseDto> content = orderPage.getContent().stream().map(this::toDto).collect(Collectors.toList());
+
+		return PaginatedResponseDto.<OrderResponseDto>builder().content(content).pageNo(orderPage.getNumber())
+				.pageSize(orderPage.getSize()).totalElements(orderPage.getTotalElements())
+				.totalPages(orderPage.getTotalPages()).last(orderPage.isLast()).build();
 	}
 
 }

@@ -15,7 +15,7 @@ import com.ojt.ecommerce.storefront.security.CustomerPrincipal;
 import java.util.List;
 
 @RestController
-@RequestMapping("/api/v1/profile/addresses")
+@RequestMapping("/api/storefront/v1/profile/addresses")
 @RequiredArgsConstructor
 public class CustomerAddressController {
 

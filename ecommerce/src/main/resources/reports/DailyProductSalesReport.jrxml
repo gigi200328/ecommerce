@@ -1,0 +1,72 @@
+<!-- Created with Jaspersoft Studio version 7.0.6.final using JasperReports Library version 7.0.6-5d2a603fdc6b3db8f842a83383e594f41891534d  -->
+<jasperReport name="DailyProductSalesReport" language="java" pageWidth="595" pageHeight="842" columnWidth="555" leftMargin="20" rightMargin="20" topMargin="20" bottomMargin="20" uuid="6e933c25-b58d-47c1-9871-cd8d8ec99b69">
+	<property name="com.jaspersoft.studio.data.sql.tables" value=""/>
+	<property name="com.jaspersoft.studio.data.defaultdataadapter" value="One Empty Record"/>
+	<query language="SQL"><![CDATA[]]></query>
+	<field name="salesDate" class="java.util.Date"/>
+	<field name="productName" class="java.lang.String"/>
+	<field name="categoryName" class="java.lang.String"/>
+	<field name="quantitySold" class="java.lang.Long"/>
+	<field name="pricePerUnit" class="java.math.BigDecimal"/>
+	<field name="totalSales" class="java.math.BigDecimal"/>
+	<background splitType="Stretch"/>
+	<title height="80" splitType="Stretch">
+		<element kind="staticText" uuid="d305dd26-ed7f-4398-b036-6116e472978d" x="190" y="30" width="170" height="30" fontSize="14.0" hTextAlign="Center" vTextAlign="Middle">
+			<text><![CDATA[Daily Product Sales Report]]></text>
+		</element>
+		<element kind="textField" uuid="bde686ab-d6f5-4b8e-9431-fa2ceadc1e04" x="510" y="0" width="40" height="30">
+			<expression><![CDATA[$V{PAGE_NUMBER}]]></expression>
+		</element>
+		<element kind="textField" uuid="442db88a-02d1-4b3d-a636-2de6f0773711" x="0" y="0" width="80" height="30" pattern="MMMMM dd, yyyy">
+			<expression><![CDATA[new java.util.Date()]]></expression>
+		</element>
+	</title>
+	<columnHeader height="37" splitType="Stretch">
+		<element kind="staticText" uuid="420f2537-de0e-4e62-b47e-ace5a42e7c0e" x="0" y="0" width="60" height="30" hTextAlign="Center" vTextAlign="Middle">
+			<text><![CDATA[No]]></text>
+		</element>
+		<element kind="staticText" uuid="71de5c18-1b19-45da-996f-ef9796a465f4" x="60" y="0" width="100" height="30" hTextAlign="Center" vTextAlign="Middle">
+			<text><![CDATA[Date]]></text>
+		</element>
+		<element kind="staticText" uuid="605f9ed9-4d88-451a-aff1-615a872e5950" x="160" y="0" width="100" height="30" hTextAlign="Center" vTextAlign="Middle">
+			<text><![CDATA[Product Name]]></text>
+		</element>
+		<element kind="staticText" uuid="3695e4e4-af8d-40ff-9886-30546a76a3bd" x="260" y="0" width="90" height="30" hTextAlign="Center" vTextAlign="Middle">
+			<text><![CDATA[Category Name]]></text>
+		</element>
+		<element kind="staticText" uuid="3536811f-e5f5-423e-b0ec-85e7c8001a11" x="350" y="0" width="50" height="30" hTextAlign="Center" vTextAlign="Middle">
+			<text><![CDATA[Quantity]]></text>
+		</element>
+		<element kind="staticText" uuid="b7008b0d-14f0-417f-bb4a-c90cdf686a3b" x="400" y="0" width="80" height="30" hTextAlign="Center" vTextAlign="Middle">
+			<text><![CDATA[Unit price]]></text>
+		</element>
+		<element kind="staticText" uuid="a67932f6-b835-4fc9-a2f7-81f0c77b362e" x="480" y="0" width="72" height="30" hTextAlign="Center" vTextAlign="Middle">
+			<text><![CDATA[Total Sales]]></text>
+		</element>
+	</columnHeader>
+	<detail>
+		<band height="99" splitType="Stretch">
+			<element kind="textField" uuid="7357db4d-eef2-4ce1-a2b9-f6213ad4602f" x="0" y="10" width="60" height="30" hTextAlign="Center" vTextAlign="Middle">
+				<expression><![CDATA[$V{REPORT_COUNT}]]></expression>
+			</element>
+			<element kind="textField" uuid="12f202ef-53c3-4a87-a26b-c1c27e4b441c" x="60" y="10" width="100" height="30" hTextAlign="Center" vTextAlign="Middle">
+				<expression><![CDATA[$F{salesDate}]]></expression>
+			</element>
+			<element kind="textField" uuid="e2510d76-928a-4f10-907b-39fe6411e6c6" x="160" y="10" width="100" height="30" hTextAlign="Center" vTextAlign="Middle">
+				<expression><![CDATA[$F{productName}]]></expression>
+			</element>
+			<element kind="textField" uuid="850b5cff-b66e-427b-bb67-6003c50479e3" x="260" y="10" width="90" height="30" hTextAlign="Center" vTextAlign="Middle">
+				<expression><![CDATA[$F{categoryName}]]></expression>
+			</element>
+			<element kind="textField" uuid="cd02c817-b1b4-480a-b75a-70e09ada4bb9" x="350" y="10" width="50" height="30" hTextAlign="Center" vTextAlign="Middle">
+				<expression><![CDATA[$F{quantitySold}]]></expression>
+			</element>
+			<element kind="textField" uuid="f42f0326-2a45-469c-bb98-73fcbc6bee39" x="400" y="10" width="74" height="30" hTextAlign="Center" vTextAlign="Middle">
+				<expression><![CDATA[$F{pricePerUnit}]]></expression>
+			</element>
+			<element kind="textField" uuid="215ac726-fd3d-4d44-a1e8-67fc8ad369f3" x="475" y="10" width="78" height="30" hTextAlign="Center" vTextAlign="Middle">
+				<expression><![CDATA[$F{totalSales}]]></expression>
+			</element>
+		</band>
+	</detail>
+</jasperReport>

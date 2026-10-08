@@ -24,7 +24,7 @@ import io.swagger.v3.oas.annotations.tags.Tag;
 import lombok.RequiredArgsConstructor;
 
 @RestController
-@RequestMapping("/api/variations")
+@RequestMapping("/api/backoffice/variations")
 @RequiredArgsConstructor
 @Tag(name = "Variation Management", description = "Back-Office APIs for managing product variation types (e.g. Color, Size)")
 public class VariationController {

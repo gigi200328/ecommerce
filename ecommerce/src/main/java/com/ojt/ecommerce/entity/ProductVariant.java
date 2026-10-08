@@ -36,6 +36,7 @@ import lombok.Setter;
 @NoArgsConstructor
 @AllArgsConstructor
 @Builder
+@JsonIgnoreProperties({"hibernateLazyInitializer", "handler"})
 @Schema(description = "Product Variant Entity representing a specific sellable variant of a product")
 public class ProductVariant {
 
@@ -45,9 +46,9 @@ public class ProductVariant {
     @Schema(description = "Primary Key (Auto Increment)", example = "1")
     private Long variantId;
 
-    @ManyToOne(fetch = FetchType.LAZY, optional = false)
+    @ManyToOne(fetch = FetchType.EAGER, optional = false)
     @JoinColumn(name = "product_id", referencedColumnName = "product_id", nullable = false, foreignKey = @ForeignKey(name = "fk_variant_product"))
-    @JsonIgnoreProperties({"hibernateLazyInitializer", "handler", "createdBy", "modifiedBy"})
+    @JsonIgnoreProperties({"hibernateLazyInitializer", "handler", "createdBy", "modifiedBy", "category", "brand", "variants"})
     @Schema(description = "Associated Product")
     private Product product;
 

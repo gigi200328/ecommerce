@@ -1,18 +1,5 @@
+
 package com.ojt.ecommerce.backofficeinventory.service;
-
-import java.io.IOException;
-import java.nio.file.Files;
-import java.nio.file.Path;
-import java.nio.file.Paths;
-import java.nio.file.StandardCopyOption;
-import java.time.LocalDateTime;
-import java.util.List;
-import java.util.UUID;
-
-import org.springframework.beans.factory.annotation.Value;
-import org.springframework.stereotype.Service;
-import org.springframework.transaction.annotation.Transactional;
-import org.springframework.web.multipart.MultipartFile;
 
 import com.ojt.ecommerce.backofficeinventory.dto.ProductImageRequestDto;
 import com.ojt.ecommerce.backofficeinventory.dto.ProductImageResponseDto;
@@ -23,218 +10,176 @@ import com.ojt.ecommerce.backofficeinventory.repository.UserRepository;
 import com.ojt.ecommerce.entity.Product;
 import com.ojt.ecommerce.entity.ProductImage;
 import com.ojt.ecommerce.entity.User;
+import com.ojt.ecommerce.enums.UploadType;
 
+import jakarta.persistence.EntityNotFoundException;
 import lombok.RequiredArgsConstructor;
+import org.springframework.stereotype.Service;
+import org.springframework.transaction.annotation.Transactional;
+import org.springframework.transaction.support.TransactionSynchronization;
+import org.springframework.transaction.support.TransactionSynchronizationManager;
+
+import java.time.LocalDateTime;
+import java.util.List;
 
 @Service
 @RequiredArgsConstructor
 public class ProductImageService {
 
-    private final ProductImageRepository productImageRepository;
-    private final ProductRepository productRepository;
-    private final UserRepository userRepository;
-    private final ProductImageMapper productImageMapper;
+	private final ProductImageRepository productImageRepository;
+	private final ProductRepository productRepository;
+	private final UserRepository userRepository;
+	private final ProductImageMapper productImageMapper;
+	private final FileStorageService fileStorageService;
 
-    @Value("${file.upload-dir}")
-    private String uploadDir;
+	/**
+	 * Upload an image for a product.
+	 *
+	 * If isPrimary = true: - Existing primary image(s) will be changed to false. -
+	 * Newly uploaded image will become the primary image.
+	 */
+	@Transactional
+	public ProductImageResponseDto uploadProductImage(ProductImageRequestDto request) {
 
-    @Transactional
-    public ProductImageResponseDto uploadProductImage(
-            ProductImageRequestDto request) {
+		Product product = productRepository.findById(request.getProductId())
+				.orElseThrow(() -> new EntityNotFoundException("Product not found: " + request.getProductId()));
 
-        // 1. Check Product exists
-        Product product = productRepository.findById(request.getProductId())
-                .orElseThrow(() ->
-                        new RuntimeException(
-                                "Product not found with id: "
-                                        + request.getProductId()));
+		User user = userRepository.findById(request.getUserId())
+				.orElseThrow(() -> new EntityNotFoundException("User not found: " + request.getUserId()));
 
-        // 2. Check User exists
-        // User.userId is Long, so no intValue() is needed.
-        User user = userRepository.findById(request.getUserId())
-                .orElseThrow(() ->
-                        new RuntimeException(
-                                "User not found with id: "
-                                        + request.getUserId()));
+		String imageUrl = fileStorageService.store(request.getFile(), UploadType.PRODUCT_IMAGE);
 
-        MultipartFile file = request.getFile();
+		/*
+		 * Remove newly uploaded file if the transaction fails.
+		 */
+		TransactionSynchronizationManager.registerSynchronization(new TransactionSynchronization() {
 
-        // 3. Validate image file
-        validateImageFile(file);
+			@Override
+			public void afterCompletion(int status) {
+				if (status != STATUS_COMMITTED) {
+					try {
+						fileStorageService.delete(imageUrl, UploadType.PRODUCT_IMAGE);
+					} catch (RuntimeException ex) {
+						System.err.println("Image cleanup failed: " + ex.getMessage());
+					}
+				}
+			}
+		});
 
-        Path targetLocation = null;
+		LocalDateTime now = LocalDateTime.now();
 
-        try {
+		boolean isPrimary = Boolean.TRUE.equals(request.getIsPrimary());
 
-            // 4. Create upload directory if it does not exist
-            Path uploadPath = Paths
-                    .get(uploadDir)
-                    .toAbsolutePath()
-                    .normalize();
+		/*
+		 * If the new image should be primary, remove primary status from existing
+		 * primary images.
+		 */
+		if (isPrimary) {
+			unsetExistingPrimaryImages(product.getProductId(), user, now);
+		}
 
-            Files.createDirectories(uploadPath);
+		ProductImage productImage = ProductImage.builder().product(product).imageUrl(imageUrl).isPrimary(isPrimary)
+				.createdBy(user).createdAt(now).modifiedBy(user).modifiedAt(now).build();
 
-            // 5. Generate unique filename
-            String originalFilename = file.getOriginalFilename();
+		ProductImage saved = productImageRepository.save(productImage);
 
-            String fileExtension = "";
+		return productImageMapper.toResponseDto(saved);
+	}
 
-            if (originalFilename != null) {
+	/**
+	 * Get all images for a product.
+	 */
+	@Transactional(readOnly = true)
+	public List<ProductImageResponseDto> getImagesByProductId(Long productId) {
 
-                int lastDot = originalFilename.lastIndexOf(".");
+		return productImageRepository.findByProductProductId(productId).stream().map(productImageMapper::toResponseDto)
+				.toList();
+	}
 
-                if (lastDot > 0) {
-                    fileExtension = originalFilename
-                            .substring(lastDot)
-                            .toLowerCase();
-                }
-            }
+	/**
+	 * Set an existing product image as the primary image.
+	 *
+	 * The current primary image will automatically become non-primary.
+	 */
+	@Transactional
+	public ProductImageResponseDto setPrimaryImage(Long imageId, Long userId) {
 
-            String newFilename =
-                    UUID.randomUUID() + fileExtension;
+		ProductImage image = productImageRepository.findById(imageId)
+				.orElseThrow(() -> new EntityNotFoundException("Product image not found: " + imageId));
 
-            // 6. Save file to local filesystem
-            targetLocation = uploadPath.resolve(newFilename);
+		User user = userRepository.findById(userId)
+				.orElseThrow(() -> new EntityNotFoundException("User not found: " + userId));
 
-            Files.copy(
-                    file.getInputStream(),
-                    targetLocation,
-                    StandardCopyOption.REPLACE_EXISTING
-            );
+		LocalDateTime now = LocalDateTime.now();
 
-            // 7. Store relative URL in database
-            String imageUrl =
-                    "/uploads/product-images/" + newFilename;
+		Long productId = image.getProduct().getProductId();
 
-            // 8. Create ProductImage entity
-            ProductImage productImage = ProductImage.builder()
-                    .product(product)
-                    .imageUrl(imageUrl)
-                    .isPrimary(
-                            request.getIsPrimary() != null
-                                    ? request.getIsPrimary()
-                                    : false
-                    )
-                    .createdBy(user)
-                    .createdAt(LocalDateTime.now())
-                    .modifiedBy(user)
-                    .modifiedAt(LocalDateTime.now())
-                    .build();
+		/*
+		 * Remove primary status from existing primary images.
+		 */
+		unsetExistingPrimaryImages(productId, user, now);
 
-            // 9. Save database record
-            ProductImage savedImage =
-                    productImageRepository.save(productImage);
+		/*
+		 * Set selected image as primary.
+		 */
+		image.setIsPrimary(true);
+		image.setModifiedBy(user);
+		image.setModifiedAt(now);
 
-            // 10. Return response
-            return productImageMapper.toResponseDto(savedImage);
+		ProductImage saved = productImageRepository.save(image);
 
-        } catch (Exception ex) {
+		return productImageMapper.toResponseDto(saved);
+	}
 
-            /*
-             * If file was already saved but DB save failed,
-             * delete the file to avoid orphan files.
-             */
-            if (targetLocation != null) {
+	/**
+	 * Remove primary status from all existing primary images belonging to the given
+	 * product.
+	 */
+	private void unsetExistingPrimaryImages(Long productId, User user, LocalDateTime now) {
 
-                try {
-                    Files.deleteIfExists(targetLocation);
+		List<ProductImage> existingPrimaryImages = productImageRepository
+				.findByProductProductIdAndIsPrimaryTrue(productId);
 
-                } catch (IOException cleanupException) {
+		if (existingPrimaryImages.isEmpty()) {
+			return;
+		}
 
-                    System.err.println(
-                            "Could not cleanup uploaded file: "
-                                    + cleanupException.getMessage());
-                }
-            }
+		for (ProductImage existingImage : existingPrimaryImages) {
 
-            throw new RuntimeException(
-                    "Could not store image "
-                            + file.getOriginalFilename()
-                            + ". Please try again!",
-                    ex
-            );
-        }
-    }
+			existingImage.setIsPrimary(false);
+			existingImage.setModifiedBy(user);
+			existingImage.setModifiedAt(now);
+		}
 
-    /**
-     * Validate uploaded image file
-     */
-    private void validateImageFile(MultipartFile file) {
+		productImageRepository.saveAll(existingPrimaryImages);
+	}
 
-        if (file == null || file.isEmpty()) {
-            throw new IllegalArgumentException(
-                    "Image file is required");
-        }
+	/**
+	 * Delete a product image.
+	 */
+	@Transactional
+	public void deleteProductImage(Long imageId) {
 
-        String contentType = file.getContentType();
+		ProductImage image = productImageRepository.findById(imageId)
+				.orElseThrow(() -> new EntityNotFoundException("Product image not found: " + imageId));
 
-        if (contentType == null
-                || !contentType.startsWith("image/")) {
+		String imageUrl = image.getImageUrl();
 
-            throw new IllegalArgumentException(
-                    "Only image files are allowed");
-        }
-    }
+		productImageRepository.delete(image);
 
-    /**
-     * Get all images belonging to a product
-     */
-    @Transactional(readOnly = true)
-    public List<ProductImageResponseDto> getImagesByProductId(
-            Long productId) {
+		/*
+		 * Delete the physical file only after DB commit.
+		 */
+		TransactionSynchronizationManager.registerSynchronization(new TransactionSynchronization() {
 
-        List<ProductImage> images =
-                productImageRepository
-                        .findByProductProductId(productId);
-
-        return images.stream()
-                .map(productImageMapper::toResponseDto)
-                .toList();
-    }
-
-    /**
-     * Delete image from Local Filesystem and Database
-     */
-    @Transactional
-    public void deleteProductImage(Long imageId) {
-
-        ProductImage productImage =
-                productImageRepository.findById(imageId)
-                        .orElseThrow(() ->
-                                new RuntimeException(
-                                        "Product image not found with id: "
-                                                + imageId));
-
-        try {
-
-            // 1. Get filename from image URL
-            String imageUrl = productImage.getImageUrl();
-
-            String filename =
-                    imageUrl.substring(
-                            imageUrl.lastIndexOf("/") + 1
-                    );
-
-            // 2. Build local file path
-            Path filePath = Paths
-                    .get(uploadDir)
-                    .resolve(filename)
-                    .toAbsolutePath()
-                    .normalize();
-
-            // 3. Delete physical file
-            Files.deleteIfExists(filePath);
-
-        } catch (IOException ex) {
-
-            throw new RuntimeException(
-                    "Could not delete image file",
-                    ex
-            );
-        }
-
-        // 4. Delete database record
-        productImageRepository.delete(productImage);
-    }
+			@Override
+			public void afterCommit() {
+				try {
+					fileStorageService.delete(imageUrl, UploadType.PRODUCT_IMAGE);
+				} catch (RuntimeException ex) {
+					System.err.println("Image deletion failed: " + ex.getMessage());
+				}
+			}
+		});
+	}
 }
-
