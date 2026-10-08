@@ -3,6 +3,8 @@ package com.ojt.ecommerce.entity;
 import java.time.LocalDateTime;
 import java.util.List;
 
+import com.fasterxml.jackson.annotation.JsonIgnore;
+import com.fasterxml.jackson.annotation.JsonIgnoreProperties;
 import com.ojt.ecommerce.enums.ProductStatus;
 
 import jakarta.persistence.Column;
@@ -40,6 +42,7 @@ import lombok.Setter;
 @NoArgsConstructor
 @AllArgsConstructor
 @Builder
+@JsonIgnoreProperties({"hibernateLazyInitializer", "handler"})
 public class Product {
 
     @Id
@@ -80,6 +83,7 @@ public class Product {
     private ProductStatus status;
 
     
+    @JsonIgnore
     @OneToMany(
         mappedBy = "product",
         fetch = FetchType.LAZY

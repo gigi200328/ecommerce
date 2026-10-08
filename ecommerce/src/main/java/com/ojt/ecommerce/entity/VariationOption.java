@@ -26,6 +26,7 @@ import lombok.Setter;
 @NoArgsConstructor
 @AllArgsConstructor
 @Builder
+@JsonIgnoreProperties({"hibernateLazyInitializer", "handler"})
 @Schema(description = "Variation Option Entity (e.g. Red, Blue, XL)")
 public class VariationOption {
 
@@ -35,7 +36,7 @@ public class VariationOption {
     @Schema(description = "Primary Key (Auto Increment)", example = "1")
     private Long optionId;
 
-    @ManyToOne(fetch = FetchType.LAZY, optional = false)
+    @ManyToOne(fetch = FetchType.EAGER, optional = false)
     @JoinColumn(name = "variation_id", referencedColumnName = "variation_id", nullable = false, foreignKey = @ForeignKey(name = "fk_option_variation"))
     @JsonIgnoreProperties({"hibernateLazyInitializer", "handler"})
     @Schema(description = "Associated Variation")

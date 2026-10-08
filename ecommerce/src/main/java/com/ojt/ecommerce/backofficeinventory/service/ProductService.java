@@ -20,11 +20,13 @@ import com.ojt.ecommerce.backofficeinventory.repository.CategoryRepository;
 import com.ojt.ecommerce.backofficeinventory.repository.ProductImageRepository;
 import com.ojt.ecommerce.backofficeinventory.repository.ProductRepository;
 import com.ojt.ecommerce.backofficeinventory.repository.UserRepository;
+import com.ojt.ecommerce.backofficeinventory.repository.ProductVariantRepository;
 import com.ojt.ecommerce.backofficeinventory.specification.ProductSpecification;
 import com.ojt.ecommerce.entity.Brand;
 import com.ojt.ecommerce.entity.Category;
 import com.ojt.ecommerce.entity.Product;
 import com.ojt.ecommerce.entity.ProductImage;
+import com.ojt.ecommerce.entity.ProductVariant;
 import com.ojt.ecommerce.entity.User;
 import com.ojt.ecommerce.enums.ProductStatus;
 
@@ -47,6 +49,8 @@ public class ProductService {
     private final ProductMapper productMapper;
 
     private final ProductImageRepository productImageRepository;
+
+    private final ProductVariantRepository productVariantRepository;
 
 
     // =========================================================
@@ -136,6 +140,9 @@ public class ProductService {
         Map<Long, String> imageMap =
                 new HashMap<>();
 
+        Map<Long, ProductVariant> variantMap =
+                new HashMap<>();
+
         if (!productIds.isEmpty()) {
 
             List<ProductImage> images =
@@ -161,16 +168,38 @@ public class ProductService {
                     );
                 }
             }
+
+            List<ProductVariant> variants =
+                    productVariantRepository
+                            .findByProduct_ProductIdIn(
+                                    productIds
+                            );
+
+            for (ProductVariant v : variants) {
+                if (v.getProduct() != null && !variantMap.containsKey(v.getProduct().getProductId())) {
+                    variantMap.put(
+                            v.getProduct().getProductId(),
+                            v
+                    );
+                }
+            }
         }
 
         return productPage.map(
-                p ->
-                        productMapper.toResponseDto(
-                                p,
-                                imageMap.get(
-                                        p.getProductId()
-                                )
-                        )
+                p -> {
+                    ProductVariant v = variantMap.get(p.getProductId());
+                    String sku = v != null ? v.getSku() : null;
+                    BigDecimal price = v != null ? v.getSellingPrice() : null;
+                    return productMapper.toResponseDto(
+                            p,
+                            imageMap.get(
+                                    p.getProductId()
+                            ),
+                            sku,
+                            price,
+                            0
+                    );
+                }
         );
     }
 
@@ -216,9 +245,19 @@ public class ProductService {
                         .map(ProductImage::getImageUrl)
                         .orElse(null);
 
+        List<ProductVariant> variants =
+                productVariantRepository.findByProduct_ProductId(id);
+        ProductVariant firstVariant =
+                variants.isEmpty() ? null : variants.get(0);
+        String sku = firstVariant != null ? firstVariant.getSku() : null;
+        BigDecimal price = firstVariant != null ? firstVariant.getSellingPrice() : null;
+
         return productMapper.toResponseDto(
                 product,
-                imageUrl
+                imageUrl,
+                sku,
+                price,
+                0
         );
     }
 
