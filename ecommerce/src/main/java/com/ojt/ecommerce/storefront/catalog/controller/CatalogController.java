@@ -53,6 +53,19 @@ public class CatalogController {
         return ResponseEntity.ok(catalogService.getBestSellers(page, size));
     }
 
+    @GetMapping("/products/trending")
+    public ResponseEntity<PageResponse<ProductListResponse>> getTrendingProducts(
+            @RequestParam(defaultValue = "0") int page,
+            @RequestParam(defaultValue = "4") int size) {
+        return ResponseEntity.ok(catalogService.getTrendingProducts(page, size));
+    }
+
+    @GetMapping("/products/suggestions")
+    public ResponseEntity<List<ProductListResponse>> getTrendingSuggestions(
+            @RequestParam String prefix) {
+        return ResponseEntity.ok(catalogService.getTrendingSuggestions(prefix));
+    }
+
     @GetMapping("/products/{productId}")
     public ResponseEntity<ProductDetailResponse> getProductDetail(@PathVariable Long productId) {
         return ResponseEntity.ok(catalogService.getProductDetail(productId));

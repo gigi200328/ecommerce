@@ -30,6 +30,8 @@ public class CatalogServiceImpl implements CatalogService {
     private final G5InventoryRepository inventoryRepository;
     private final G5VariantOptionValueRepository variantOptionValueRepository;
     private final G5ProductTagRepository productTagRepository;
+    private final com.ojt.ecommerce.storefront.searchhistory.service.SearchHistoryService searchHistoryService;
+    private final com.ojt.ecommerce.storefront.searchhistory.repository.SearchKeywordStatsRepository searchKeywordStatsRepository;
 
     @Override
     @Transactional(readOnly = true)
@@ -130,9 +132,104 @@ public class CatalogServiceImpl implements CatalogService {
 
     @Override
     @Transactional(readOnly = true)
+    public PageResponse<ProductListResponse> getTrendingProducts(int page, int size) {
+        List<com.ojt.ecommerce.storefront.searchhistory.dto.PopularSearchResponse> popularSearches = searchHistoryService.getPopularSearches();
+        
+        List<String> keywords = popularSearches.stream()
+                .map(com.ojt.ecommerce.storefront.searchhistory.dto.PopularSearchResponse::getKeyword)
+                .collect(Collectors.toList());
+                
+        if (keywords.isEmpty()) {
+            return PageResponse.<ProductListResponse>builder()
+                    .content(Collections.emptyList())
+                    .number(page)
+                    .size(size)
+                    .totalElements(0)
+                    .totalPages(0)
+                    .last(true)
+                    .empty(true)
+                    .build();
+        }
+        
+        Pageable pageable = PageRequest.of(page, size);
+        Page<Product> productPage = productRepository.findAll(G5ProductSpecification.trendingProducts(keywords), pageable);
+        return mapToProductListPageResponse(productPage);
+    }
+
+    @Override
+    @Transactional(readOnly = true)
     public PageResponse<ProductListResponse> getBestSellers(int page, int size) {
         Page<Product> productPage = productRepository.findBestSellers(PageRequest.of(page, size));
         return mapToProductListPageResponse(productPage);
+    }
+    
+    @Override
+    @Transactional(readOnly = true)
+    public List<ProductListResponse> getTrendingSuggestions(String prefix) {
+        if (prefix == null || prefix.trim().isEmpty()) {
+            return Collections.emptyList();
+        }
+        String normalizedPrefix = prefix.trim().toLowerCase(Locale.ROOT);
+        
+        // 1. Candidate query (cap at 20)
+        Pageable candidatePage = PageRequest.of(0, 20);
+        Page<Product> productPage = productRepository.findAll(G5ProductSpecification.prefixSuggestions(normalizedPrefix), candidatePage);
+        List<Product> candidates = productPage.getContent();
+        
+        if (candidates.isEmpty()) {
+            return Collections.emptyList();
+        }
+        
+        // 2. Global stats query for ranking
+        List<SearchKeywordStats> statsList = searchKeywordStatsRepository.findByKeywordStartingWith(normalizedPrefix);
+        Map<String, Long> statMap = statsList.stream()
+                .collect(Collectors.toMap(SearchKeywordStats::getKeyword, SearchKeywordStats::getTotalSearchCount, (a, b) -> a));
+                
+        // 3. Rank candidates
+        Map<Long, Long> productScores = new HashMap<>();
+        for (Product product : candidates) {
+            long score = 0;
+            String pName = product.getProductName().toLowerCase(Locale.ROOT);
+            for (Map.Entry<String, Long> entry : statMap.entrySet()) {
+                String keyword = entry.getKey();
+                if (pName.contains(keyword)) {
+                    score += entry.getValue();
+                    continue; // matched product name, don't double count for this keyword
+                }
+                boolean skuMatch = false;
+                if (product.getVariants() != null) {
+                    for (ProductVariant pv : product.getVariants()) {
+                        if (pv.getSku() != null && pv.getSku().toLowerCase(Locale.ROOT).contains(keyword)) {
+                            skuMatch = true;
+                            break;
+                        }
+                    }
+                }
+                if (skuMatch) {
+                    score += entry.getValue();
+                }
+            }
+            productScores.put(product.getProductId(), score);
+        }
+        
+        // Sort candidates
+        List<Product> sortedCandidates = new ArrayList<>(candidates);
+        sortedCandidates.sort((p1, p2) -> {
+            long score1 = productScores.getOrDefault(p1.getProductId(), 0L);
+            long score2 = productScores.getOrDefault(p2.getProductId(), 0L);
+            if (score1 != score2) {
+                return Long.compare(score2, score1); // descending
+            }
+            return p1.getProductId().compareTo(p2.getProductId()); // tie-breaker
+        });
+        
+        // Top 5 suggestions
+        int limit = Math.min(5, sortedCandidates.size());
+        List<Product> topN = sortedCandidates.subList(0, limit);
+        
+        // Map to Response using existing batch mapping helper
+        Page<Product> fakePage = new org.springframework.data.domain.PageImpl<>(topN);
+        return mapToProductListPageResponse(fakePage).getContent();
     }
     
     @Override

@@ -90,4 +90,56 @@ public class G5ProductSpecification {
             return p;
         };
     }
+
+    public static Specification<Product> trendingProducts(List<String> keywords) {
+        return (root, query, cb) -> {
+            Predicate p = cb.equal(root.get("status"), "ACTIVE");
+            query.distinct(true);
+
+            if (keywords != null && !keywords.isEmpty()) {
+                Predicate[] orPredicates = new Predicate[keywords.size()];
+                for (int i = 0; i < keywords.size(); i++) {
+                    String likeSearch = "%" + keywords.get(i).toLowerCase() + "%";
+                    Predicate nameMatch = cb.like(cb.lower(root.get("productName")), likeSearch);
+
+                    Subquery<Long> variantSub = query.subquery(Long.class);
+                    Root<ProductVariant> vRoot = variantSub.from(ProductVariant.class);
+                    variantSub.select(vRoot.get("product").get("productId"));
+                    variantSub.where(cb.like(cb.lower(vRoot.get("sku")), likeSearch));
+
+                    Predicate skuMatch = cb.in(root.get("productId")).value(variantSub);
+                    orPredicates[i] = cb.or(nameMatch, skuMatch);
+                }
+                p = cb.and(p, cb.or(orPredicates));
+            } else {
+                p = cb.disjunction(); // returns 0=1 basically, empty result
+            }
+
+            return p;
+        };
+    }
+
+    public static Specification<Product> prefixSuggestions(String prefix) {
+        return (root, query, cb) -> {
+            Predicate p = cb.equal(root.get("status"), "ACTIVE");
+            query.distinct(true);
+
+            if (prefix != null && !prefix.trim().isEmpty()) {
+                String likeSearch = prefix.toLowerCase() + "%";
+                Predicate nameMatch = cb.like(cb.lower(root.get("productName")), likeSearch);
+
+                Subquery<Long> variantSub = query.subquery(Long.class);
+                Root<ProductVariant> vRoot = variantSub.from(ProductVariant.class);
+                variantSub.select(vRoot.get("product").get("productId"));
+                variantSub.where(cb.like(cb.lower(vRoot.get("sku")), likeSearch));
+
+                Predicate skuMatch = cb.in(root.get("productId")).value(variantSub);
+                p = cb.and(p, cb.or(nameMatch, skuMatch));
+            } else {
+                p = cb.disjunction();
+            }
+
+            return p;
+        };
+    }
 }
