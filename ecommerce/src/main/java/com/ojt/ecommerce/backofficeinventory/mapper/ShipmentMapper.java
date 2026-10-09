@@ -14,4 +14,10 @@ public class ShipmentMapper {
 		return Shipment.builder().order(order).courierName(dto.getCourierName()).trackingNumber(dto.getTrackingNumber())
 				.shipmentStatus("SHIPPED").shippedAt(LocalDateTime.now()).createdAt(LocalDateTime.now()).build();
 	}
+
+	public void updateEntity(Shipment existingShipment, ShipmentRequestDto dto) {
+		existingShipment.setCourierName((dto.getCourierName()));
+		existingShipment.setTrackingNumber(dto.getTrackingNumber());
+		existingShipment.setShippedAt(LocalDateTime.now());
+	}
 }

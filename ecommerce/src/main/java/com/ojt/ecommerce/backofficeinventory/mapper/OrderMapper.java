@@ -12,10 +12,12 @@ import com.ojt.ecommerce.backofficeinventory.dto.OrderItemDto;
 import com.ojt.ecommerce.backofficeinventory.dto.OrderResponseDto;
 import com.ojt.ecommerce.backofficeinventory.dto.OrderStatusHistoryDto;
 import com.ojt.ecommerce.backofficeinventory.dto.PaginatedResponseDto;
+import com.ojt.ecommerce.backofficeinventory.dto.ShipmentResponseDto;
 import com.ojt.ecommerce.entity.Order;
 import com.ojt.ecommerce.entity.OrderAddress;
 import com.ojt.ecommerce.entity.OrderItem;
 import com.ojt.ecommerce.entity.OrderStatusHistory;
+import com.ojt.ecommerce.entity.Shipment;
 
 @Component
 public class OrderMapper {
@@ -34,7 +36,7 @@ public class OrderMapper {
 				.statusHistories(order.getStatusHistories() != null
 						? order.getStatusHistories().stream().map(this::toHistoryDto).collect(Collectors.toList())
 						: Collections.emptyList())
-				.build();
+				.shipment(order.getShipment() != null ? toShipmentDto(order.getShipment()) : null).build();
 	}
 
 	private OrderAddressDto toAddressDto(OrderAddress address) {
@@ -71,6 +73,15 @@ public class OrderMapper {
 		return PaginatedResponseDto.<OrderResponseDto>builder().content(content).pageNo(orderPage.getNumber())
 				.pageSize(orderPage.getSize()).totalElements(orderPage.getTotalElements())
 				.totalPages(orderPage.getTotalPages()).last(orderPage.isLast()).build();
+	}
+
+	private ShipmentResponseDto toShipmentDto(Shipment shipment) {
+		if (shipment == null)
+			return null;
+		return ShipmentResponseDto.builder()
+				// Enum ဖြစ်နေလျှင် .name() ဖြင့် String ပြောင်းပေးရန်လိုပါသည်
+				.courierName(shipment.getCourierName() != null ? shipment.getCourierName().name() : null)
+				.trackingNumber(shipment.getTrackingNumber()).shippedAt(shipment.getShippedAt()).build();
 	}
 
 }
