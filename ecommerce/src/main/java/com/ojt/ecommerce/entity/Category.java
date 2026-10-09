@@ -1,4 +1,3 @@
-
 package com.ojt.ecommerce.entity;
 
 import java.time.LocalDateTime;
@@ -57,6 +56,14 @@ public class Category {
     )
     private Category parent;
 
+    // Subcategories (Children) Relationship ထည့်သွင်းပေးထားပါသည်
+    @OneToMany(
+        mappedBy = "parent",
+        fetch = FetchType.LAZY
+    )
+    @Builder.Default
+    private Set<Category> children = new HashSet<>();
+
     @Column(
         name = "category_name",
         nullable = false,
@@ -110,4 +117,3 @@ public class Category {
     @Builder.Default
     private Set<BrandCategory> brandCategories = new HashSet<>();
 }
-

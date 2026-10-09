@@ -81,7 +81,7 @@ public class Brand {
 
     @OneToMany(
         mappedBy = "brand",
-        fetch = FetchType.LAZY
+        fetch = FetchType.EAGER
     )
     @Builder.Default
     private Set<BrandCategory> brandCategories = new HashSet<>();
