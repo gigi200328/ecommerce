@@ -125,7 +125,7 @@ public class G5ProductSpecification {
             query.distinct(true);
 
             if (prefix != null && !prefix.trim().isEmpty()) {
-                String likeSearch = prefix.toLowerCase() + "%";
+                String likeSearch = "%" + prefix.toLowerCase() + "%";
                 Predicate nameMatch = cb.like(cb.lower(root.get("productName")), likeSearch);
 
                 Subquery<Long> variantSub = query.subquery(Long.class);

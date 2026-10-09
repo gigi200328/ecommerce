@@ -181,7 +181,7 @@ public class CatalogServiceImpl implements CatalogService {
         }
         
         // 2. Global stats query for ranking
-        List<SearchKeywordStats> statsList = searchKeywordStatsRepository.findByKeywordStartingWith(normalizedPrefix);
+        List<SearchKeywordStats> statsList = searchKeywordStatsRepository.findAll();
         Map<String, Long> statMap = statsList.stream()
                 .collect(Collectors.toMap(SearchKeywordStats::getKeyword, SearchKeywordStats::getTotalSearchCount, (a, b) -> a));
                 
