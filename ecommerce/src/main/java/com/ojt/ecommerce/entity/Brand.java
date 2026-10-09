@@ -1,6 +1,9 @@
+
 package com.ojt.ecommerce.entity;
 
 import java.time.LocalDateTime;
+import java.util.HashSet;
+import java.util.Set;
 
 import com.ojt.ecommerce.enums.BrandStatus;
 
@@ -14,6 +17,7 @@ import jakarta.persistence.GeneratedValue;
 import jakarta.persistence.GenerationType;
 import jakarta.persistence.Id;
 import jakarta.persistence.JoinColumn;
+import jakarta.persistence.OneToMany;
 import jakarta.persistence.ManyToOne;
 import jakarta.persistence.Table;
 import lombok.AllArgsConstructor;
@@ -46,14 +50,17 @@ public class Brand {
     private String description;
 
     @Enumerated(EnumType.STRING)
-    @Column(name = "status", nullable = false, columnDefinition = "ENUM('ACTIVE', 'INACTIVE')")
+    @Column(
+        name = "status",
+        nullable = false,
+        columnDefinition = "ENUM('ACTIVE', 'INACTIVE')"
+    )
     private BrandStatus status;
-    
+
     @ManyToOne(fetch = FetchType.LAZY)
     @JoinColumn(
         name = "created_by",
         referencedColumnName = "user_id",
-        
         foreignKey = @ForeignKey(name = "fk_brands_created_by")
     )
     private User createdBy;
@@ -61,10 +68,21 @@ public class Brand {
     @Column(name = "created_at", nullable = false)
     private LocalDateTime createdAt;
 
+    @ManyToOne(fetch = FetchType.LAZY)
+    @JoinColumn(
+        name = "modified_by",
+        referencedColumnName = "user_id",
+        foreignKey = @ForeignKey(name = "fk_brands_modified_by")
+    )
+    private User modifiedBy;
+
     @Column(name = "modified_at")
     private LocalDateTime modifiedAt;
-    
-    @ManyToOne(fetch = FetchType.LAZY)
-    @JoinColumn(name = "modified_by", referencedColumnName = "user_id")
-    private User modifiedBy;
+
+    @OneToMany(
+        mappedBy = "brand",
+        fetch = FetchType.LAZY
+    )
+    @Builder.Default
+    private Set<BrandCategory> brandCategories = new HashSet<>();
 }

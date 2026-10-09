@@ -14,6 +14,7 @@ import org.springframework.transaction.annotation.Transactional;
 import com.ojt.ecommerce.backofficeinventory.dto.CategoryRequestDto;
 import com.ojt.ecommerce.backofficeinventory.dto.CategoryResponseDto;
 import com.ojt.ecommerce.backofficeinventory.mapper.CategoryMapper;
+import com.ojt.ecommerce.backofficeinventory.repository.BrandCategoryRepository;
 import com.ojt.ecommerce.backofficeinventory.repository.CategoryRepository;
 import com.ojt.ecommerce.backofficeinventory.repository.UserRepository;
 import com.ojt.ecommerce.entity.Category;
@@ -27,6 +28,7 @@ import lombok.RequiredArgsConstructor;
 public class CategoryService {
 
     private final CategoryRepository categoryRepository;
+    private final BrandCategoryRepository brandCategoryRepository;
     private final UserRepository userRepository;
     private final CategoryMapper categoryMapper;
 
@@ -38,7 +40,6 @@ public class CategoryService {
     public CategoryResponseDto createCategory(
             CategoryRequestDto request) {
 
-        // Get currently logged-in user
         User currentUser = getCurrentUser();
 
         Category parent = null;
@@ -60,13 +61,10 @@ public class CategoryService {
                 .categoryName(request.getCategoryName())
                 .description(request.getDescription())
                 .parent(parent)
-
-                // Audit fields
                 .createdBy(currentUser)
                 .createdAt(now)
                 .modifiedBy(currentUser)
                 .modifiedAt(now)
-
                 .build();
 
         Category savedCategory =
@@ -134,7 +132,6 @@ public class CategoryService {
                                         "Category not found: " + id
                                 ));
 
-        // Get currently logged-in user
         User currentUser = getCurrentUser();
 
         // -----------------------------------------------------
@@ -143,7 +140,6 @@ public class CategoryService {
 
         if (request.getParentId() != null) {
 
-            // Cannot select itself as parent
             if (request.getParentId().equals(id)) {
 
                 throw new IllegalArgumentException(
@@ -160,7 +156,6 @@ public class CategoryService {
                                                     + request.getParentId()
                                     ));
 
-            // Cannot select child/grandchild as parent
             if (isDescendant(category, parent)) {
 
                 throw new IllegalArgumentException(
@@ -172,7 +167,6 @@ public class CategoryService {
 
         } else {
 
-            // Make it a root category
             category.setParent(null);
         }
 
@@ -188,7 +182,6 @@ public class CategoryService {
                 request.getDescription()
         );
 
-        // Audit fields
         category.setModifiedBy(currentUser);
         category.setModifiedAt(LocalDateTime.now());
 
@@ -205,14 +198,17 @@ public class CategoryService {
     @Transactional
     public void deleteCategory(Long id) {
 
-        if (!categoryRepository.existsById(id)) {
+        Category category =
+                categoryRepository.findById(id)
+                        .orElseThrow(() ->
+                                new EntityNotFoundException(
+                                        "Category not found: " + id
+                                ));
 
-            throw new EntityNotFoundException(
-                    "Category not found: " + id
-            );
-        }
-
+        // -----------------------------------------------------
         // Cannot delete category with children
+        // -----------------------------------------------------
+
         if (categoryRepository.existsByParentCategoryId(id)) {
 
             throw new IllegalArgumentException(
@@ -221,7 +217,24 @@ public class CategoryService {
             );
         }
 
-        categoryRepository.deleteById(id);
+        // -----------------------------------------------------
+        // Cannot delete category used by brands
+        // -----------------------------------------------------
+
+        if (brandCategoryRepository
+                .existsByCategoryCategoryId(id)) {
+
+            throw new IllegalArgumentException(
+                    "Cannot delete category because it is "
+                            + "associated with one or more brands."
+            );
+        }
+
+        // -----------------------------------------------------
+        // Delete category
+        // -----------------------------------------------------
+
+        categoryRepository.delete(category);
     }
 
     // =========================================================
@@ -235,10 +248,10 @@ public class CategoryService {
                         .getContext()
                         .getAuthentication();
 
-        if (authentication == null ||
-                !authentication.isAuthenticated() ||
-                authentication.getName() == null ||
-                authentication.getName().isBlank()) {
+        if (authentication == null
+                || !authentication.isAuthenticated()
+                || authentication.getName() == null
+                || authentication.getName().isBlank()) {
 
             throw new IllegalStateException(
                     "User is not authenticated"
