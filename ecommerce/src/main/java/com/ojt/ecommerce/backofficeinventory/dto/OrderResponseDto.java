@@ -26,4 +26,5 @@ public class OrderResponseDto {
 	// အော်ဒါ၏ အဆင့်ဆင့် ပြောင်းလဲခဲ့မှု သမိုင်းကြောင်းများ (Tracking)
 	private List<OrderStatusHistoryDto> statusHistories;
 	private OrderAddressDto shippingAddress;
+	private ShipmentResponseDto shipment;
 }
