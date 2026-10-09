@@ -123,8 +123,13 @@ public class OrderManagementService {
 		Order order = orderRepository.findByOrderNo(orderNo)
 				.orElseThrow(() -> new EntityNotFoundException("Order not found with orderNo: " + orderNo));
 
-		Shipment shipment = shipmentMapper.toEntity(requestDto, order);
-		shipmentRepository.save(shipment);
+		if (order.getShipment() != null) {
+			shipmentMapper.updateEntity(order.getShipment(), requestDto);
+			shipmentRepository.save(order.getShipment());
+		} else {
+			Shipment newShipment = shipmentMapper.toEntity(requestDto, order);
+			shipmentRepository.save(newShipment);
+		}
 
 		// ၃။ Order ၏ Status ကို SHIPPED အဖြစ် ပြောင်းပြီး သိမ်းမည်
 		order.setOrderStatus("SHIPPED");

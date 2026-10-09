@@ -1,4 +1,3 @@
-
 package com.ojt.ecommerce.backofficeinventory.service;
 
 import java.time.LocalDateTime;
@@ -14,6 +13,7 @@ import org.springframework.transaction.annotation.Transactional;
 import com.ojt.ecommerce.backofficeinventory.dto.CategoryRequestDto;
 import com.ojt.ecommerce.backofficeinventory.dto.CategoryResponseDto;
 import com.ojt.ecommerce.backofficeinventory.mapper.CategoryMapper;
+import com.ojt.ecommerce.backofficeinventory.repository.BrandCategoryRepository;
 import com.ojt.ecommerce.backofficeinventory.repository.CategoryRepository;
 import com.ojt.ecommerce.backofficeinventory.repository.UserRepository;
 import com.ojt.ecommerce.entity.Category;
@@ -27,18 +27,20 @@ import lombok.RequiredArgsConstructor;
 public class CategoryService {
 
     private final CategoryRepository categoryRepository;
+    private final BrandCategoryRepository brandCategoryRepository;
     private final UserRepository userRepository;
     private final CategoryMapper categoryMapper;
+
+    // Category Level ကို အများဆုံး ၃ ဆင့်အထိပဲ ခွင့်ပြုရန် Constant သတ်မှတ်ခြင်း
+    private static final int MAX_DEPTH = 3;
 
     // =========================================================
     // CREATE
     // =========================================================
 
     @Transactional
-    public CategoryResponseDto createCategory(
-            CategoryRequestDto request) {
+    public CategoryResponseDto createCategory(CategoryRequestDto request) {
 
-        // Get currently logged-in user
         User currentUser = getCurrentUser();
 
         Category parent = null;
@@ -47,11 +49,20 @@ public class CategoryService {
 
             parent = categoryRepository
                     .findById(request.getParentId())
-                    .orElseThrow(() ->
-                            new EntityNotFoundException(
-                                    "Parent Category not found: "
-                                            + request.getParentId()
-                            ));
+                    .orElseThrow(() -> new EntityNotFoundException(
+                            "Parent Category not found: " + request.getParentId()
+                    ));
+
+            // -----------------------------------------------------
+            // Category Depth Validation (၃ ဆင့်ထက် ကျော်မကျော် စစ်ဆေးခြင်း)
+            // -----------------------------------------------------
+            int parentDepth = getCategoryDepth(parent);
+            if (parentDepth >= MAX_DEPTH) {
+                throw new IllegalArgumentException(
+                        "Maximum category depth limit (" + MAX_DEPTH + " levels) reached. " +
+                        "Cannot add subcategory beyond Level " + MAX_DEPTH + "."
+                );
+            }
         }
 
         LocalDateTime now = LocalDateTime.now();
@@ -60,17 +71,13 @@ public class CategoryService {
                 .categoryName(request.getCategoryName())
                 .description(request.getDescription())
                 .parent(parent)
-
-                // Audit fields
                 .createdBy(currentUser)
                 .createdAt(now)
                 .modifiedBy(currentUser)
                 .modifiedAt(now)
-
                 .build();
 
-        Category savedCategory =
-                categoryRepository.save(category);
+        Category savedCategory = categoryRepository.save(category);
 
         return categoryMapper.toResponseDto(savedCategory);
     }
@@ -80,8 +87,7 @@ public class CategoryService {
     // =========================================================
 
     @Transactional(readOnly = true)
-    public Page<CategoryResponseDto> getAllCategories(
-            Pageable pageable) {
+    public Page<CategoryResponseDto> getAllCategories(Pageable pageable) {
 
         return categoryRepository
                 .findAll(pageable)
@@ -95,8 +101,7 @@ public class CategoryService {
     @Transactional(readOnly = true)
     public List<CategoryResponseDto> getCategoryTree() {
 
-        List<Category> allCategories =
-                categoryRepository.findAll();
+        List<Category> allCategories = categoryRepository.findAll();
 
         return categoryMapper.toTreeDtoList(allCategories);
     }
@@ -108,12 +113,10 @@ public class CategoryService {
     @Transactional(readOnly = true)
     public CategoryResponseDto getCategoryById(Long id) {
 
-        Category category =
-                categoryRepository.findById(id)
-                        .orElseThrow(() ->
-                                new EntityNotFoundException(
-                                        "Category not found: " + id
-                                ));
+        Category category = categoryRepository.findById(id)
+                .orElseThrow(() -> new EntityNotFoundException(
+                        "Category not found: " + id
+                ));
 
         return categoryMapper.toResponseDto(category);
     }
@@ -123,18 +126,13 @@ public class CategoryService {
     // =========================================================
 
     @Transactional
-    public CategoryResponseDto updateCategory(
-            Long id,
-            CategoryRequestDto request) {
+    public CategoryResponseDto updateCategory(Long id, CategoryRequestDto request) {
 
-        Category category =
-                categoryRepository.findById(id)
-                        .orElseThrow(() ->
-                                new EntityNotFoundException(
-                                        "Category not found: " + id
-                                ));
+        Category category = categoryRepository.findById(id)
+                .orElseThrow(() -> new EntityNotFoundException(
+                        "Category not found: " + id
+                ));
 
-        // Get currently logged-in user
         User currentUser = getCurrentUser();
 
         // -----------------------------------------------------
@@ -143,28 +141,33 @@ public class CategoryService {
 
         if (request.getParentId() != null) {
 
-            // Cannot select itself as parent
             if (request.getParentId().equals(id)) {
-
                 throw new IllegalArgumentException(
                         "A category cannot be its own parent."
                 );
             }
 
-            Category parent =
-                    categoryRepository
-                            .findById(request.getParentId())
-                            .orElseThrow(() ->
-                                    new EntityNotFoundException(
-                                            "Parent Category not found: "
-                                                    + request.getParentId()
-                                    ));
+            Category parent = categoryRepository
+                    .findById(request.getParentId())
+                    .orElseThrow(() -> new EntityNotFoundException(
+                            "Parent Category not found: " + request.getParentId()
+                    ));
 
-            // Cannot select child/grandchild as parent
             if (isDescendant(category, parent)) {
-
                 throw new IllegalArgumentException(
                         "Cannot set a child category as its parent."
+                );
+            }
+
+            // -----------------------------------------------------
+            // Category Depth Validation (Update အတွက်ပါ စစ်ဆေးခြင်း)
+            // -----------------------------------------------------
+            int newParentDepth = getCategoryDepth(parent);
+            int currentSubtreeDepth = getMaxSubtreeDepth(category);
+
+            if (newParentDepth + currentSubtreeDepth > MAX_DEPTH) {
+                throw new IllegalArgumentException(
+                        "Moving this category will exceed the maximum allowed depth limit of " + MAX_DEPTH + " levels."
                 );
             }
 
@@ -172,7 +175,6 @@ public class CategoryService {
 
         } else {
 
-            // Make it a root category
             category.setParent(null);
         }
 
@@ -180,20 +182,12 @@ public class CategoryService {
         // Update fields
         // -----------------------------------------------------
 
-        category.setCategoryName(
-                request.getCategoryName()
-        );
-
-        category.setDescription(
-                request.getDescription()
-        );
-
-        // Audit fields
+        category.setCategoryName(request.getCategoryName());
+        category.setDescription(request.getDescription());
         category.setModifiedBy(currentUser);
         category.setModifiedAt(LocalDateTime.now());
 
-        Category savedCategory =
-                categoryRepository.save(category);
+        Category savedCategory = categoryRepository.save(category);
 
         return categoryMapper.toResponseDto(savedCategory);
     }
@@ -205,23 +199,24 @@ public class CategoryService {
     @Transactional
     public void deleteCategory(Long id) {
 
-        if (!categoryRepository.existsById(id)) {
+        Category category = categoryRepository.findById(id)
+                .orElseThrow(() -> new EntityNotFoundException(
+                        "Category not found: " + id
+                ));
 
-            throw new EntityNotFoundException(
-                    "Category not found: " + id
-            );
-        }
-
-        // Cannot delete category with children
         if (categoryRepository.existsByParentCategoryId(id)) {
-
             throw new IllegalArgumentException(
-                    "Cannot delete category containing child "
-                            + "categories. Delete sub-categories first."
+                    "Cannot delete category containing child categories. Delete sub-categories first."
             );
         }
 
-        categoryRepository.deleteById(id);
+        if (brandCategoryRepository.existsByCategoryCategoryId(id)) {
+            throw new IllegalArgumentException(
+                    "Cannot delete category because it is associated with one or more brands."
+            );
+        }
+
+        categoryRepository.delete(category);
     }
 
     // =========================================================
@@ -230,46 +225,37 @@ public class CategoryService {
 
     private User getCurrentUser() {
 
-        Authentication authentication =
-                SecurityContextHolder
-                        .getContext()
-                        .getAuthentication();
+        Authentication authentication = SecurityContextHolder
+                .getContext()
+                .getAuthentication();
 
-        if (authentication == null ||
-                !authentication.isAuthenticated() ||
-                authentication.getName() == null ||
-                authentication.getName().isBlank()) {
+        if (authentication == null
+                || !authentication.isAuthenticated()
+                || authentication.getName() == null
+                || authentication.getName().isBlank()) {
 
-            throw new IllegalStateException(
-                    "User is not authenticated"
-            );
+            throw new IllegalStateException("User is not authenticated");
         }
 
         String email = authentication.getName();
 
         return userRepository.findByEmail(email)
-                .orElseThrow(() ->
-                        new EntityNotFoundException(
-                                "User not found: " + email
-                        ));
+                .orElseThrow(() -> new EntityNotFoundException(
+                        "User not found: " + email
+                ));
     }
 
     // =========================================================
     // CHECK CIRCULAR RELATIONSHIP
     // =========================================================
 
-    private boolean isDescendant(
-            Category currentCategory,
-            Category potentialParent) {
+    private boolean isDescendant(Category currentCategory, Category potentialParent) {
 
-        Category parent =
-                potentialParent.getParent();
+        Category parent = potentialParent.getParent();
 
         while (parent != null) {
 
-            if (parent.getCategoryId()
-                    .equals(currentCategory.getCategoryId())) {
-
+            if (parent.getCategoryId().equals(currentCategory.getCategoryId())) {
                 return true;
             }
 
@@ -278,5 +264,35 @@ public class CategoryService {
 
         return false;
     }
-}
 
+    // =========================================================
+    // HELPER METHODS FOR DEPTH CALCULATION
+    // =========================================================
+
+    /**
+     * ရွေးချယ်လိုက်သော Parent ရဲ့ လက်ရှိ Depth (အဆင့်) ကို တွက်ပေးသည် (Root = Level 1)
+     */
+    private int getCategoryDepth(Category category) {
+        int depth = 1;
+        Category current = category;
+        while (current.getParent() != null) {
+            depth++;
+            current = current.getParent();
+        }
+        return depth;
+    }
+
+    /**
+     * Update လုပ်သည့်အခါ အဆိုပါ Category ရဲ့ အောက်မှာ ရှိနေသည့် Child Subcategory များ၏ အနက်ဆုံး Depth ကို တွက်ပေးသည်
+     */
+    private int getMaxSubtreeDepth(Category category) {
+        if (category.getChildren() == null || category.getChildren().isEmpty()) {
+            return 1;
+        }
+        int maxChildDepth = 0;
+        for (Category child : category.getChildren()) {
+            maxChildDepth = Math.max(maxChildDepth, getMaxSubtreeDepth(child));
+        }
+        return 1 + maxChildDepth;
+    }
+}
