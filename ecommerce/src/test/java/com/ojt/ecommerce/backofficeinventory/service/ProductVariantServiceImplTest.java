@@ -17,8 +17,12 @@ import org.mockito.Mock;
 import org.mockito.junit.jupiter.MockitoExtension;
 import org.springframework.data.domain.Sort;
 
+import com.ojt.ecommerce.backofficeinventory.repository.InventoryRepository;
+import com.ojt.ecommerce.backofficeinventory.repository.InventoryTransactionRepository;
 import com.ojt.ecommerce.backofficeinventory.repository.ProductRepository;
 import com.ojt.ecommerce.backofficeinventory.repository.ProductVariantRepository;
+import com.ojt.ecommerce.backofficeinventory.repository.UserRepository;
+import com.ojt.ecommerce.backofficeinventory.repository.VariantOptionValueRepository;
 import com.ojt.ecommerce.backofficeinventory.repository.VariationOptionRepository;
 import com.ojt.ecommerce.entity.Product;
 import com.ojt.ecommerce.entity.ProductVariant;
@@ -36,6 +40,18 @@ public class ProductVariantServiceImplTest {
 
     @Mock
     private VariationOptionRepository variationOptionRepository;
+
+    @Mock
+    private VariantOptionValueRepository variantOptionValueRepository;
+
+    @Mock
+    private InventoryRepository inventoryRepository;
+
+    @Mock
+    private InventoryTransactionRepository inventoryTransactionRepository;
+
+    @Mock
+    private UserRepository userRepository;
 
     @InjectMocks
     private ProductVariantServiceImpl productVariantService;
