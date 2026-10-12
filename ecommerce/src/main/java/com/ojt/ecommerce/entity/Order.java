@@ -14,6 +14,7 @@ import jakarta.persistence.Id;
 import jakarta.persistence.JoinColumn;
 import jakarta.persistence.ManyToOne;
 import jakarta.persistence.OneToMany;
+import jakarta.persistence.OneToOne;
 import jakarta.persistence.Table;
 import lombok.AllArgsConstructor;
 import lombok.Builder;
@@ -85,5 +86,8 @@ public class Order {
 
 	@OneToMany(mappedBy = "order", fetch = FetchType.LAZY)
 	private List<OrderAddress> orderAddresses;
+
+	@OneToOne(mappedBy = "order", fetch = FetchType.LAZY)
+	private Shipment shipment;
 
 }

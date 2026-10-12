@@ -18,10 +18,14 @@ import org.springframework.web.multipart.MultipartFile;
 import com.ojt.ecommerce.backofficeinventory.dto.BrandRequestDto;
 import com.ojt.ecommerce.backofficeinventory.dto.BrandResponseDto;
 import com.ojt.ecommerce.backofficeinventory.mapper.BrandMapper;
+import com.ojt.ecommerce.backofficeinventory.repository.BrandCategoryRepository;
 import com.ojt.ecommerce.backofficeinventory.repository.BrandRepository;
+import com.ojt.ecommerce.backofficeinventory.repository.CategoryRepository;
 import com.ojt.ecommerce.backofficeinventory.repository.UserRepository;
 import com.ojt.ecommerce.backofficeinventory.specification.BrandSpecification;
 import com.ojt.ecommerce.entity.Brand;
+import com.ojt.ecommerce.entity.BrandCategory;
+import com.ojt.ecommerce.entity.Category;
 import com.ojt.ecommerce.entity.User;
 import com.ojt.ecommerce.enums.BrandStatus;
 import com.ojt.ecommerce.enums.UploadType;
@@ -34,6 +38,8 @@ import lombok.RequiredArgsConstructor;
 public class BrandService {
 
     private final BrandRepository brandRepository;
+    private final BrandCategoryRepository brandCategoryRepository;
+    private final CategoryRepository categoryRepository;
     private final BrandMapper brandMapper;
     private final FileStorageService fileStorageService;
     private final UserRepository userRepository;
@@ -47,6 +53,10 @@ public class BrandService {
             BrandRequestDto request,
             MultipartFile logoFile) {
 
+        // -----------------------------------------------------
+        // Check duplicate brand name
+        // -----------------------------------------------------
+
         if (brandRepository.existsByBrandName(
                 request.getBrandName())) {
 
@@ -56,8 +66,15 @@ public class BrandService {
             );
         }
 
-        // Get currently logged-in user
+        // -----------------------------------------------------
+        // Get current logged-in user
+        // -----------------------------------------------------
+
         User currentUser = getCurrentUser();
+
+        // -----------------------------------------------------
+        // Handle logo
+        // -----------------------------------------------------
 
         String logoUrl = request.getBrandLogoUrl();
 
@@ -68,9 +85,13 @@ public class BrandService {
                     UploadType.BRAND_LOGO
             );
 
-            // Delete uploaded file if DB transaction fails
+            // Delete uploaded file if transaction fails
             registerRollbackCleanup(logoUrl);
         }
+
+        // -----------------------------------------------------
+        // Create Brand
+        // -----------------------------------------------------
 
         LocalDateTime now = LocalDateTime.now();
 
@@ -89,6 +110,15 @@ public class BrandService {
                 .build();
 
         Brand savedBrand = brandRepository.save(brand);
+
+        // -----------------------------------------------------
+        // Save Brand Categories
+        // -----------------------------------------------------
+
+        saveBrandCategories(
+                savedBrand,
+                request.getCategoryIds()
+        );
 
         return brandMapper.toResponseDto(savedBrand);
     }
@@ -167,11 +197,19 @@ public class BrandService {
             BrandRequestDto request,
             MultipartFile logoFile) {
 
+        // -----------------------------------------------------
+        // Find brand
+        // -----------------------------------------------------
+
         Brand brand = brandRepository.findById(id)
                 .orElseThrow(() ->
                         new EntityNotFoundException(
                                 "Brand not found: " + id
                         ));
+
+        // -----------------------------------------------------
+        // Check duplicate brand name
+        // -----------------------------------------------------
 
         if (brandRepository.existsByBrandNameAndBrandIdNot(
                 request.getBrandName(),
@@ -183,15 +221,18 @@ public class BrandService {
             );
         }
 
-        // Get currently logged-in user
+        // -----------------------------------------------------
+        // Get current logged-in user
+        // -----------------------------------------------------
+
         User currentUser = getCurrentUser();
+
+        // -----------------------------------------------------
+        // Handle logo
+        // -----------------------------------------------------
 
         String oldLogoUrl = brand.getBrandLogoUrl();
         String newLogoUrl = oldLogoUrl;
-
-        // -----------------------------------------------------
-        // Handle new logo
-        // -----------------------------------------------------
 
         if (logoFile != null && !logoFile.isEmpty()) {
 
@@ -200,7 +241,7 @@ public class BrandService {
                     UploadType.BRAND_LOGO
             );
 
-            // Delete newly uploaded file if DB transaction fails
+            // Delete new logo if transaction fails
             registerRollbackCleanup(newLogoUrl);
 
         } else if (request.getBrandLogoUrl() != null) {
@@ -209,7 +250,7 @@ public class BrandService {
         }
 
         // -----------------------------------------------------
-        // Delete old logo only after successful DB transaction
+        // Delete old logo after successful transaction
         // -----------------------------------------------------
 
         if (!Objects.equals(
@@ -220,19 +261,43 @@ public class BrandService {
         }
 
         // -----------------------------------------------------
-        // Update brand fields
+        // Update Brand
         // -----------------------------------------------------
 
-        brand.setBrandName(request.getBrandName());
-        brand.setBrandLogoUrl(newLogoUrl);
-        brand.setDescription(request.getDescription());
-        brand.setStatus(request.getStatus());
+        brand.setBrandName(
+                request.getBrandName()
+        );
+
+        brand.setBrandLogoUrl(
+                newLogoUrl
+        );
+
+        brand.setDescription(
+                request.getDescription()
+        );
+
+        brand.setStatus(
+                request.getStatus()
+        );
 
         // Audit fields
         brand.setModifiedBy(currentUser);
         brand.setModifiedAt(LocalDateTime.now());
 
         Brand savedBrand = brandRepository.save(brand);
+
+        // -----------------------------------------------------
+        // Update Brand Categories
+        // -----------------------------------------------------
+
+        // Delete old relationships first
+        brandCategoryRepository.deleteByBrandBrandId(id);
+
+        // Save new relationships
+        saveBrandCategories(
+                savedBrand,
+                request.getCategoryIds()
+        );
 
         return brandMapper.toResponseDto(savedBrand);
     }
@@ -252,10 +317,61 @@ public class BrandService {
 
         String logoUrl = brand.getBrandLogoUrl();
 
+        // -----------------------------------------------------
+        // Delete BrandCategory relationships first
+        // -----------------------------------------------------
+
+        brandCategoryRepository.deleteByBrandBrandId(id);
+
+        // -----------------------------------------------------
+        // Delete Brand
+        // -----------------------------------------------------
+
         brandRepository.delete(brand);
 
-        // Delete logo only after DB transaction succeeds
+        // -----------------------------------------------------
+        // Delete logo after successful DB transaction
+        // -----------------------------------------------------
+
         registerCommitCleanup(logoUrl);
+    }
+
+    // =========================================================
+    // SAVE BRAND CATEGORIES
+    // =========================================================
+
+    private void saveBrandCategories(
+            Brand brand,
+            java.util.List<Long> categoryIds) {
+
+        if (categoryIds == null || categoryIds.isEmpty()) {
+            return;
+        }
+
+        for (Long categoryId : categoryIds) {
+
+            if (categoryId == null) {
+                continue;
+            }
+
+            Category category = categoryRepository
+                    .findById(categoryId)
+                    .orElseThrow(() ->
+                            new EntityNotFoundException(
+                                    "Category not found: "
+                                            + categoryId
+                            ));
+
+            BrandCategory brandCategory =
+                    BrandCategory.builder()
+                            .brand(brand)
+                            .category(category)
+                            .build();
+
+            brandCategoryRepository.save(
+                    brandCategory
+            );
+        }
     }
 
     // =========================================================
@@ -269,10 +385,10 @@ public class BrandService {
                         .getContext()
                         .getAuthentication();
 
-        if (authentication == null ||
-                !authentication.isAuthenticated() ||
-                authentication.getName() == null ||
-                authentication.getName().isBlank()) {
+        if (authentication == null
+                || !authentication.isAuthenticated()
+                || authentication.getName() == null
+                || authentication.getName().isBlank()) {
 
             throw new IllegalStateException(
                     "User is not authenticated"

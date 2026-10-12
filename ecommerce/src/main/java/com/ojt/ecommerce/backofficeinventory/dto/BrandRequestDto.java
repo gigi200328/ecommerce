@@ -1,5 +1,7 @@
 package com.ojt.ecommerce.backofficeinventory.dto;
 
+import java.util.List;
+
 import com.ojt.ecommerce.enums.BrandStatus;
 
 import jakarta.validation.constraints.NotBlank;
@@ -21,4 +23,6 @@ public class BrandRequestDto {
 
     @NotNull(message = "Status is required")
     private BrandStatus status;
+    
+    private List<Long> categoryIds;
 }
