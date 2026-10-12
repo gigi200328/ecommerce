@@ -5,6 +5,7 @@ import java.util.List;
 import org.springframework.context.annotation.Bean;
 import org.springframework.context.annotation.Configuration;
 import org.springframework.core.annotation.Order;
+import org.springframework.http.HttpMethod;
 import org.springframework.security.authentication.AuthenticationManager;
 import org.springframework.security.config.annotation.authentication.configuration.AuthenticationConfiguration;
 import org.springframework.security.config.annotation.web.builders.HttpSecurity;
@@ -86,7 +87,12 @@ public class SecurityConfig {
                     "/api/backoffice/variation-options/**",
                     "/api/backoffice/product-variants/**",
                     "/api/backoffice/variant-option-values/**",
-                    "/api/backoffice/inventory/**"
+                    "/api/backoffice/tags/**",
+                    "/api/backoffice/product-tags/**",
+                    "/api/backoffice/product-variant-images/**",
+                    "/api/backoffice/inventory/**",
+                    "/api/backoffice/staff/**",
+                    "/api/backoffice/orders/**"
                 ).permitAll()
                 .anyRequest().authenticated()
             )
@@ -105,9 +111,10 @@ public class SecurityConfig {
             .cors(cors -> cors.configurationSource(corsConfigurationSource()))
             .csrf(csrf -> csrf.disable())
             .authorizeHttpRequests(auth -> auth
-                .requestMatchers("/api/storefront/v1/auth/customer/login", "/api/storefront/v1/auth/customer/register").permitAll()
+                .requestMatchers("/api/storefront/v1/auth/customer/login", "/api/storefront/v1/auth/customer/register","/api/storefront/v1/auth/customer/forgot-password","/api/storefront/v1/auth/customer/reset-password","/api/storefront/v1/auth/customer/verify-code").permitAll()
                 .requestMatchers("/api/storefront/v1/products/**", "/api/storefront/v1/categories/**", "/api/storefront/v1/cart/guest/**").permitAll()
                 .requestMatchers("/api/storefront/v1/tags/**", "/api/storefront/v1/brands/**").permitAll()
+                .requestMatchers(HttpMethod.GET, "/api/storefront/v1/search-history/popular").permitAll()
 
 //                .requestMatchers("/api/storefront/v1/delivery-zones/**", "/api/storefront/v1/shipping/quote/**", "/api/storefront/v1/payment-callbacks/g3").permitAll()
                 .anyRequest().authenticated()

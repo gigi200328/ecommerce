@@ -43,8 +43,15 @@ public class InventoryServiceImpl implements InventoryService {
     private final InventoryTransactionMapper transactionMapper;
 
     @Override
-    @Transactional(readOnly = true)
+    @Transactional
     public List<InventoryResponseDto> getAllInventory() {
+        List<ProductVariant> allVariants = productVariantRepository.findAll();
+        for (ProductVariant variant : allVariants) {
+            if (!inventoryRepository.existsByVariant_VariantId(variant.getVariantId())) {
+                createDefaultInventory(variant);
+            }
+        }
+
         return inventoryRepository.findAll(Sort.by(Sort.Direction.DESC, "inventoryId")).stream()
                 .map(inventoryMapper::toResponseDto)
                 .collect(Collectors.toList());
@@ -71,8 +78,9 @@ public class InventoryServiceImpl implements InventoryService {
     }
 
     @Override
-    @Transactional(readOnly = true)
+    @Transactional
     public List<InventoryResponseDto> getLowStockAlerts() {
+        getAllInventory();
         return inventoryRepository.findLowStockInventories().stream()
                 .map(inventoryMapper::toResponseDto)
                 .collect(Collectors.toList());
@@ -86,14 +94,20 @@ public class InventoryServiceImpl implements InventoryService {
         ProductVariant variant = productVariantRepository.findById(variantId)
                 .orElseThrow(() -> new EntityNotFoundException("Product variant not found with id: " + variantId));
 
-        if (inventoryRepository.existsByVariant_VariantId(variantId)) {
-            throw new IllegalArgumentException("Inventory tracking is already initialized for variant id: " + variantId);
-        }
-
-        User currentUser = getCurrentUser();
-        LocalDateTime now = LocalDateTime.now();
         int initialQty = request.getInitialQuantity() != null ? request.getInitialQuantity() : 0;
         int reorderLevel = request.getReorderLevel() != null ? request.getReorderLevel() : 10;
+        User currentUser = getCurrentUser();
+        LocalDateTime now = LocalDateTime.now();
+
+        if (inventoryRepository.existsByVariant_VariantId(variantId)) {
+            Inventory existing = inventoryRepository.findByVariant_VariantId(variantId).get();
+            existing.setQuantity(initialQty);
+            existing.setReorderLevel(reorderLevel);
+            existing.setStatus(calculateStatus(initialQty, reorderLevel));
+            existing.setModifiedBy(currentUser);
+            existing.setModifiedAt(now);
+            return inventoryMapper.toResponseDto(inventoryRepository.save(existing));
+        }
 
         Inventory inventory = Inventory.builder()
                 .variant(variant)
@@ -109,20 +123,18 @@ public class InventoryServiceImpl implements InventoryService {
 
         Inventory savedInventory = inventoryRepository.save(inventory);
 
-        if (initialQty > 0) {
-            InventoryTransaction txn = InventoryTransaction.builder()
-                    .variant(variant)
-                    .txnType("ADJUSTMENT")
-                    .qty(initialQty)
-                    .beforeQty(0)
-                    .afterQty(initialQty)
-                    .referenceType("INITIAL")
-                    .remark("Initial inventory setup")
-                    .createdBy(currentUser)
-                    .createdAt(now)
-                    .build();
-            inventoryTransactionRepository.save(txn);
-        }
+        InventoryTransaction txn = InventoryTransaction.builder()
+                .variant(variant)
+                .txnType("INITIAL_STOCK")
+                .qty(initialQty)
+                .beforeQty(0)
+                .afterQty(initialQty)
+                .referenceType("INITIAL_SETUP")
+                .remark("Initial inventory setup")
+                .createdBy(currentUser)
+                .createdAt(now)
+                .build();
+        inventoryTransactionRepository.save(txn);
 
         return inventoryMapper.toResponseDto(savedInventory);
     }
@@ -278,12 +290,13 @@ public class InventoryServiceImpl implements InventoryService {
         User currentUser = getCurrentUser();
         LocalDateTime now = LocalDateTime.now();
 
+        int defaultQty = 25;
         Inventory newInventory = Inventory.builder()
                 .variant(variant)
-                .quantity(0)
+                .quantity(defaultQty)
                 .reservedQuantity(0)
                 .reorderLevel(10)
-                .status("OUT_OF_STOCK")
+                .status("NORMAL")
                 .createdBy(currentUser)
                 .createdAt(now)
                 .modifiedBy(currentUser)

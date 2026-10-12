@@ -14,10 +14,18 @@ import com.ojt.ecommerce.storefront.payment.port.InventoryFinalizationPort;
 import com.ojt.ecommerce.storefront.payment.repository.PaymentCallbackRepository;
 import com.ojt.ecommerce.storefront.payment.repository.G5PaymentRepository;
 import lombok.RequiredArgsConstructor;
+
+import org.springframework.beans.factory.annotation.Value;
+import org.springframework.http.HttpEntity;
+import org.springframework.http.HttpHeaders;
+import org.springframework.http.MediaType;
+import org.springframework.http.ResponseEntity;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
+import org.springframework.web.client.RestTemplate;
 
 import java.time.LocalDateTime;
+import java.util.Map;
 import java.util.UUID;
 
 @Service
@@ -31,39 +39,77 @@ public class PaymentServiceImpl implements PaymentService {
     private final CartRepository cartRepository;
     
     private final InventoryFinalizationPort inventoryFinalizationPort;
+    
+    @Value("${payment.gateway.base-url}")
+    private String pgBaseUrl;
 
+    @Value("${payment.gateway.client-id}")
+    private String pgClientId;
+
+    @Value("${payment.gateway.branch-id}")
+    private String pgBranchId;
+
+    @Value("${payment.gateway.client-secret}")
+    private String pgClientSecret;
     @Override
     @Transactional
     public PaymentInitiateResponse initiatePayment(Long customerId, Long orderId, PaymentInitiateRequest request) {
-        Order order = orderRepository.findById(orderId)
-                .orElseThrow(() -> new ResourceNotFoundException("Order not found"));
-                
-        if (!order.getCustomer().getCustomerId().equals(customerId)) {
-            throw new AccessDeniedException("Order belongs to a different customer");
-        }
-        
-        if (!"PENDING".equals(order.getPaymentStatus()) && !"FAILED".equals(order.getPaymentStatus())) {
-            throw new InvalidRequestException("Order is not payable");
-        }
-        
-        Payment payment = new Payment();
-        payment.setOrder(order);
-        payment.setTransactionRef(UUID.randomUUID().toString());
-        payment.setPaymentMethod(request.getPaymentMethod());
-        payment.setPaymentStatus("PENDING");
-        payment.setAmount(order.getTotalAmount());
-        payment.setCreatedAt(LocalDateTime.now());
-        
-        payment = paymentRepository.save(payment);
-        
-        return PaymentInitiateResponse.builder()
-                .paymentId(payment.getPaymentId())
-                .orderId(orderId)
-                .paymentStatus(payment.getPaymentStatus())
-                .amount(payment.getAmount())
-                .redirectUrl("/mock-g3/" + payment.getTransactionRef())
-                .build();
-    }
+    	Order order = orderRepository.findById(orderId)
+    	.orElseThrow(() -> new ResourceNotFoundException("Order not found"));
+
+    	if (!order.getCustomer()
+    	.getCustomerId()
+    	.equals(customerId)) {
+    	throw new AccessDeniedException("Order belongs to a different customer");
+    	}
+
+    	if (!"PENDING".equals(order.getPaymentStatus()) && !"FAILED".equals(order.getPaymentStatus())) {
+    	throw new InvalidRequestException("Order is not payable");
+    	}
+
+    	String idempotencyKey = UUID.randomUUID()
+    	.toString();
+
+    	// 🔴 1. Call Payment Gateway (MMSPG) API
+    	HttpHeaders headers = new HttpHeaders();
+    	headers.setContentType(MediaType.APPLICATION_JSON);
+    	headers.set("X-Client-ID", pgClientId); // Configured in application.properties
+    	headers.set("X-Client-Secret", pgClientSecret); // Configured in application.properties
+    	headers.set("Idempotency-Key", idempotencyKey);
+
+    	Map<String, Object> pgRequest = Map.of("orderId", String.valueOf(orderId), "amount", order.getTotalAmount(),
+    	"currency", "MMK", "branchId", pgBranchId // Or terminalId
+    	);
+
+    	HttpEntity<Map<String, Object>> entity = new HttpEntity<>(pgRequest, headers);
+
+    	RestTemplate restTemplate = new RestTemplate();
+    	// Call: POST http://<pg-url>/api/v1/payments/initiate
+    	ResponseEntity<MmspgInitiateResponse> pgResponse = restTemplate.postForEntity(pgBaseUrl + "/payments/initiate",
+    	entity, MmspgInitiateResponse.class);
+
+    	MmspgInitiateResponse gatewayData = pgResponse.getBody();
+
+    	// 🔴 2. Save PG's transaction reference & token in E-commerce DB
+    	Payment payment = new Payment();
+    	payment.setOrder(order);
+    	payment.setTransactionRef(gatewayData.getTransactionReference()); // PG transaction ref (TXN-...)
+    	payment.setPaymentMethod(request.getPaymentMethod());
+    	payment.setPaymentStatus("PENDING");
+    	payment.setAmount(order.getTotalAmount());
+    	payment.setCreatedAt(LocalDateTime.now());
+
+    	payment = paymentRepository.save(payment);
+
+    	// 🔴 3. Return the real redirect URL from MMSPG!
+    	return PaymentInitiateResponse.builder()
+    	.paymentId(payment.getPaymentId())
+    	.orderId(orderId)
+    	.paymentStatus(payment.getPaymentStatus())
+    	.amount(payment.getAmount())
+    	.redirectUrl(gatewayData.getPaymentUrl()) // e.g. https://customer-portal.../checkout?token=...
+    	.build();
+    	}
 
     @Override
     @Transactional(readOnly = true)

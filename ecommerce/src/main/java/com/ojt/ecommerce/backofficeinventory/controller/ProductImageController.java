@@ -1,3 +1,4 @@
+
 package com.ojt.ecommerce.backofficeinventory.controller;
 
 import com.ojt.ecommerce.backofficeinventory.dto.ProductImageRequestDto;
@@ -17,31 +18,51 @@ import java.util.List;
 @RequiredArgsConstructor
 public class ProductImageController {
 
-    private final ProductImageService productImageService;
+	private final ProductImageService productImageService;
 
-    /**
-     * Upload an image for an existing product
-     */
-    @PostMapping(value = "/upload", consumes = MediaType.MULTIPART_FORM_DATA_VALUE)
-    public ResponseEntity<ProductImageResponseDto> uploadImage(@Valid @ModelAttribute ProductImageRequestDto request) {
-        ProductImageResponseDto response = productImageService.uploadProductImage(request);
-        return new ResponseEntity<>(response, HttpStatus.CREATED);
-    }
+	/**
+	 * Upload an image for an existing product.
+	 *
+	 * If isPrimary=true, the existing primary image will automatically become
+	 * non-primary.
+	 */
+	@PostMapping(value = "/upload", consumes = MediaType.MULTIPART_FORM_DATA_VALUE)
+	public ResponseEntity<ProductImageResponseDto> uploadImage(@Valid @ModelAttribute ProductImageRequestDto request) {
 
-    /**
-     * Get all images for a specific product
-     */
-    @GetMapping("/product/{productId}")
-    public ResponseEntity<List<ProductImageResponseDto>> getImagesByProductId(@PathVariable Long productId) {
-        return ResponseEntity.ok(productImageService.getImagesByProductId(productId));
-    }
+		ProductImageResponseDto response = productImageService.uploadProductImage(request);
 
-    /**
-     * Delete an image by imageId
-     */
-    @DeleteMapping("/{imageId}")
-    public ResponseEntity<Void> deleteImage(@PathVariable Long imageId) {
-        productImageService.deleteProductImage(imageId);
-        return ResponseEntity.noContent().build();
-    }
+		return new ResponseEntity<>(response, HttpStatus.CREATED);
+	}
+
+	/**
+	 * Get all images for a specific product.
+	 */
+	@GetMapping("/product/{productId}")
+	public ResponseEntity<List<ProductImageResponseDto>> getImagesByProductId(@PathVariable Long productId) {
+
+		return ResponseEntity.ok(productImageService.getImagesByProductId(productId));
+	}
+
+	/**
+	 * Set an existing image as the primary image.
+	 */
+	@PatchMapping("/{imageId}/primary")
+	public ResponseEntity<ProductImageResponseDto> setPrimaryImage(@PathVariable Long imageId,
+			@RequestParam Long userId) {
+
+		ProductImageResponseDto response = productImageService.setPrimaryImage(imageId, userId);
+
+		return ResponseEntity.ok(response);
+	}
+
+	/**
+	 * Delete an image by imageId.
+	 */
+	@DeleteMapping("/{imageId}")
+	public ResponseEntity<Void> deleteImage(@PathVariable Long imageId) {
+
+		productImageService.deleteProductImage(imageId);
+
+		return ResponseEntity.noContent().build();
+	}
 }

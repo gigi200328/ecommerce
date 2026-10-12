@@ -13,6 +13,18 @@ import lombok.NoArgsConstructor;
 public class TagResponseDto {
 
     private Long tagId;
+
     private String tagName;
+
     private LocalDateTime createdAt;
+
+    private Long createdBy;
+
+    private String createdByName;
+
+    private LocalDateTime modifiedAt;
+
+    private Long modifiedBy;
+
+    private String modifiedByName;
 }

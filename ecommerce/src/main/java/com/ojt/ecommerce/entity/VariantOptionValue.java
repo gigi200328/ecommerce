@@ -41,15 +41,15 @@ public class VariantOptionValue {
     @Schema(description = "Primary Key (Auto Increment)", example = "1")
     private Long id;
 
-    @ManyToOne(fetch = FetchType.LAZY, optional = false)
+    @ManyToOne(fetch = FetchType.EAGER, optional = false)
     @JoinColumn(name = "variant_id", referencedColumnName = "variant_id", nullable = false, foreignKey = @ForeignKey(name = "fk_mapping_variant"))
     @JsonIgnoreProperties({"hibernateLazyInitializer", "handler", "product"})
     @Schema(description = "Associated Product Variant")
     private ProductVariant variant;
 
-    @ManyToOne(fetch = FetchType.LAZY, optional = false)
+    @ManyToOne(fetch = FetchType.EAGER, optional = false)
     @JoinColumn(name = "option_id", referencedColumnName = "option_id", nullable = false, foreignKey = @ForeignKey(name = "fk_mapping_option"))
-    @JsonIgnoreProperties({"hibernateLazyInitializer", "handler", "variation"})
+    @JsonIgnoreProperties({"hibernateLazyInitializer", "handler"})
     @Schema(description = "Associated Variation Option (e.g. Red, XL)")
     private VariationOption option;
 }
