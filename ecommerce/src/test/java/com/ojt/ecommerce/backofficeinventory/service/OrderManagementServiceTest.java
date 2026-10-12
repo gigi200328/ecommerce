@@ -4,6 +4,7 @@ import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertNotNull;
 import static org.junit.jupiter.api.Assertions.assertThrows;
 import static org.mockito.ArgumentMatchers.any;
+import static org.mockito.ArgumentMatchers.eq;
 import static org.mockito.Mockito.mock;
 import static org.mockito.Mockito.times;
 import static org.mockito.Mockito.verify;
@@ -18,12 +19,15 @@ import org.junit.jupiter.api.extension.ExtendWith;
 import org.mockito.InjectMocks;
 import org.mockito.Mock;
 import org.mockito.junit.jupiter.MockitoExtension;
+import org.springframework.data.domain.PageImpl;
+import org.springframework.data.domain.Pageable;
 import org.springframework.security.core.Authentication;
 import org.springframework.security.core.context.SecurityContext;
 import org.springframework.security.core.context.SecurityContextHolder;
 
 import com.ojt.ecommerce.backofficeinventory.dto.OrderResponseDto;
 import com.ojt.ecommerce.backofficeinventory.dto.OrderStatusUpdateRequestDto;
+import com.ojt.ecommerce.backofficeinventory.dto.PaginatedResponseDto;
 import com.ojt.ecommerce.backofficeinventory.mapper.OrderMapper;
 import com.ojt.ecommerce.backofficeinventory.repository.OrderRepository;
 import com.ojt.ecommerce.backofficeinventory.repository.OrderStatusHistoryRepository;
@@ -34,41 +38,38 @@ import com.ojt.ecommerce.entity.User;
 
 import jakarta.persistence.EntityNotFoundException;
 
-@ExtendWith(MockitoExtension.class) // Mockito ကို သုံးမည်ဟု ကြေညာခြင်း
+@ExtendWith(MockitoExtension.class)
 public class OrderManagementServiceTest {
 	@Mock
-	private OrderRepository orderRepository; // Database အစစ်အစား Mock (အတု) ကိုသုံးမည်
+	private OrderRepository orderRepository;
 	@Mock
 	private OrderStatusHistoryRepository orderStatusHistoryRepository;
 	@Mock
 	private OrderMapper orderMapper;
 	@InjectMocks
-	private OrderManagementService orderManagementService; // Test လုပ်မည့် Service
+	private OrderManagementService orderManagementService;
 
 	@Test
 	public void testGetOrders_WithPendingStatus() {
-		// 1. Mock Data ပြင်ဆင်ခြင်း (Database ထဲသွားမထည့်ဘဲ ဒီမှာပဲ အတုလုပ်သည်)
 		Order mockOrder = new Order();
 		mockOrder.setOrderNo("ORD-001");
 		mockOrder.setOrderStatus("PENDING");
 
 		OrderResponseDto mockDto = OrderResponseDto.builder().orderNo("ORD-001").build();
+		PaginatedResponseDto<OrderResponseDto> mockPaginated = PaginatedResponseDto.<OrderResponseDto>builder()
+				.content(Arrays.asList(mockDto)).totalElements(1L).build();
 
-		// 2. ဇာတ်တိုက်ခြင်း (Repository ကို ခေါ်ရင် ဒီ Data ပြန်ပေးရန်)
-		when(orderRepository.findByOrderStatus("PENDING")).thenReturn(Arrays.asList(mockOrder));
-		when(orderMapper.toDto(any(Order.class))).thenReturn(mockDto);
+		when(orderRepository.findByOrderStatus(eq("PENDING"), any(Pageable.class))).thenReturn(new PageImpl<>(Arrays.asList(mockOrder)));
+		when(orderMapper.toPaginatedDto(any())).thenReturn(mockPaginated);
 
-		// 3. တကယ်ခေါ်စမ်းကြည့်ခြင်း
-		List<OrderResponseDto> result = orderManagementService.getOrders("PENDING");
+		PaginatedResponseDto<OrderResponseDto> result = orderManagementService.getOrders("PENDING", 0, 10);
 
-		// 4. မှန်/မမှန် တိုက်စစ်ခြင်း (Assertion)
-		assertEquals(1, result.size());
-		assertEquals("ORD-001", result.get(0).getOrderNo());
+		assertEquals(1, result.getContent().size());
+		assertEquals("ORD-001", result.getContent().get(0).getOrderNo());
 	}
 
 	@Test
 	public void testGetOrders_WithNullStatus() {
-		// 1. Mock Data ပြင်ဆင်ခြင်း (အော်ဒါ ၂ ခု အတုဖန်တီးမည်)
 		Order mockOrder1 = new Order();
 		mockOrder1.setOrderNo("ORD-001");
 		mockOrder1.setOrderStatus("PENDING");
@@ -79,24 +80,17 @@ public class OrderManagementServiceTest {
 
 		OrderResponseDto mockDto1 = OrderResponseDto.builder().orderNo("ORD-001").build();
 		OrderResponseDto mockDto2 = OrderResponseDto.builder().orderNo("ORD-002").build();
+		PaginatedResponseDto<OrderResponseDto> mockPaginated = PaginatedResponseDto.<OrderResponseDto>builder()
+				.content(Arrays.asList(mockDto1, mockDto2)).totalElements(2L).build();
 
-		// 2. ဇာတ်တိုက်ခြင်း (status က null ဖြစ်တဲ့အတွက် findAll() ကို ခေါ်လိမ့်မည်ဟု
-		// ယူဆပြီး mock လုပ်သည်)
-		when(orderRepository.findAll()).thenReturn(Arrays.asList(mockOrder1, mockOrder2));
+		when(orderRepository.findAll(any(Pageable.class))).thenReturn(new PageImpl<>(Arrays.asList(mockOrder1, mockOrder2)));
+		when(orderMapper.toPaginatedDto(any())).thenReturn(mockPaginated);
 
-		// Order ၂ ခုလုံးအတွက် Mapper ကို ဇာတ်တိုက်သည်
-		when(orderMapper.toDto(mockOrder1)).thenReturn(mockDto1);
-		when(orderMapper.toDto(mockOrder2)).thenReturn(mockDto2);
+		PaginatedResponseDto<OrderResponseDto> result = orderManagementService.getOrders(null, 0, 10);
 
-		// 3. တကယ်ခေါ်စမ်းကြည့်ခြင်း (null ထည့်ပေးလိုက်သည်)
-		List<OrderResponseDto> result = orderManagementService.getOrders(null);
-
-		// 4. မှန်/မမှန် တိုက်စစ်ခြင်း (Assertion)
-		// Database ထဲမှာ အော်ဒါ ၂ ခုရှိတယ်လို့ ဇာတ်တိုက်ထားတဲ့အတွက် ပြန်ထွက်လာတဲ့
-		// အရေအတွက်က ၂ ခု ဖြစ်ရပါမယ်
-		assertEquals(2, result.size());
-		assertEquals("ORD-001", result.get(0).getOrderNo());
-		assertEquals("ORD-002", result.get(1).getOrderNo());
+		assertEquals(2, result.getContent().size());
+		assertEquals("ORD-001", result.getContent().get(0).getOrderNo());
+		assertEquals("ORD-002", result.getContent().get(1).getOrderNo());
 	}
 
 	@Test
@@ -104,15 +98,15 @@ public class OrderManagementServiceTest {
 		Order mockOrder1 = new Order();
 		mockOrder1.setOrderNo("ORD-001");
 		OrderResponseDto mockDto1 = OrderResponseDto.builder().orderNo("ORD-001").build();
+		PaginatedResponseDto<OrderResponseDto> mockPaginated = PaginatedResponseDto.<OrderResponseDto>builder()
+				.content(Arrays.asList(mockDto1)).totalElements(1L).build();
 
-		// Empty string ("") ပေးတဲ့အခါ if-condition ရဲ့ !status.trim().isEmpty() က false
-		// ဖြစ်သွားပြီး else ကိုရောက်သွားမှာမို့ findAll() ကိုခေါ်ပါလိမ့်မယ်
-		when(orderRepository.findAll()).thenReturn(Arrays.asList(mockOrder1));
-		when(orderMapper.toDto(any(Order.class))).thenReturn(mockDto1);
+		when(orderRepository.findAll(any(Pageable.class))).thenReturn(new PageImpl<>(Arrays.asList(mockOrder1)));
+		when(orderMapper.toPaginatedDto(any())).thenReturn(mockPaginated);
 
-		List<OrderResponseDto> result = orderManagementService.getOrders("");
+		PaginatedResponseDto<OrderResponseDto> result = orderManagementService.getOrders("", 0, 10);
 
-		assertEquals(1, result.size());
+		assertEquals(1, result.getContent().size());
 	}
 
 	@Test
@@ -120,15 +114,15 @@ public class OrderManagementServiceTest {
 		Order mockOrder1 = new Order();
 		mockOrder1.setOrderNo("ORD-001");
 		OrderResponseDto mockDto1 = OrderResponseDto.builder().orderNo("ORD-001").build();
+		PaginatedResponseDto<OrderResponseDto> mockPaginated = PaginatedResponseDto.<OrderResponseDto>builder()
+				.content(Arrays.asList(mockDto1)).totalElements(1L).build();
 
-		// Space အလွတ် (" ") ကို trim() လုပ်လိုက်ရင် empty ဖြစ်သွားတဲ့အတွက် else
-		// ကိုရောက်ပြီး findAll() ကိုပဲခေါ်ပါလိမ့်မယ်
-		when(orderRepository.findAll()).thenReturn(Arrays.asList(mockOrder1));
-		when(orderMapper.toDto(any(Order.class))).thenReturn(mockDto1);
+		when(orderRepository.findAll(any(Pageable.class))).thenReturn(new PageImpl<>(Arrays.asList(mockOrder1)));
+		when(orderMapper.toPaginatedDto(any())).thenReturn(mockPaginated);
 
-		List<OrderResponseDto> result = orderManagementService.getOrders(" ");
+		PaginatedResponseDto<OrderResponseDto> result = orderManagementService.getOrders(" ", 0, 10);
 
-		assertEquals(1, result.size());
+		assertEquals(1, result.getContent().size());
 	}
 
 	@Test
