@@ -92,7 +92,8 @@ public class SecurityConfig {
                     "/api/backoffice/product-variant-images/**",
                     "/api/backoffice/inventory/**",
                     "/api/backoffice/staff/**",
-                    "/api/backoffice/orders/**"
+                    "/api/backoffice/orders/**",
+                    "/api/backoffice/reports/**"
                 ).permitAll()
                 .anyRequest().authenticated()
             )
