@@ -31,3 +31,6 @@ build/
 
 ### VS Code ###
 .vscode/
+
+# === Local Configuration Files (Added to protect passwords) ===
+application-dev.properties
