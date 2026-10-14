@@ -201,6 +201,65 @@ class BrandServiceTest {
     }
 
     @Test
+    void createBrand_whenCategoryIdDoesNotExist_throwsEntityNotFoundException() {
+        BrandRequestDto request = request(
+                "Nike",
+                "Sports brand",
+                BrandStatus.ACTIVE,
+                List.of(999L)
+        );
+
+        Brand savedBrand = brand(
+                1L, "Nike", BrandStatus.ACTIVE, null
+        );
+
+        when(brandRepository.existsByBrandName("Nike"))
+                .thenReturn(false);
+        when(brandRepository.save(any(Brand.class)))
+                .thenReturn(savedBrand);
+        when(categoryRepository.findById(999L))
+                .thenReturn(Optional.empty());
+
+        assertThrows(
+                EntityNotFoundException.class,
+                () -> brandService.createBrand(request, null)
+        );
+
+        verify(brandRepository).save(any(Brand.class));
+        verify(categoryRepository).findById(999L);
+        verify(brandCategoryRepository, never())
+                .save(any(BrandCategory.class));
+        verify(brandMapper, never()).toResponseDto(any(Brand.class));
+    }
+
+    @Test
+    void createBrand_whenCategoryIdIsNull_skipsCategoryRelationship() {
+        BrandRequestDto request = request(
+                "Nike",
+                "Sports brand",
+                BrandStatus.ACTIVE,
+                java.util.Arrays.asList((Long) null)
+        );
+
+        Brand savedBrand = brand(
+                1L, "Nike", BrandStatus.ACTIVE, null
+        );
+
+        when(brandRepository.existsByBrandName("Nike"))
+                .thenReturn(false);
+        when(brandRepository.save(any(Brand.class)))
+                .thenReturn(savedBrand);
+        when(brandMapper.toResponseDto(savedBrand))
+                .thenReturn(responseDto);
+
+        assertSame(responseDto, brandService.createBrand(request, null));
+
+        verify(categoryRepository, never()).findById(any(Long.class));
+        verify(brandCategoryRepository, never())
+                .save(any(BrandCategory.class));
+    }
+
+    @Test
     void createBrand_whenNameExists_throwsException() {
         BrandRequestDto request = request(
                 "Nike",
@@ -425,6 +484,40 @@ class BrandServiceTest {
         verify(brandCategoryRepository).save(
                 any(BrandCategory.class)
         );
+    }
+
+    @Test
+    void updateBrand_whenCategoryIdDoesNotExist_throwsEntityNotFoundException() {
+        Brand existingBrand = brand(
+                1L, "Nike", BrandStatus.ACTIVE, null
+        );
+        BrandRequestDto request = request(
+                "Nike Updated",
+                "Updated description",
+                BrandStatus.ACTIVE,
+                List.of(999L)
+        );
+
+        when(brandRepository.findById(1L))
+                .thenReturn(Optional.of(existingBrand));
+        when(brandRepository.existsByBrandNameAndBrandIdNot(
+                "Nike Updated", 1L
+        )).thenReturn(false);
+        when(brandRepository.save(existingBrand))
+                .thenReturn(existingBrand);
+        when(categoryRepository.findById(999L))
+                .thenReturn(Optional.empty());
+
+        assertThrows(
+                EntityNotFoundException.class,
+                () -> brandService.updateBrand(1L, request, null)
+        );
+
+        verify(categoryRepository).findById(999L);
+        verify(brandCategoryRepository).deleteByBrandBrandId(1L);
+        verify(brandCategoryRepository, never())
+                .save(any(BrandCategory.class));
+        verify(brandMapper, never()).toResponseDto(any(Brand.class));
     }
 
     @Test
