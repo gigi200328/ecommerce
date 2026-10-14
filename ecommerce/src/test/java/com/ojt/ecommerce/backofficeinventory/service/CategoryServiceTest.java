@@ -195,6 +195,27 @@ class CategoryServiceTest {
                 .save(any(Category.class));
     }
 
+
+    @Test
+    void createCategory_whenCategoryNameAlreadyExists_allowsDuplicateName() {
+        CategoryRequestDto request =
+                request("Electronics", "Another electronics category", null);
+        Category saved = category(2L, "Electronics", null);
+
+        when(categoryRepository.save(any(Category.class)))
+                .thenReturn(saved);
+        when(categoryMapper.toResponseDto(saved))
+                .thenReturn(response);
+
+        CategoryResponseDto result = categoryService.createCategory(request);
+
+        assertSame(response, result);
+        verify(categoryRepository).save(argThat(c ->
+                "Electronics".equals(c.getCategoryName())
+                && c.getParent() == null
+        ));
+    }
+
     // GET ALL CATEGORIES
 
     @Test
