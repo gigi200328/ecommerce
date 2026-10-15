@@ -1,6 +1,7 @@
 package com.ojt.ecommerce.backofficeinventory.dto;
 
 import java.math.BigDecimal;
+import java.time.LocalDate;
 import java.time.LocalDateTime;
 
 import io.swagger.v3.oas.annotations.media.Schema;
@@ -45,6 +46,21 @@ public class InventoryResponseDto {
 
     @Schema(description = "Stock status: NORMAL, LOW_STOCK, OUT_OF_STOCK", example = "NORMAL")
     private String status;
+
+    @Schema(description = "Whether the item is perishable/expirable", example = "true")
+    private Boolean isPerishable;
+
+    @Schema(description = "Expiration date of the batch", example = "2026-12-31")
+    private LocalDate expiryDate;
+
+    @Schema(description = "Batch or lot number", example = "LOT-2026-001")
+    private String batchNumber;
+
+    @Schema(description = "Days remaining until expiration", example = "45")
+    private Long daysUntilExpiry;
+
+    @Schema(description = "Expiration Status: GOOD, EXPIRING_SOON, EXPIRED, NON_PERISHABLE", example = "EXPIRING_SOON")
+    private String expiryStatus;
 
     @Schema(description = "Created timestamp")
     private LocalDateTime createdAt;

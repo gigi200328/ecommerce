@@ -114,6 +114,9 @@ public class ProductService {
                         .status(
                                 request.getStatus()
                         )
+                        .isPerishable(
+                                Boolean.TRUE.equals(request.getIsPerishable())
+                        )
                         .category(category)
                         .brand(brand)
                         .createdBy(user)
@@ -432,6 +435,10 @@ public class ProductService {
         product.setStatus(
                 request.getStatus()
         );
+
+        if (request.getIsPerishable() != null) {
+            product.setIsPerishable(request.getIsPerishable());
+        }
 
         product.setCategory(category);
 
