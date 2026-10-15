@@ -51,7 +51,7 @@ public class LocalInventoryFinalizationService implements InventoryFinalizationP
             InventoryTransaction txn = new InventoryTransaction();
             txn.setVariant(variant);
             txn.setTxnType("SALE");
-            txn.setQty(item.getQty());
+            txn.setQty(-item.getQty());
             txn.setBeforeQty(beforeQty);
             txn.setAfterQty(afterQty);
             txn.setReferenceType("ORDER");
@@ -60,6 +60,7 @@ public class LocalInventoryFinalizationService implements InventoryFinalizationP
             txn.setRemark("Stock deducted for order " + order.getOrderNo());
             
             inventoryTransactionRepository.save(txn);
+
         }
     }
 }

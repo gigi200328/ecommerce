@@ -1,0 +1,147 @@
+[
+  {
+    "regionOrState": "Yangon Region",
+    "city": "Yangon",
+    "townships": [
+      "Ahlone", "Bahan", "Botahtaung", "Cocokyun", "Dagon",
+      "Dagon Myothit (East)", "Dagon Myothit (North)", "Dagon Myothit (Seikkan)", "Dagon Myothit (South)",
+      "Dala", "Dawbon", "Hlaing", "Hlaing Tharyar", "Hlegu", "Hmawbi", "Htantabin",
+      "Insein", "Kamaryut", "Kawhmu", "Kayan", "Kungyangon", "Kyauktada", "Kyauktan",
+      "Kyimyindaing", "Lanmadaw", "Latha", "Mayangone", "Mingaladon", "Mingalar Taungnyunt",
+      "North Okkalapa", "Pabedan", "Pazundaung", "Sanchaung", "Seikgyikanaungto", "Seikkan",
+      "Shwepyithar", "South Okkalapa", "Taikkyi", "Tamwe", "Thaketa", "Thanlyin",
+      "Thingangyun", "Thongwa", "Twante", "Yankin"
+    ]
+  },
+  {
+    "regionOrState": "Mandalay Region",
+    "city": "Mandalay",
+    "townships": [
+      "Amarapura", "Aungmyethazan", "Chanayethazan", "Chanmyathazi", "Kyaukpadaung",
+      "Kyaukse", "Madaya", "Maha Aungmye", "Mahlaing", "Meiktila", "Mogok", "Myingyan",
+      "Myittha", "Natogyi", "Ngazun", "Nyaung-U", "Patheingyi", "Pyawbwe", "Pyigyidagun",
+      "Pyin Oo Lwin", "Singu", "Sintgaing", "Tada-U", "Taungtha", "Thabeikkyin", "Thazi",
+      "Wundwin", "Yamethin"
+    ]
+  },
+  {
+    "regionOrState": "Naypyidaw Union Territory",
+    "city": "Naypyidaw",
+    "townships": [
+      "Dekkhinathiri", "Lewe", "Ottarathiri", "Pobbathiri",
+      "Pyinmana", "Tatkon", "Zabuthiri", "Zeyathiri"
+    ]
+  },
+  {
+    "regionOrState": "Ayeyarwady Region",
+    "city": "Pathein",
+    "townships": [
+      "Bogale", "Danubyu", "Dedaye", "Einme", "Hinthada", "Ingapu", "Kangyidaunt",
+      "Kyaiklat", "Kyangin", "Kyaunggon", "Kyonpyaw", "Labutta", "Lemyethna", "Maubin",
+      "Mawlamyinegyun", "Myanaung", "Myaungmya", "Ngapudaw", "Nyaungdon", "Pantanaw",
+      "Pathein", "Pyapon", "Thabaung", "Wakema", "Yegyi", "Zalun"
+    ]
+  },
+  {
+    "regionOrState": "Bago Region",
+    "city": "Bago",
+    "townships": [
+      "Bago", "Daik-U", "Gyobingauk", "Htantabin", "Kawa", "Kyaukkyi", "Kyauktaga",
+      "Letpadan", "Minhla", "Monyo", "Nattalin", "Nyaunglebin", "Okpho", "Oktwin",
+      "Padaung", "Paukkhaung", "Paungde", "Phyu", "Pyay", "Shwedaung", "Shwegyin",
+      "Taungoo", "Thanatpin", "Tharrawaddy", "Thegon", "Waw", "Yedashe", "Zigon"
+    ]
+  },
+  {
+    "regionOrState": "Magway Region",
+    "city": "Magway",
+    "townships": [
+      "Aunglan", "Chauk", "Gangaw", "Kamma", "Magway", "Minbu", "Mindon", "Minhla",
+      "Myaing", "Myothit", "Natmauk", "Ngape", "Pakokku", "Pauk", "Pwintbyu", "Salin",
+      "Saw", "Seikphyu", "Sidoktaya", "Sinbaungwe", "Taungdwingyi", "Thayet", "Tilin",
+      "Yenangyaung", "Yesagyo"
+    ]
+  },
+  {
+    "regionOrState": "Sagaing Region",
+    "city": "Monywa",
+    "townships": [
+      "Ayadaw", "Banmauk", "Budalin", "Chaung-U", "Hkamti", "Homalin", "Indaw",
+      "Kale", "Kalewa", "Kanbalu", "Kani", "Katha", "Kawlin", "Khin-U", "Kyunhla",
+      "Lahe", "Lay Shi", "Mawlaik", "Mingin", "Monywa", "Myaung", "Myinmu", "Nanyun",
+      "Pale", "Paungbyin", "Pinlebu", "Sagaing", "Salingyi", "Shwebo", "Tabayin",
+      "Tamu", "Taze", "Tigyaing", "Wetlet", "Wuntho", "Ye-U", "Yinmabin"
+    ]
+  },
+  {
+    "regionOrState": "Tanintharyi Region",
+    "city": "Dawei",
+    "townships": [
+      "Bokpyin", "Dawei", "Kawthaung", "Kyunsu", "Launglon",
+      "Myeik", "Palaw", "Tanintharyi", "Thayetchaung", "Yebyu"
+    ]
+  },
+  {
+    "regionOrState": "Mon State",
+    "city": "Mawlamyine",
+    "townships": [
+      "Bilin", "Chaungzon", "Kyaikmaraw", "Kyaikto", "Mawlamyine",
+      "Mudon", "Paung", "Thanbyuzayat", "Thaton", "Ye"
+    ]
+  },
+  {
+    "regionOrState": "Kayin State",
+    "city": "Hpa-An",
+    "townships": [
+      "Hlaingbwe", "Hpa-An", "Hpapun", "Kawkareik",
+      "Kyainseikgyi", "Myawaddy", "Thandaunggyi"
+    ]
+  },
+  {
+    "regionOrState": "Kayah State",
+    "city": "Loikaw",
+    "townships": [
+      "Bawlakhe", "Demoso", "Hpasawng", "Hpruso", "Loikaw", "Mese", "Shadaw"
+    ]
+  },
+  {
+    "regionOrState": "Shan State",
+    "city": "Taunggyi",
+    "townships": [
+      "Hopang", "Hopong", "Hsihseng", "Hsipaw", "Kalaw", "Kengtung", "Kunhing",
+      "Kunlong", "Kutkai", "Kyaukme", "Kyethi", "Laihka", "Langkho", "Lashio",
+      "Laukkaing", "Lawksawk", "Loilen", "Mabein", "Manton", "Mawkmai", "Mong Hpayak",
+      "Mong Hsat", "Mong Hsu", "Mong Kung", "Mong La", "Mong Mao", "Mong Mit",
+      "Mong Nai", "Mong Pan", "Mong Ping", "Mong Ton", "Mong Yang", "Mong Yawng",
+      "Muse", "Namhsan", "Namhkam", "Namtu", "Nanhkan", "Nansang", "Nawnghkio",
+      "Nyaungshwe", "Pekon", "Pindaya", "Pinlaung", "Tachileik", "Tangyan",
+      "Taunggyi", "Ywangan"
+    ]
+  },
+  {
+    "regionOrState": "Kachin State",
+    "city": "Myitkyina",
+    "townships": [
+      "Bhamo", "Chipwi", "Hpakant", "Injangyang", "Khaunglanhpu", "Machanbaw",
+      "Mansi", "Mogaung", "Mohnyin", "Momauk", "Myitkyina", "Nawngmun",
+      "Putao", "Shwegu", "Sumprabum", "Tanai", "Tsawlaw", "Waingmaw"
+    ]
+  },
+  {
+    "regionOrState": "Chin State",
+    "city": "Hakha",
+    "townships": [
+      "Falam", "Hakha", "Kanpetlet", "Matupi", "Mindat",
+      "Paletwa", "Tedim", "Thantlang", "Tonzang"
+    ]
+  },
+  {
+    "regionOrState": "Rakhine State",
+    "city": "Sittwe",
+    "townships": [
+      "Ann", "Buthidaung", "Gwa", "Kyaukphyu", "Kyauktaw", "Manaung",
+      "Maungdaw", "Minbya", "Mrauk-U", "Myebon", "Pauktaw", "Ponnagyun",
+      "Ramree", "Rathedaung", "Sittwe", "Thandwe", "Toungup"
+    ]
+  }
+]

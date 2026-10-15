@@ -24,6 +24,8 @@ public class ProductRequestDto {
 
     private Long brandId;
 
+    private Boolean isPerishable;
+
     @NotNull(message = "User ID is required")
     private Long userId;
 }
