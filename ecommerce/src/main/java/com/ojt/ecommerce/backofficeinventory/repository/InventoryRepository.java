@@ -28,6 +28,9 @@ public interface InventoryRepository extends JpaRepository<Inventory, Long> {
     // Check if inventory exists for a variant
     boolean existsByVariant_VariantId(Long variantId);
 
+    // Find inventory for multiple variants
+    List<Inventory> findByVariant_VariantIdIn(List<Long> variantIds);
+
     // Find by stock status (NORMAL, LOW_STOCK, OUT_OF_STOCK)
     List<Inventory> findByStatus(String status);
 

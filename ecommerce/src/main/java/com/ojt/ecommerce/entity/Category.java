@@ -56,7 +56,7 @@ public class Category {
     )
     private Category parent;
 
-    // Subcategories (Children) Relationship ထည့်သွင်းပေးထားပါသည်
+    // Subcategories (Children) Relationship 
     @OneToMany(
         mappedBy = "parent",
         fetch = FetchType.LAZY

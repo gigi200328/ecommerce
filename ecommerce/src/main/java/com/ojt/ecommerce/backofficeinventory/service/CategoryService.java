@@ -5,6 +5,7 @@ import java.util.List;
 
 import org.springframework.data.domain.Page;
 import org.springframework.data.domain.Pageable;
+import org.springframework.data.jpa.domain.Specification;
 import org.springframework.security.core.Authentication;
 import org.springframework.security.core.context.SecurityContextHolder;
 import org.springframework.stereotype.Service;
@@ -16,6 +17,8 @@ import com.ojt.ecommerce.backofficeinventory.mapper.CategoryMapper;
 import com.ojt.ecommerce.backofficeinventory.repository.BrandCategoryRepository;
 import com.ojt.ecommerce.backofficeinventory.repository.CategoryRepository;
 import com.ojt.ecommerce.backofficeinventory.repository.UserRepository;
+import com.ojt.ecommerce.backofficeinventory.specification.CategorySpecification;
+import com.ojt.ecommerce.entity.Brand;
 import com.ojt.ecommerce.entity.Category;
 import com.ojt.ecommerce.entity.User;
 
@@ -294,5 +297,17 @@ public class CategoryService {
             maxChildDepth = Math.max(maxChildDepth, getMaxSubtreeDepth(child));
         }
         return 1 + maxChildDepth;
+    }
+    
+    //serch
+    @Transactional(readOnly = true)
+    public Page<CategoryResponseDto> searchCategories(String keyword, Pageable pageable) {
+        
+       
+    	Specification<Category> spec= CategorySpecification.search(keyword);
+
+        return categoryRepository
+                .findAll(spec, pageable)
+                .map(categoryMapper::toResponseDto);
     }
 }
