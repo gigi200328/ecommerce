@@ -53,6 +53,7 @@ public class SecurityConfig {
 		return http.build();
 	}
 
+    // Main Branch မှ အသစ်ပါလာသော Public Locations API
 	@Bean
 	@Order(1)
 	public SecurityFilterChain publicLocationsSecurityFilterChain(HttpSecurity http) throws Exception {
@@ -63,23 +64,48 @@ public class SecurityConfig {
 		return http.build();
 	}
 
-	// 1. Backoffice APIs Chain
+	// 1. Backoffice APIs Chain (Role-Based လုံခြုံရေးများ ပေါင်းထည့်ထားပါသည်)
 	@Bean
 	@Order(2)
 	public SecurityFilterChain securityFilterChain(HttpSecurity http, JwtUtil jwtUtil,
 			CustomUserDetailsService userDetailsService) throws Exception {
 		JwtAuthenticationFilter backofficeFilter = new JwtAuthenticationFilter(jwtUtil, userDetailsService);
-		http.securityMatcher("/api/backoffice/**").cors(cors -> cors.configurationSource(corsConfigurationSource()))
+		
+        http.securityMatcher("/api/backoffice/**").cors(cors -> cors.configurationSource(corsConfigurationSource()))
 				.csrf(AbstractHttpConfigurer::disable)
-				.authorizeHttpRequests(auth -> auth.requestMatchers("/api/backoffice/auth/**").permitAll()
-						.requestMatchers("/api/backoffice/categories/**", "/api/backoffice/brands/**",
-								"/api/backoffice/products/**", "/api/backoffice/product-images/**",
-								"/api/backoffice/variations/**", "/api/backoffice/variation-options/**",
-								"/api/backoffice/product-variants/**", "/api/backoffice/variant-option-values/**",
-								"/api/backoffice/tags/**", "/api/backoffice/product-tags/**",
-								"/api/backoffice/product-variant-images/**", "/api/backoffice/inventory/**",
-								"/api/backoffice/staff/**", "/api/backoffice/orders/**", "/api/backoffice/reports/**")
-						.permitAll().anyRequest().authenticated())
+				.authorizeHttpRequests(auth -> auth
+                        .requestMatchers("/api/backoffice/auth/**").permitAll()
+						
+                        // Staff များကို ADMIN သာ စီမံနိုင်သည်
+                        .requestMatchers("/api/backoffice/staff", "/api/backoffice/staff/**")
+                        .hasAnyAuthority("ADMIN", "ROLE_ADMIN")
+                        
+                        // Products များကို ADMIN နှင့် INVENTORY_STAFF ကိုင်တွယ်နိုင်သည်
+                        .requestMatchers(
+                            "/api/backoffice/categories", "/api/backoffice/categories/**",
+                            "/api/backoffice/brands", "/api/backoffice/brands/**",
+                            "/api/backoffice/products", "/api/backoffice/products/**",
+                            "/api/backoffice/product-images/**",
+                            "/api/backoffice/variations", "/api/backoffice/variations/**",
+                            "/api/backoffice/variation-options/**",
+                            "/api/backoffice/product-variants/**",
+                            "/api/backoffice/variant-option-values/**",
+                            "/api/backoffice/tags", "/api/backoffice/tags/**",
+                            "/api/backoffice/product-tags/**",
+                            "/api/backoffice/product-variant-images/**",
+                            "/api/backoffice/inventory", "/api/backoffice/inventory/**"
+                        ).hasAnyAuthority("ADMIN", "ROLE_ADMIN", "INVENTORY_STAFF", "ROLE_INVENTORY_STAFF")
+                        
+                        // Orders များကို ADMIN နှင့် SALES_STAFF ကိုင်တွယ်နိုင်သည်
+                        .requestMatchers("/api/backoffice/orders", "/api/backoffice/orders/**")
+                        .hasAnyAuthority("ADMIN", "ROLE_ADMIN", "SALES_STAFF", "ROLE_SALES_STAFF")
+                        
+                        // Main မှ အသစ်ပါလာသော Reports များကို ADMIN သာ ကြည့်ခွင့်ပေးမည်
+                        .requestMatchers("/api/backoffice/reports", "/api/backoffice/reports/**")
+                        .hasAnyAuthority("ADMIN", "ROLE_ADMIN")
+
+						.anyRequest().authenticated()
+                )
 				.sessionManagement(sess -> sess.sessionCreationPolicy(SessionCreationPolicy.STATELESS))
 				.addFilterBefore(backofficeFilter, UsernamePasswordAuthenticationFilter.class);
 
@@ -104,7 +130,6 @@ public class SecurityConfig {
 						.permitAll().requestMatchers("/api/storefront/v1/tags/**", "/api/storefront/v1/brands/**")
 						.permitAll().requestMatchers(HttpMethod.GET, "/api/storefront/v1/search-history/popular")
 						.permitAll()
-
 //                .requestMatchers("/api/storefront/v1/delivery-zones/**", "/api/storefront/v1/shipping/quote/**", "/api/storefront/v1/payment-callbacks/g3").permitAll()
 						.anyRequest().authenticated())
 				.sessionManagement(sess -> sess.sessionCreationPolicy(SessionCreationPolicy.STATELESS))
