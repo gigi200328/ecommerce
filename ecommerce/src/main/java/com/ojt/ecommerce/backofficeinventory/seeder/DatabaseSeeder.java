@@ -13,8 +13,8 @@ import org.springframework.stereotype.Component;
 import org.springframework.transaction.annotation.Transactional;
 
 import java.time.LocalDateTime;
-import java.util.HashSet; // အသစ်ထည့်ရန်
-import java.util.List;    // အသစ်ထည့်ရန်
+import java.util.HashSet;
+import java.util.List;
 
 @Component
 @RequiredArgsConstructor
@@ -55,12 +55,12 @@ public class DatabaseSeeder implements CommandLineRunner {
         salesRole.setPermissions(new HashSet<>(List.of(viewOrder)));
         roleRepository.save(salesRole);
 
-        // ၃။ Users များကို ဖန်တီးပါမည်
+        // ၃။ Users များကို ဖန်တီးပါမည် (Password များအားလုံးကို လုံခြုံရေးစည်းကမ်းနှင့်ကိုက်ညီသော Admin@123 သို့ ပြောင်းထားပါသည်)
         if (userRepository.findByEmail("admin@ecommerce.com").isEmpty()) {
             User adminUser = User.builder()
                     .userName("System Admin")
                     .email("admin@ecommerce.com")
-                    .passwordHash(passwordEncoder.encode("admin123"))
+                    .passwordHash(passwordEncoder.encode("Admin@123"))
                     .status("ACTIVE")
                     .createdAt(LocalDateTime.now())
                     .userRole(adminRole)
@@ -72,7 +72,7 @@ public class DatabaseSeeder implements CommandLineRunner {
             User inventoryUser = User.builder()
                     .userName("Inventory Manager")
                     .email("inventory@ecommerce.com")
-                    .passwordHash(passwordEncoder.encode("inv123"))
+                    .passwordHash(passwordEncoder.encode("Admin@123"))
                     .status("ACTIVE")
                     .createdAt(LocalDateTime.now())
                     .userRole(inventoryRole)
@@ -84,7 +84,7 @@ public class DatabaseSeeder implements CommandLineRunner {
             User salesUser = User.builder()
                     .userName("Sales Representative")
                     .email("sales@ecommerce.com")
-                    .passwordHash(passwordEncoder.encode("sales123"))
+                    .passwordHash(passwordEncoder.encode("Admin@123"))
                     .status("ACTIVE")
                     .createdAt(LocalDateTime.now())
                     .userRole(salesRole)

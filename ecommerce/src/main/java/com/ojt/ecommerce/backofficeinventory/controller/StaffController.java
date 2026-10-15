@@ -11,9 +11,8 @@ import java.util.List;
 import java.util.Map;
 
 @RestController
-// Frontend က လှမ်းခေါ်သည့် လမ်းကြောင်းနှင့် ကိုက်ညီစေရန် /api/v1/staff ဟု ပြင်ဆင်ထားပါသည်
-@RequestMapping("/api/v1/staff") 
-@CrossOrigin(origins = "http://localhost:5173") // <--- CORS Error ပျောက်စေမည့် စာကြောင်း
+@RequestMapping("/api/backoffice/staff") 
+@CrossOrigin(origins = "http://localhost:5173")
 @RequiredArgsConstructor
 public class StaffController {
 

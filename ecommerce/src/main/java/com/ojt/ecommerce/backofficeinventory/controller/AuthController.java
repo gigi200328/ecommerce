@@ -6,6 +6,7 @@ import com.ojt.ecommerce.backofficeinventory.dto.ChangePasswordRequest;
 import com.ojt.ecommerce.backofficeinventory.security.CustomUserDetails;
 import com.ojt.ecommerce.backofficeinventory.security.JwtUtil;
 import com.ojt.ecommerce.backofficeinventory.service.StaffService;
+import jakarta.validation.Valid; // <--- @Valid ကို Import လုပ်ရန်
 import lombok.RequiredArgsConstructor;
 import org.springframework.http.ResponseEntity;
 import org.springframework.security.authentication.AuthenticationManager;
@@ -23,11 +24,11 @@ public class AuthController {
 
     private final AuthenticationManager authenticationManager;
     private final JwtUtil jwtUtil;
-    
     private final StaffService staffService; 
 
     @PostMapping("/login")
-    public ResponseEntity<AuthResponseDto> login(@RequestBody AuthRequestDto request) {
+    // အောက်ပါစာကြောင်းတွင် @RequestBody ရှေ့၌ @Valid ကို ထည့်ပေးထားပါသည်
+    public ResponseEntity<AuthResponseDto> login(@Valid @RequestBody AuthRequestDto request) {
         Authentication authentication = authenticationManager.authenticate(
                 new UsernamePasswordAuthenticationToken(request.getEmail(), request.getPassword())
         );

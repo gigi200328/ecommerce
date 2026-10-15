@@ -63,37 +63,41 @@ public class SecurityConfig {
         return http.build();
     }
 
-    // 1. Backoffice APIs Chain
+	// 1. Backoffice APIs Chain
     @Bean
     @Order(1)
-	public SecurityFilterChain securityFilterChain(HttpSecurity http,JwtUtil jwtUtil,
-	        CustomUserDetailsService userDetailsService) throws Exception {
-		   JwtAuthenticationFilter backofficeFilter =
-		            new JwtAuthenticationFilter(
-		                    jwtUtil,
-		                    userDetailsService
-		            );        http
+    public SecurityFilterChain securityFilterChain(HttpSecurity http, JwtUtil jwtUtil, CustomUserDetailsService userDetailsService) throws Exception {
+        JwtAuthenticationFilter backofficeFilter = new JwtAuthenticationFilter(jwtUtil, userDetailsService);
+        
+        http
             .securityMatcher("/api/backoffice/**")
             .cors(cors -> cors.configurationSource(corsConfigurationSource()))
             .csrf(AbstractHttpConfigurer::disable)
             .authorizeHttpRequests(auth -> auth
                 .requestMatchers("/api/backoffice/auth/**").permitAll()
+                
+                // လမ်းကြောင်းအတိအကျနှင့် ROLE_ အမည်ကွဲများကိုပါ ထည့်သွင်းပေးထားပါသည်
+                .requestMatchers("/api/backoffice/staff", "/api/backoffice/staff/**")
+                .hasAnyAuthority("ADMIN", "ROLE_ADMIN")
+                
                 .requestMatchers(
-                    "/api/backoffice/categories/**",
-                    "/api/backoffice/brands/**",
-                    "/api/backoffice/products/**",
+                    "/api/backoffice/categories", "/api/backoffice/categories/**",
+                    "/api/backoffice/brands", "/api/backoffice/brands/**",
+                    "/api/backoffice/products", "/api/backoffice/products/**",
                     "/api/backoffice/product-images/**",
-                    "/api/backoffice/variations/**",
+                    "/api/backoffice/variations", "/api/backoffice/variations/**",
                     "/api/backoffice/variation-options/**",
                     "/api/backoffice/product-variants/**",
                     "/api/backoffice/variant-option-values/**",
-                    "/api/backoffice/tags/**",
+                    "/api/backoffice/tags", "/api/backoffice/tags/**",
                     "/api/backoffice/product-tags/**",
                     "/api/backoffice/product-variant-images/**",
-                    "/api/backoffice/inventory/**",
-                    "/api/backoffice/staff/**",
-                    "/api/backoffice/orders/**"
-                ).permitAll()
+                    "/api/backoffice/inventory", "/api/backoffice/inventory/**"
+                ).hasAnyAuthority("ADMIN", "ROLE_ADMIN", "INVENTORY_STAFF", "ROLE_INVENTORY_STAFF")
+                
+                .requestMatchers("/api/backoffice/orders", "/api/backoffice/orders/**")
+                .hasAnyAuthority("ADMIN", "ROLE_ADMIN", "SALES_STAFF", "ROLE_SALES_STAFF")
+                
                 .anyRequest().authenticated()
             )
             .sessionManagement(sess -> sess.sessionCreationPolicy(SessionCreationPolicy.STATELESS))
