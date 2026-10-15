@@ -32,4 +32,10 @@ public class RestockRequestDto {
 
     @Schema(description = "Optional notes or remark", example = "Restocked from Supplier Batch #892")
     private String remark;
+
+    @Schema(description = "Optional updated expiry date for new batch", example = "2026-12-31")
+    private java.time.LocalDate expiryDate;
+
+    @Schema(description = "Optional updated batch or lot number", example = "LOT-2026-002")
+    private String batchNumber;
 }

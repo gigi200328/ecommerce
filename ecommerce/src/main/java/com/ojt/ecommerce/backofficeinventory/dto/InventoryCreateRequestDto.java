@@ -28,4 +28,13 @@ public class InventoryCreateRequestDto {
     @Schema(description = "Reorder threshold level", example = "10", defaultValue = "10")
     @Builder.Default
     private Integer reorderLevel = 10;
+
+    @Schema(description = "Whether this inventory batch is perishable", example = "true")
+    private Boolean isPerishable;
+
+    @Schema(description = "Expiration date for perishable inventory", example = "2026-12-31")
+    private java.time.LocalDate expiryDate;
+
+    @Schema(description = "Batch or Lot number", example = "LOT-2026-001")
+    private String batchNumber;
 }
