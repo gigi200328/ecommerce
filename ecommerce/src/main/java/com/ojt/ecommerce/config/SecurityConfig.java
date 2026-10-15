@@ -33,7 +33,6 @@ import lombok.RequiredArgsConstructor;
 @RequiredArgsConstructor
 public class SecurityConfig {
 
-
 	@Bean
 	public PasswordEncoder passwordEncoder() {
 		return new BCryptPasswordEncoder();
@@ -45,96 +44,85 @@ public class SecurityConfig {
 	}
 
 	@Bean
-    @Order(0)
-    public SecurityFilterChain swaggerSecurityFilterChain(HttpSecurity http) throws Exception {
-        http
-            .securityMatcher(
-                "/v3/api-docs/**",
-                "/swagger-ui/**",
-                "/swagger-ui.html",
-                "/swagger-resources/**",
-                "/webjars/**",
-                "/uploads/**"
-            )
-            .cors(cors -> cors.configurationSource(corsConfigurationSource()))
-            .csrf(AbstractHttpConfigurer::disable)
-            .authorizeHttpRequests(auth -> auth.anyRequest().permitAll());
+	@Order(0)
+	public SecurityFilterChain swaggerSecurityFilterChain(HttpSecurity http) throws Exception {
+		http.securityMatcher("/v3/api-docs/**", "/swagger-ui/**", "/swagger-ui.html", "/swagger-resources/**",
+				"/webjars/**", "/uploads/**").cors(cors -> cors.configurationSource(corsConfigurationSource()))
+				.csrf(AbstractHttpConfigurer::disable).authorizeHttpRequests(auth -> auth.anyRequest().permitAll());
 
-        return http.build();
-    }
+		return http.build();
+	}
 
-    // 1. Backoffice APIs Chain
-    @Bean
-    @Order(1)
-	public SecurityFilterChain securityFilterChain(HttpSecurity http,JwtUtil jwtUtil,
-	        CustomUserDetailsService userDetailsService) throws Exception {
-		   JwtAuthenticationFilter backofficeFilter =
-		            new JwtAuthenticationFilter(
-		                    jwtUtil,
-		                    userDetailsService
-		            );        http
-            .securityMatcher("/api/backoffice/**")
-            .cors(cors -> cors.configurationSource(corsConfigurationSource()))
-            .csrf(AbstractHttpConfigurer::disable)
-            .authorizeHttpRequests(auth -> auth
-                .requestMatchers("/api/backoffice/auth/**").permitAll()
-                .requestMatchers(
-                    "/api/backoffice/categories/**",
-                    "/api/backoffice/brands/**",
-                    "/api/backoffice/products/**",
-                    "/api/backoffice/product-images/**",
-                    "/api/backoffice/variations/**",
-                    "/api/backoffice/variation-options/**",
-                    "/api/backoffice/product-variants/**",
-                    "/api/backoffice/variant-option-values/**",
-                    "/api/backoffice/tags/**",
-                    "/api/backoffice/product-tags/**",
-                    "/api/backoffice/product-variant-images/**",
-                    "/api/backoffice/inventory/**",
-                    "/api/backoffice/staff/**",
-                    "/api/backoffice/orders/**"
-                ).permitAll()
-                .anyRequest().authenticated()
-            )
-            .sessionManagement(sess -> sess.sessionCreationPolicy(SessionCreationPolicy.STATELESS))
-            .addFilterBefore(backofficeFilter, UsernamePasswordAuthenticationFilter.class);
+	@Bean
+	@Order(1)
+	public SecurityFilterChain publicLocationsSecurityFilterChain(HttpSecurity http) throws Exception {
+		http.securityMatcher("/api/locations/**").cors(cors -> cors.configurationSource(corsConfigurationSource()))
+				.csrf(AbstractHttpConfigurer::disable).authorizeHttpRequests(auth -> auth.anyRequest().permitAll())
+				.sessionManagement(sess -> sess.sessionCreationPolicy(SessionCreationPolicy.STATELESS));
 
-        return http.build();
-    }
-	
-    @Bean
-    @Order(2)
-    public SecurityFilterChain g5SecurityFilterChain(HttpSecurity http,G5JwtUtil g5JwtUtil) throws Exception {
-    	G5JwtAuthenticationFilter storefrontFilter = new G5JwtAuthenticationFilter(g5JwtUtil);
-        http
-        .securityMatcher("/api/storefront/v1/**")
-            .cors(cors -> cors.configurationSource(corsConfigurationSource()))
-            .csrf(csrf -> csrf.disable())
-            .authorizeHttpRequests(auth -> auth
-                .requestMatchers("/api/storefront/v1/auth/customer/login", "/api/storefront/v1/auth/customer/register","/api/storefront/v1/auth/customer/forgot-password","/api/storefront/v1/auth/customer/reset-password","/api/storefront/v1/auth/customer/verify-code").permitAll()
-                .requestMatchers("/api/storefront/v1/products/**", "/api/storefront/v1/categories/**", "/api/storefront/v1/cart/guest/**").permitAll()
-                .requestMatchers("/api/storefront/v1/tags/**", "/api/storefront/v1/brands/**").permitAll()
-                .requestMatchers(HttpMethod.GET, "/api/storefront/v1/search-history/popular").permitAll()
+		return http.build();
+	}
+
+	// 1. Backoffice APIs Chain
+	@Bean
+	@Order(2)
+	public SecurityFilterChain securityFilterChain(HttpSecurity http, JwtUtil jwtUtil,
+			CustomUserDetailsService userDetailsService) throws Exception {
+		JwtAuthenticationFilter backofficeFilter = new JwtAuthenticationFilter(jwtUtil, userDetailsService);
+		http.securityMatcher("/api/backoffice/**").cors(cors -> cors.configurationSource(corsConfigurationSource()))
+				.csrf(AbstractHttpConfigurer::disable)
+				.authorizeHttpRequests(auth -> auth.requestMatchers("/api/backoffice/auth/**").permitAll()
+						.requestMatchers("/api/backoffice/categories/**", "/api/backoffice/brands/**",
+								"/api/backoffice/products/**", "/api/backoffice/product-images/**",
+								"/api/backoffice/variations/**", "/api/backoffice/variation-options/**",
+								"/api/backoffice/product-variants/**", "/api/backoffice/variant-option-values/**",
+								"/api/backoffice/tags/**", "/api/backoffice/product-tags/**",
+								"/api/backoffice/product-variant-images/**", "/api/backoffice/inventory/**",
+								"/api/backoffice/staff/**", "/api/backoffice/orders/**", "/api/backoffice/reports/**")
+						.permitAll().anyRequest().authenticated())
+				.sessionManagement(sess -> sess.sessionCreationPolicy(SessionCreationPolicy.STATELESS))
+				.addFilterBefore(backofficeFilter, UsernamePasswordAuthenticationFilter.class);
+
+		return http.build();
+	}
+
+	@Bean
+	@Order(3)
+	public SecurityFilterChain g5SecurityFilterChain(HttpSecurity http, G5JwtUtil g5JwtUtil) throws Exception {
+		G5JwtAuthenticationFilter storefrontFilter = new G5JwtAuthenticationFilter(g5JwtUtil);
+		http.securityMatcher("/api/storefront/v1/**").cors(cors -> cors.configurationSource(corsConfigurationSource()))
+				.csrf(csrf -> csrf.disable())
+				.authorizeHttpRequests(auth -> auth
+						.requestMatchers("/api/storefront/v1/auth/customer/login",
+								"/api/storefront/v1/auth/customer/register",
+								"/api/storefront/v1/auth/customer/forgot-password",
+								"/api/storefront/v1/auth/customer/reset-password",
+								"/api/storefront/v1/auth/customer/verify-code")
+						.permitAll()
+						.requestMatchers("/api/storefront/v1/products/**", "/api/storefront/v1/categories/**",
+								"/api/storefront/v1/cart/guest/**")
+						.permitAll().requestMatchers("/api/storefront/v1/tags/**", "/api/storefront/v1/brands/**")
+						.permitAll().requestMatchers(HttpMethod.GET, "/api/storefront/v1/search-history/popular")
+						.permitAll()
 
 //                .requestMatchers("/api/storefront/v1/delivery-zones/**", "/api/storefront/v1/shipping/quote/**", "/api/storefront/v1/payment-callbacks/g3").permitAll()
-                .anyRequest().authenticated()
-            )
-            .sessionManagement(sess -> sess.sessionCreationPolicy(SessionCreationPolicy.STATELESS))
-            .addFilterBefore(storefrontFilter , UsernamePasswordAuthenticationFilter.class);
+						.anyRequest().authenticated())
+				.sessionManagement(sess -> sess.sessionCreationPolicy(SessionCreationPolicy.STATELESS))
+				.addFilterBefore(storefrontFilter, UsernamePasswordAuthenticationFilter.class);
 
-        return http.build();
-    }
+		return http.build();
+	}
 
-	
 	@Bean
-    public CorsConfigurationSource corsConfigurationSource() {
-        CorsConfiguration configuration = new CorsConfiguration();
-        configuration.setAllowedOrigins(List.of("http://localhost:5173", "http://localhost:3000"));
-        configuration.setAllowedMethods(List.of("GET", "POST", "PUT", "DELETE", "PATCH", "OPTIONS"));
-        configuration.setAllowedHeaders(List.of("Authorization", "Content-Type", "Cache-Control","Accept", "X-Requested-With"));
+	public CorsConfigurationSource corsConfigurationSource() {
+		CorsConfiguration configuration = new CorsConfiguration();
+		configuration.setAllowedOrigins(List.of("http://localhost:5173", "http://localhost:3000"));
+		configuration.setAllowedMethods(List.of("GET", "POST", "PUT", "DELETE", "PATCH", "OPTIONS"));
+		configuration.setAllowedHeaders(
+				List.of("Authorization", "Content-Type", "Cache-Control", "Accept", "X-Requested-With"));
 		configuration.setAllowCredentials(true);
-        UrlBasedCorsConfigurationSource source = new UrlBasedCorsConfigurationSource();
-        source.registerCorsConfiguration("/**", configuration);
-        return source;
-    }
+		UrlBasedCorsConfigurationSource source = new UrlBasedCorsConfigurationSource();
+		source.registerCorsConfiguration("/**", configuration);
+		return source;
+	}
 }

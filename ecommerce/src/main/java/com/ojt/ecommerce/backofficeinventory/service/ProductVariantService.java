@@ -2,11 +2,14 @@ package com.ojt.ecommerce.backofficeinventory.service;
 
 import java.util.List;
 
+import com.ojt.ecommerce.backofficeinventory.dto.ProductVariantCreateDto;
 import com.ojt.ecommerce.entity.ProductVariant;
 
 public interface ProductVariantService {
 
     ProductVariant createProductVariant(ProductVariant productVariant);
+
+    ProductVariant createProductVariantWithOptions(ProductVariantCreateDto dto);
 
     List<ProductVariant> getAllProductVariants();
 

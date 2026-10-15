@@ -100,13 +100,7 @@ public class InventoryServiceImpl implements InventoryService {
         LocalDateTime now = LocalDateTime.now();
 
         if (inventoryRepository.existsByVariant_VariantId(variantId)) {
-            Inventory existing = inventoryRepository.findByVariant_VariantId(variantId).get();
-            existing.setQuantity(initialQty);
-            existing.setReorderLevel(reorderLevel);
-            existing.setStatus(calculateStatus(initialQty, reorderLevel));
-            existing.setModifiedBy(currentUser);
-            existing.setModifiedAt(now);
-            return inventoryMapper.toResponseDto(inventoryRepository.save(existing));
+            throw new IllegalArgumentException("Inventory tracking is already initialized for variant id: " + variantId);
         }
 
         Inventory inventory = Inventory.builder()
@@ -125,7 +119,7 @@ public class InventoryServiceImpl implements InventoryService {
 
         InventoryTransaction txn = InventoryTransaction.builder()
                 .variant(variant)
-                .txnType("INITIAL_STOCK")
+                .txnType("RESTOCK")
                 .qty(initialQty)
                 .beforeQty(0)
                 .afterQty(initialQty)
