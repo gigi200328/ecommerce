@@ -35,4 +35,12 @@ public interface ReportRepository extends JpaRepository<Product, Long> {
     // Calls the Stored Procedure for the Low Stock Alert Report
     @Query(value = "CALL SP_GetLowStockAlertReport()", nativeQuery = true)
     List<com.ojt.ecommerce.backofficeinventory.dto.LowStockAlertDTO> getLowStockAlertReport();
+
+    // Calls the Stored Procedure for the Order Fulfillment Status Report
+    @Query(value = "CALL SP_GetOrderFulfillmentReport(:startDate, :endDate, :statusFilter)", nativeQuery = true)
+    List<com.ojt.ecommerce.backofficeinventory.dto.OrderFulfillmentReportDTO> getOrderFulfillmentReport(
+            @Param("startDate") LocalDate startDate,
+            @Param("endDate") LocalDate endDate,
+            @Param("statusFilter") String statusFilter
+    );
 }

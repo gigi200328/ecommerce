@@ -1,9 +1,19 @@
 <?xml version="1.0" encoding="UTF-8"?>
-<!-- Created with Jaspersoft Studio version 6.20.6 -->
-<jasperReport xmlns="http://jasperreports.sourceforge.net/jasperreports" 
-              xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance" 
-              xsi:schemaLocation="http://jasperreports.sourceforge.net/jasperreports http://jasperreports.sourceforge.net/xsd/jasperreport.xsd" 
-              name="RefundSummaryReport" pageWidth="595" pageHeight="842" columnWidth="555" leftMargin="20" rightMargin="20" topMargin="20" bottomMargin="20" whenNoDataType="AllSectionsNoDetail" uuid="5225fff6-77c7-4ba0-8bbe-f9bea15c42c2">
+<jasperReport xmlns="http://jasperreports.sourceforge.net/jasperreports"
+              xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"
+              xsi:schemaLocation="http://jasperreports.sourceforge.net/jasperreports http://jasperreports.sourceforge.net/xsd/jasperreport.xsd"
+              name="RefundSummaryReport"
+              pageWidth="842"
+              pageHeight="595"
+              orientation="Landscape"
+              columnWidth="802"
+              leftMargin="20"
+              rightMargin="20"
+              topMargin="20"
+              bottomMargin="20"
+              whenNoDataType="AllSectionsNoDetail"
+              uuid="5225fff6-77c7-4ba0-8bbe-f9bea15c42c2">
+
 	<field name="refundId" class="java.lang.Long"/>
 	<field name="orderId" class="java.lang.Long"/>
 	<field name="productName" class="java.lang.String"/>
@@ -12,242 +22,324 @@
 	<field name="requestReason" class="java.lang.String"/>
 	<field name="status" class="java.lang.String"/>
 	<field name="requestedDate" class="java.util.Date"/>
-	<background>
-		<band splitType="Stretch"/>
-	</background>
+
 	<title>
-		<band height="79" splitType="Stretch">
+		<band height="55" splitType="Stretch">
 			<staticText>
-				<reportElement x="190" y="24" width="190" height="30" uuid="20a825d5-e11f-4cd0-8848-fa8fbd13a961"/>
-				<textElement textAlignment="Center" verticalAlignment="Middle">
-					<font size="16"/>
+				<reportElement x="0" y="0" width="450" height="20" forecolor="#1E293B" uuid="3d8491a0-1bfb-4da7-95e2-e1f185f40393"/>
+				<textElement verticalAlignment="Middle">
+					<font fontName="SansSerif" size="14" isBold="true"/>
 				</textElement>
-				<text><![CDATA[Refund Summary Report]]></text>
+				<text><![CDATA[E-COMMERCE BACK-OFFICE SYSTEM]]></text>
 			</staticText>
+			<staticText>
+				<reportElement x="0" y="22" width="450" height="18" forecolor="#475569" uuid="20a825d5-e11f-4cd0-8848-fa8fbd13a961"/>
+				<textElement verticalAlignment="Middle">
+					<font fontName="SansSerif" size="12" isBold="true"/>
+				</textElement>
+				<text><![CDATA[REFUND & RETURN ANALYSIS REPORT]]></text>
+			</staticText>
+			<textField>
+				<reportElement x="502" y="5" width="300" height="16" forecolor="#64748B" uuid="1f85bb69-bb28-40ea-9f79-e380536eb31c"/>
+				<textElement textAlignment="Right" verticalAlignment="Middle">
+					<font fontName="SansSerif" size="9"/>
+				</textElement>
+				<textFieldExpression><![CDATA["Generated on: " + new java.text.SimpleDateFormat("yyyy-MM-dd HH:mm").format(new java.util.Date())]]></textFieldExpression>
+			</textField>
+			<line>
+				<reportElement x="0" y="48" width="802" height="1" forecolor="#CBD5E1" uuid="885e7834-3151-40b9-b88d-e46fa2701d44"/>
+				<graphicElement>
+					<pen lineWidth="1.0" lineColor="#CBD5E1"/>
+				</graphicElement>
+			</line>
 		</band>
 	</title>
+
 	<columnHeader>
-		<band height="31" splitType="Stretch">
+		<band height="28" splitType="Stretch">
 			<staticText>
-				<reportElement x="0" y="0" width="40" height="30" uuid="1100958a-fb7a-4049-a9e2-977000b01f77"/>
+				<reportElement mode="Opaque" x="0" y="0" width="35" height="28" forecolor="#FFFFFF" backcolor="#1E293B" uuid="43465139-65fc-427a-8d7d-2b47ae5b4109"/>
 				<box>
-					<topPen lineWidth="1.0" lineStyle="Solid" lineColor="#000000"/>
-					<leftPen lineWidth="1.0" lineStyle="Solid" lineColor="#000000"/>
-					<bottomPen lineWidth="1.0" lineStyle="Solid" lineColor="#000000"/>
-					<rightPen lineWidth="1.0" lineStyle="Solid" lineColor="#000000"/>
+					<pen lineWidth="0.5" lineColor="#CBD5E1"/>
+					<topPen lineWidth="0.5" lineColor="#CBD5E1"/>
+					<leftPen lineWidth="0.5" lineColor="#CBD5E1"/>
+					<bottomPen lineWidth="0.5" lineColor="#CBD5E1"/>
+					<rightPen lineWidth="0.5" lineColor="#CBD5E1"/>
 				</box>
 				<textElement textAlignment="Center" verticalAlignment="Middle">
-					<font size="8"/>
+					<font fontName="SansSerif" size="10" isBold="true"/>
 				</textElement>
-				<text><![CDATA[No]]></text>
+				<text><![CDATA[No.]]></text>
 			</staticText>
 			<staticText>
-				<reportElement x="40" y="0" width="40" height="30" uuid="5df5ac36-5775-4377-b02f-12aa6ddf3ff5"/>
+				<reportElement mode="Opaque" x="35" y="0" width="65" height="28" forecolor="#FFFFFF" backcolor="#1E293B" uuid="3970b551-789a-4e6f-9975-6e0b74100652"/>
 				<box>
-					<topPen lineWidth="1.0" lineStyle="Solid" lineColor="#000000"/>
-					<leftPen lineWidth="1.0" lineStyle="Solid" lineColor="#000000"/>
-					<bottomPen lineWidth="1.0" lineStyle="Solid" lineColor="#000000"/>
-					<rightPen lineWidth="1.0" lineStyle="Solid" lineColor="#000000"/>
+					<pen lineWidth="0.5" lineColor="#CBD5E1"/>
+					<topPen lineWidth="0.5" lineColor="#CBD5E1"/>
+					<leftPen lineWidth="0.5" lineColor="#CBD5E1"/>
+					<bottomPen lineWidth="0.5" lineColor="#CBD5E1"/>
+					<rightPen lineWidth="0.5" lineColor="#CBD5E1"/>
 				</box>
 				<textElement textAlignment="Center" verticalAlignment="Middle">
-					<font size="8"/>
+					<font fontName="SansSerif" size="10" isBold="true"/>
 				</textElement>
-				<text><![CDATA[Refund id]]></text>
+				<text><![CDATA[Refund ID]]></text>
 			</staticText>
 			<staticText>
-				<reportElement x="80" y="0" width="40" height="30" uuid="46e479bf-187e-461e-9d6a-b66e2969c774"/>
+				<reportElement mode="Opaque" x="100" y="0" width="65" height="28" forecolor="#FFFFFF" backcolor="#1E293B" uuid="f989ad69-b57d-41a6-941d-cb0949d2146e"/>
 				<box>
-					<topPen lineWidth="1.0" lineStyle="Solid" lineColor="#000000"/>
-					<leftPen lineWidth="1.0" lineStyle="Solid" lineColor="#000000"/>
-					<bottomPen lineWidth="1.0" lineStyle="Solid" lineColor="#000000"/>
-					<rightPen lineWidth="1.0" lineStyle="Solid" lineColor="#000000"/>
+					<pen lineWidth="0.5" lineColor="#CBD5E1"/>
+					<topPen lineWidth="0.5" lineColor="#CBD5E1"/>
+					<leftPen lineWidth="0.5" lineColor="#CBD5E1"/>
+					<bottomPen lineWidth="0.5" lineColor="#CBD5E1"/>
+					<rightPen lineWidth="0.5" lineColor="#CBD5E1"/>
 				</box>
 				<textElement textAlignment="Center" verticalAlignment="Middle">
-					<font size="8"/>
+					<font fontName="SansSerif" size="10" isBold="true"/>
 				</textElement>
-				<text><![CDATA[Order id]]></text>
+				<text><![CDATA[Order ID]]></text>
 			</staticText>
 			<staticText>
-				<reportElement x="120" y="0" width="100" height="30" uuid="1d48f2fb-dbe6-4c67-a92f-7b1492a26bdd"/>
+				<reportElement mode="Opaque" x="165" y="0" width="172" height="28" forecolor="#FFFFFF" backcolor="#1E293B" uuid="559cae31-87a4-4a24-a745-f0939d73d6d6"/>
 				<box>
-					<topPen lineWidth="1.0" lineStyle="Solid" lineColor="#000000"/>
-					<leftPen lineWidth="1.0" lineStyle="Solid" lineColor="#000000"/>
-					<bottomPen lineWidth="1.0" lineStyle="Solid" lineColor="#000000"/>
-					<rightPen lineWidth="1.0" lineStyle="Solid" lineColor="#000000"/>
+					<pen lineWidth="0.5" lineColor="#CBD5E1"/>
+					<topPen lineWidth="0.5" lineColor="#CBD5E1"/>
+					<leftPen lineWidth="0.5" lineColor="#CBD5E1"/>
+					<bottomPen lineWidth="0.5" lineColor="#CBD5E1"/>
+					<rightPen lineWidth="0.5" lineColor="#CBD5E1"/>
 				</box>
 				<textElement textAlignment="Center" verticalAlignment="Middle">
-					<font size="8"/>
+					<font fontName="SansSerif" size="10" isBold="true"/>
 				</textElement>
 				<text><![CDATA[Product Name]]></text>
 			</staticText>
 			<staticText>
-				<reportElement x="220" y="0" width="50" height="30" uuid="7d3428cb-6f86-4237-949f-4b5fe4079c52"/>
+				<reportElement mode="Opaque" x="337" y="0" width="45" height="28" forecolor="#FFFFFF" backcolor="#1E293B" uuid="88435d88-8be4-43c3-aebe-cf3b916f1d6b"/>
 				<box>
-					<topPen lineWidth="1.0" lineStyle="Solid" lineColor="#000000"/>
-					<leftPen lineWidth="1.0" lineStyle="Solid" lineColor="#000000"/>
-					<bottomPen lineWidth="1.0" lineStyle="Solid" lineColor="#000000"/>
-					<rightPen lineWidth="1.0" lineStyle="Solid" lineColor="#000000"/>
+					<pen lineWidth="0.5" lineColor="#CBD5E1"/>
+					<topPen lineWidth="0.5" lineColor="#CBD5E1"/>
+					<leftPen lineWidth="0.5" lineColor="#CBD5E1"/>
+					<bottomPen lineWidth="0.5" lineColor="#CBD5E1"/>
+					<rightPen lineWidth="0.5" lineColor="#CBD5E1"/>
 				</box>
 				<textElement textAlignment="Center" verticalAlignment="Middle">
-					<font size="8"/>
+					<font fontName="SansSerif" size="10" isBold="true"/>
 				</textElement>
-				<text><![CDATA[Refund Quantity]]></text>
+				<text><![CDATA[Qty]]></text>
 			</staticText>
 			<staticText>
-				<reportElement x="270" y="0" width="60" height="30" uuid="95898e94-a216-43ef-9916-ef8c07f0dad6"/>
+				<reportElement mode="Opaque" x="382" y="0" width="85" height="28" forecolor="#FFFFFF" backcolor="#1E293B" uuid="2a45d0fc-bf4c-47fc-8f6b-59dcfb5d7d91"/>
 				<box>
-					<topPen lineWidth="1.0" lineStyle="Solid" lineColor="#000000"/>
-					<leftPen lineWidth="1.0" lineStyle="Solid" lineColor="#000000"/>
-					<bottomPen lineWidth="1.0" lineStyle="Solid" lineColor="#000000"/>
-					<rightPen lineWidth="1.0" lineStyle="Solid" lineColor="#000000"/>
+					<pen lineWidth="0.5" lineColor="#CBD5E1"/>
+					<topPen lineWidth="0.5" lineColor="#CBD5E1"/>
+					<leftPen lineWidth="0.5" lineColor="#CBD5E1"/>
+					<bottomPen lineWidth="0.5" lineColor="#CBD5E1"/>
+					<rightPen lineWidth="0.5" lineColor="#CBD5E1"/>
 				</box>
 				<textElement textAlignment="Center" verticalAlignment="Middle">
-					<font size="8"/>
+					<font fontName="SansSerif" size="10" isBold="true"/>
 				</textElement>
-				<text><![CDATA[Refund amount]]></text>
+				<text><![CDATA[Refund Amount]]></text>
 			</staticText>
 			<staticText>
-				<reportElement x="330" y="0" width="100" height="30" uuid="e90c08a2-e1e3-4085-832f-ea099cb17d7c"/>
+				<reportElement mode="Opaque" x="467" y="0" width="175" height="28" forecolor="#FFFFFF" backcolor="#1E293B" uuid="8a6198f7-b2eb-4581-9b4f-2dfb9875da4a"/>
 				<box>
-					<topPen lineWidth="1.0" lineStyle="Solid" lineColor="#000000"/>
-					<leftPen lineWidth="1.0" lineStyle="Solid" lineColor="#000000"/>
-					<bottomPen lineWidth="1.0" lineStyle="Solid" lineColor="#000000"/>
-					<rightPen lineWidth="1.0" lineStyle="Solid" lineColor="#000000"/>
+					<pen lineWidth="0.5" lineColor="#CBD5E1"/>
+					<topPen lineWidth="0.5" lineColor="#CBD5E1"/>
+					<leftPen lineWidth="0.5" lineColor="#CBD5E1"/>
+					<bottomPen lineWidth="0.5" lineColor="#CBD5E1"/>
+					<rightPen lineWidth="0.5" lineColor="#CBD5E1"/>
 				</box>
 				<textElement textAlignment="Center" verticalAlignment="Middle">
-					<font size="8"/>
+					<font fontName="SansSerif" size="10" isBold="true"/>
 				</textElement>
 				<text><![CDATA[Reason]]></text>
 			</staticText>
 			<staticText>
-				<reportElement x="430" y="0" width="50" height="30" uuid="c8d49d04-710a-438f-a592-66094b919ccd"/>
+				<reportElement mode="Opaque" x="642" y="0" width="80" height="28" forecolor="#FFFFFF" backcolor="#1E293B" uuid="9bf2f4e9-0639-444a-9cb8-b223d5ad29f8"/>
 				<box>
-					<topPen lineWidth="1.0" lineStyle="Solid" lineColor="#000000"/>
-					<leftPen lineWidth="1.0" lineStyle="Solid" lineColor="#000000"/>
-					<bottomPen lineWidth="1.0" lineStyle="Solid" lineColor="#000000"/>
-					<rightPen lineWidth="1.0" lineStyle="Solid" lineColor="#000000"/>
+					<pen lineWidth="0.5" lineColor="#CBD5E1"/>
+					<topPen lineWidth="0.5" lineColor="#CBD5E1"/>
+					<leftPen lineWidth="0.5" lineColor="#CBD5E1"/>
+					<bottomPen lineWidth="0.5" lineColor="#CBD5E1"/>
+					<rightPen lineWidth="0.5" lineColor="#CBD5E1"/>
 				</box>
 				<textElement textAlignment="Center" verticalAlignment="Middle">
-					<font size="8"/>
+					<font fontName="SansSerif" size="10" isBold="true"/>
 				</textElement>
 				<text><![CDATA[Status]]></text>
 			</staticText>
 			<staticText>
-				<reportElement x="480" y="0" width="75" height="30" uuid="fa9823f1-6ce2-470a-921d-e7b4d9395b23"/>
+				<reportElement mode="Opaque" x="722" y="0" width="80" height="28" forecolor="#FFFFFF" backcolor="#1E293B" uuid="c245ab78-c31a-4d9c-bd18-47c170efec1d"/>
 				<box>
-					<topPen lineWidth="1.0" lineStyle="Solid" lineColor="#000000"/>
-					<leftPen lineWidth="1.0" lineStyle="Solid" lineColor="#000000"/>
-					<bottomPen lineWidth="1.0" lineStyle="Solid" lineColor="#000000"/>
-					<rightPen lineWidth="1.0" lineStyle="Solid" lineColor="#000000"/>
+					<pen lineWidth="0.5" lineColor="#CBD5E1"/>
+					<topPen lineWidth="0.5" lineColor="#CBD5E1"/>
+					<leftPen lineWidth="0.5" lineColor="#CBD5E1"/>
+					<bottomPen lineWidth="0.5" lineColor="#CBD5E1"/>
+					<rightPen lineWidth="0.5" lineColor="#CBD5E1"/>
 				</box>
 				<textElement textAlignment="Center" verticalAlignment="Middle">
-					<font size="8"/>
+					<font fontName="SansSerif" size="10" isBold="true"/>
 				</textElement>
-				<text><![CDATA[Date]]></text>
+				<text><![CDATA[Request Date]]></text>
 			</staticText>
 		</band>
 	</columnHeader>
+
 	<detail>
-		<band height="30" splitType="Stretch">
-			<textField>
-				<reportElement x="0" y="0" width="40" height="30" uuid="fb081a7f-1583-42ae-bca3-b12649612764"/>
-				<box>
-					<topPen lineWidth="1.0" lineStyle="Solid" lineColor="#000000"/>
-					<leftPen lineWidth="1.0" lineStyle="Solid" lineColor="#000000"/>
-					<bottomPen lineWidth="1.0" lineStyle="Solid" lineColor="#000000"/>
-					<rightPen lineWidth="1.0" lineStyle="Solid" lineColor="#000000"/>
+		<band height="24" splitType="Stretch">
+			<textField isBlankWhenNull="true">
+				<reportElement x="0" y="0" width="35" height="24" uuid="19283746-5a6b-7c8d-9e0f-1a2b3c4d5e01"/>
+				<box leftPadding="5" rightPadding="5">
+					<pen lineWidth="0.5" lineColor="#CBD5E1"/>
+					<topPen lineWidth="0.5" lineColor="#CBD5E1"/>
+					<leftPen lineWidth="0.5" lineColor="#CBD5E1"/>
+					<bottomPen lineWidth="0.5" lineColor="#CBD5E1"/>
+					<rightPen lineWidth="0.5" lineColor="#CBD5E1"/>
 				</box>
-				<textElement textAlignment="Center" verticalAlignment="Middle"/>
+				<textElement textAlignment="Center" verticalAlignment="Middle">
+					<font fontName="SansSerif" size="9"/>
+				</textElement>
 				<textFieldExpression><![CDATA[$V{REPORT_COUNT}]]></textFieldExpression>
 			</textField>
-			<textField>
-				<reportElement x="40" y="0" width="40" height="30" uuid="3aec2c8e-caa9-4659-9002-74bc4f5f9530"/>
-				<box>
-					<topPen lineWidth="1.0" lineStyle="Solid" lineColor="#000000"/>
-					<leftPen lineWidth="1.0" lineStyle="Solid" lineColor="#000000"/>
-					<bottomPen lineWidth="1.0" lineStyle="Solid" lineColor="#000000"/>
-					<rightPen lineWidth="1.0" lineStyle="Solid" lineColor="#000000"/>
+			<textField isBlankWhenNull="true">
+				<reportElement x="35" y="0" width="65" height="24" uuid="29283746-5a6b-7c8d-9e0f-1a2b3c4d5e02"/>
+				<box leftPadding="5" rightPadding="5">
+					<pen lineWidth="0.5" lineColor="#CBD5E1"/>
+					<topPen lineWidth="0.5" lineColor="#CBD5E1"/>
+					<leftPen lineWidth="0.5" lineColor="#CBD5E1"/>
+					<bottomPen lineWidth="0.5" lineColor="#CBD5E1"/>
+					<rightPen lineWidth="0.5" lineColor="#CBD5E1"/>
 				</box>
-				<textElement textAlignment="Center" verticalAlignment="Middle"/>
+				<textElement textAlignment="Center" verticalAlignment="Middle">
+					<font fontName="SansSerif" size="9"/>
+				</textElement>
 				<textFieldExpression><![CDATA[$F{refundId}]]></textFieldExpression>
 			</textField>
-			<textField>
-				<reportElement x="80" y="0" width="40" height="30" uuid="41c03a29-2c39-4627-acce-03f198e422c0"/>
-				<box>
-					<topPen lineWidth="1.0" lineStyle="Solid" lineColor="#000000"/>
-					<leftPen lineWidth="1.0" lineStyle="Solid" lineColor="#000000"/>
-					<bottomPen lineWidth="1.0" lineStyle="Solid" lineColor="#000000"/>
-					<rightPen lineWidth="1.0" lineStyle="Solid" lineColor="#000000"/>
+			<textField isBlankWhenNull="true">
+				<reportElement x="100" y="0" width="65" height="24" uuid="39283746-5a6b-7c8d-9e0f-1a2b3c4d5e03"/>
+				<box leftPadding="5" rightPadding="5">
+					<pen lineWidth="0.5" lineColor="#CBD5E1"/>
+					<topPen lineWidth="0.5" lineColor="#CBD5E1"/>
+					<leftPen lineWidth="0.5" lineColor="#CBD5E1"/>
+					<bottomPen lineWidth="0.5" lineColor="#CBD5E1"/>
+					<rightPen lineWidth="0.5" lineColor="#CBD5E1"/>
 				</box>
-				<textElement textAlignment="Center" verticalAlignment="Middle"/>
+				<textElement textAlignment="Center" verticalAlignment="Middle">
+					<font fontName="SansSerif" size="9"/>
+				</textElement>
 				<textFieldExpression><![CDATA[$F{orderId}]]></textFieldExpression>
 			</textField>
-			<textField>
-				<reportElement x="120" y="0" width="100" height="30" uuid="475ea7eb-498d-4f83-a856-9a81191659d4"/>
-				<box>
-					<topPen lineWidth="1.0" lineStyle="Solid" lineColor="#000000"/>
-					<leftPen lineWidth="1.0" lineStyle="Solid" lineColor="#000000"/>
-					<bottomPen lineWidth="1.0" lineStyle="Solid" lineColor="#000000"/>
-					<rightPen lineWidth="1.0" lineStyle="Solid" lineColor="#000000"/>
+			<textField isBlankWhenNull="true">
+				<reportElement x="165" y="0" width="172" height="24" uuid="49283746-5a6b-7c8d-9e0f-1a2b3c4d5e04"/>
+				<box leftPadding="5" rightPadding="5">
+					<pen lineWidth="0.5" lineColor="#CBD5E1"/>
+					<topPen lineWidth="0.5" lineColor="#CBD5E1"/>
+					<leftPen lineWidth="0.5" lineColor="#CBD5E1"/>
+					<bottomPen lineWidth="0.5" lineColor="#CBD5E1"/>
+					<rightPen lineWidth="0.5" lineColor="#CBD5E1"/>
 				</box>
-				<textElement textAlignment="Center" verticalAlignment="Middle"/>
+				<textElement textAlignment="Left" verticalAlignment="Middle">
+					<font fontName="SansSerif" size="9"/>
+				</textElement>
 				<textFieldExpression><![CDATA[$F{productName}]]></textFieldExpression>
 			</textField>
-			<textField>
-				<reportElement x="220" y="0" width="50" height="30" uuid="6592692c-2171-46d3-bc79-b530ef957e2c"/>
-				<box>
-					<topPen lineWidth="1.0" lineStyle="Solid" lineColor="#000000"/>
-					<leftPen lineWidth="1.0" lineStyle="Solid" lineColor="#000000"/>
-					<bottomPen lineWidth="1.0" lineStyle="Solid" lineColor="#000000"/>
-					<rightPen lineWidth="1.0" lineStyle="Solid" lineColor="#000000"/>
+			<textField isBlankWhenNull="true">
+				<reportElement x="337" y="0" width="45" height="24" uuid="59283746-5a6b-7c8d-9e0f-1a2b3c4d5e05"/>
+				<box leftPadding="5" rightPadding="5">
+					<pen lineWidth="0.5" lineColor="#CBD5E1"/>
+					<topPen lineWidth="0.5" lineColor="#CBD5E1"/>
+					<leftPen lineWidth="0.5" lineColor="#CBD5E1"/>
+					<bottomPen lineWidth="0.5" lineColor="#CBD5E1"/>
+					<rightPen lineWidth="0.5" lineColor="#CBD5E1"/>
 				</box>
-				<textElement textAlignment="Center" verticalAlignment="Middle"/>
+				<textElement textAlignment="Center" verticalAlignment="Middle">
+					<font fontName="SansSerif" size="9"/>
+				</textElement>
 				<textFieldExpression><![CDATA[$F{refundQuantity}]]></textFieldExpression>
 			</textField>
-			<textField>
-				<reportElement x="270" y="0" width="60" height="30" uuid="72d74ed7-ccda-496c-bf4b-b8fe17c7af1e"/>
-				<box>
-					<topPen lineWidth="1.0" lineStyle="Solid" lineColor="#000000"/>
-					<leftPen lineWidth="1.0" lineStyle="Solid" lineColor="#000000"/>
-					<bottomPen lineWidth="1.0" lineStyle="Solid" lineColor="#000000"/>
-					<rightPen lineWidth="1.0" lineStyle="Solid" lineColor="#000000"/>
+			<textField pattern="#,##0.00" isBlankWhenNull="true">
+				<reportElement x="382" y="0" width="85" height="24" uuid="69283746-5a6b-7c8d-9e0f-1a2b3c4d5e06"/>
+				<box leftPadding="5" rightPadding="5">
+					<pen lineWidth="0.5" lineColor="#CBD5E1"/>
+					<topPen lineWidth="0.5" lineColor="#CBD5E1"/>
+					<leftPen lineWidth="0.5" lineColor="#CBD5E1"/>
+					<bottomPen lineWidth="0.5" lineColor="#CBD5E1"/>
+					<rightPen lineWidth="0.5" lineColor="#CBD5E1"/>
 				</box>
-				<textElement textAlignment="Center" verticalAlignment="Middle"/>
+				<textElement textAlignment="Right" verticalAlignment="Middle">
+					<font fontName="SansSerif" size="9"/>
+				</textElement>
 				<textFieldExpression><![CDATA[$F{refundAmount}]]></textFieldExpression>
 			</textField>
-			<textField>
-				<reportElement x="330" y="0" width="100" height="30" uuid="3ec17fe4-c12e-4d39-ba8f-c0d476053ef3"/>
-				<box>
-					<topPen lineWidth="1.0" lineStyle="Solid" lineColor="#000000"/>
-					<leftPen lineWidth="1.0" lineStyle="Solid" lineColor="#000000"/>
-					<bottomPen lineWidth="1.0" lineStyle="Solid" lineColor="#000000"/>
-					<rightPen lineWidth="1.0" lineStyle="Solid" lineColor="#000000"/>
+			<textField isBlankWhenNull="true">
+				<reportElement x="467" y="0" width="175" height="24" uuid="79283746-5a6b-7c8d-9e0f-1a2b3c4d5e07"/>
+				<box leftPadding="5" rightPadding="5">
+					<pen lineWidth="0.5" lineColor="#CBD5E1"/>
+					<topPen lineWidth="0.5" lineColor="#CBD5E1"/>
+					<leftPen lineWidth="0.5" lineColor="#CBD5E1"/>
+					<bottomPen lineWidth="0.5" lineColor="#CBD5E1"/>
+					<rightPen lineWidth="0.5" lineColor="#CBD5E1"/>
 				</box>
-				<textElement textAlignment="Center" verticalAlignment="Middle"/>
+				<textElement textAlignment="Left" verticalAlignment="Middle">
+					<font fontName="SansSerif" size="9"/>
+				</textElement>
 				<textFieldExpression><![CDATA[$F{requestReason}]]></textFieldExpression>
 			</textField>
-			<textField>
-				<reportElement x="430" y="0" width="50" height="30" uuid="35e7c5df-0e57-44eb-9e8f-c6a3df3a3199"/>
-				<box>
-					<topPen lineWidth="1.0" lineStyle="Solid" lineColor="#000000"/>
-					<leftPen lineWidth="1.0" lineStyle="Solid" lineColor="#000000"/>
-					<bottomPen lineWidth="1.0" lineStyle="Solid" lineColor="#000000"/>
-					<rightPen lineWidth="1.0" lineStyle="Solid" lineColor="#000000"/>
+			<textField isBlankWhenNull="true">
+				<reportElement x="642" y="0" width="80" height="24" uuid="89283746-5a6b-7c8d-9e0f-1a2b3c4d5e08"/>
+				<box leftPadding="5" rightPadding="5">
+					<pen lineWidth="0.5" lineColor="#CBD5E1"/>
+					<topPen lineWidth="0.5" lineColor="#CBD5E1"/>
+					<leftPen lineWidth="0.5" lineColor="#CBD5E1"/>
+					<bottomPen lineWidth="0.5" lineColor="#CBD5E1"/>
+					<rightPen lineWidth="0.5" lineColor="#CBD5E1"/>
 				</box>
-				<textElement textAlignment="Center" verticalAlignment="Middle"/>
+				<textElement textAlignment="Center" verticalAlignment="Middle">
+					<font fontName="SansSerif" size="9"/>
+				</textElement>
 				<textFieldExpression><![CDATA[$F{status}]]></textFieldExpression>
 			</textField>
-			<textField pattern="yyyy-MM-dd">
-				<reportElement x="480" y="0" width="75" height="30" uuid="af808a4e-fadf-450d-b936-4e717d3aa288"/>
-				<box>
-					<topPen lineWidth="1.0" lineStyle="Solid" lineColor="#000000"/>
-					<leftPen lineWidth="1.0" lineStyle="Solid" lineColor="#000000"/>
-					<bottomPen lineWidth="1.0" lineStyle="Solid" lineColor="#000000"/>
-					<rightPen lineWidth="1.0" lineStyle="Solid" lineColor="#000000"/>
+			<textField pattern="yyyy-MM-dd" isBlankWhenNull="true">
+				<reportElement x="722" y="0" width="80" height="24" uuid="99283746-5a6b-7c8d-9e0f-1a2b3c4d5e09"/>
+				<box leftPadding="5" rightPadding="5">
+					<pen lineWidth="0.5" lineColor="#CBD5E1"/>
+					<topPen lineWidth="0.5" lineColor="#CBD5E1"/>
+					<leftPen lineWidth="0.5" lineColor="#CBD5E1"/>
+					<bottomPen lineWidth="0.5" lineColor="#CBD5E1"/>
+					<rightPen lineWidth="0.5" lineColor="#CBD5E1"/>
 				</box>
-				<textElement textAlignment="Center" verticalAlignment="Middle"/>
+				<textElement textAlignment="Center" verticalAlignment="Middle">
+					<font fontName="SansSerif" size="9"/>
+				</textElement>
 				<textFieldExpression><![CDATA[$F{requestedDate}]]></textFieldExpression>
 			</textField>
 		</band>
 	</detail>
+
+	<pageFooter>
+		<band height="25" splitType="Stretch">
+			<line>
+				<reportElement x="0" y="0" width="802" height="1" forecolor="#E2E8F0" uuid="76cbbeae-6fa2-4e9f-8ea8-3e4e9bb19ca3"/>
+				<graphicElement>
+					<pen lineWidth="0.5" lineColor="#E2E8F0"/>
+				</graphicElement>
+			</line>
+			<staticText>
+				<reportElement x="0" y="5" width="400" height="15" forecolor="#64748B" uuid="87d55fbb-5e2f-4ee6-8572-c2cb81be22b8"/>
+				<textElement verticalAlignment="Middle">
+					<font fontName="SansSerif" size="8" isItalic="true"/>
+				</textElement>
+				<text><![CDATA[Confidential - Internal Back-Office Use Only]]></text>
+			</staticText>
+			<textField>
+				<reportElement x="502" y="5" width="300" height="15" forecolor="#64748B" uuid="f4955bde-c34c-4e8c-8f4b-3ea8b1a8f94a"/>
+				<textElement textAlignment="Right" verticalAlignment="Middle">
+					<font fontName="SansSerif" size="8"/>
+				</textElement>
+				<textFieldExpression><![CDATA["Page " + $V{PAGE_NUMBER}]]></textFieldExpression>
+			</textField>
+		</band>
+	</pageFooter>
+
 </jasperReport>

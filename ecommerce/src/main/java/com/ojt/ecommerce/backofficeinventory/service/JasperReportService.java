@@ -10,6 +10,7 @@ import java.util.Map;
 import org.springframework.stereotype.Service;
 
 import com.ojt.ecommerce.backofficeinventory.dto.LowStockAlertDTO;
+import com.ojt.ecommerce.backofficeinventory.dto.OrderFulfillmentReportDTO;
 import com.ojt.ecommerce.backofficeinventory.dto.RefundSummaryReportDTO;
 import com.ojt.ecommerce.backofficeinventory.dto.TopSellingProductDTO;
 import com.ojt.ecommerce.backofficeinventory.dto.CategorySummaryDTO;
@@ -158,5 +159,42 @@ public class JasperReportService {
 
         // 6. Export the report to PDF or Excel using helper method
         return exportReport(jasperPrint, format);
+    }
+
+    public byte[] generateOrderFulfillmentReport(LocalDate startDate, LocalDate endDate, String statusFilter, String format) throws Exception {
+        // Default statusFilter to "ALL" if null, empty, or whitespace
+        if (statusFilter == null || statusFilter.trim().isEmpty()) {
+            statusFilter = "ALL";
+        }
+
+        // 1. Fetch data from the database using the Stored Procedure
+        List<OrderFulfillmentReportDTO> orderData = reportRepository.getOrderFulfillmentReport(startDate, endDate, statusFilter);
+
+        // 2. Load and compile the Jasper Report (.jrxml) template
+        InputStream reportStream = getClass().getResourceAsStream("/reports/OrderFulfillmentReport.jrxml");
+        if (reportStream == null) {
+            throw new RuntimeException("Report template not found in /reports/OrderFulfillmentReport.jrxml");
+        }
+        JasperReport jasperReport = JasperCompileManager.compileReport(reportStream);
+
+        // 3. Map the data to a Jasper Reports Data Source
+        JRBeanCollectionDataSource dataSource = new JRBeanCollectionDataSource(orderData);
+
+        // 4. Set up report parameters
+        Map<String, Object> parameters = new HashMap<>();
+        parameters.put("REPORT_TITLE", "Order Fulfillment Status Report");
+        parameters.put("START_DATE", startDate.toString());
+        parameters.put("END_DATE", endDate.toString());
+        parameters.put("STATUS_FILTER", statusFilter);
+
+        // 5. Fill the report with data and parameters
+        JasperPrint jasperPrint = JasperFillManager.fillReport(jasperReport, parameters, dataSource);
+
+        // 6. Export the report to PDF or Excel using helper method
+        return exportReport(jasperPrint, format);
+    }
+
+    public byte[] generateOrderFulfillmentPdf(LocalDate startDate, LocalDate endDate, String statusFilter) throws Exception {
+        return generateOrderFulfillmentReport(startDate, endDate, statusFilter, "pdf");
     }
 }
