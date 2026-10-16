@@ -20,4 +20,7 @@ public class CreateZoneGroupRequest {
 	private List<String> townships; // ဥပမာ - ["Latha", "Pabedan"] (Default City Rate ဆိုလျှင် အလွတ်/null ပို့မည်)
 	private BigDecimal shippingFee; // ဥပမာ - 2000
 	private Integer estimatedDays;
+	private boolean hasDefaultRate;
+	private BigDecimal defaultShippingFee;
+	private Integer defaultEstimatedDays;
 }
