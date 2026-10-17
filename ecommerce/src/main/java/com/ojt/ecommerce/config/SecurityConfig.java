@@ -44,6 +44,7 @@ public class SecurityConfig {
 	}
 
 	@Bean
+<<<<<<< Updated upstream
     @Order(0)
     public SecurityFilterChain swaggerSecurityFilterChain(HttpSecurity http) throws Exception {
         http
@@ -58,10 +59,21 @@ public class SecurityConfig {
             .cors(cors -> cors.configurationSource(corsConfigurationSource()))
             .csrf(AbstractHttpConfigurer::disable)
             .authorizeHttpRequests(auth -> auth.anyRequest().permitAll());
+=======
+	@Order(0)
+	public SecurityFilterChain swaggerSecurityFilterChain(HttpSecurity http) throws Exception {
+		http.securityMatcher("/v3/api-docs/**", "/swagger-ui/**", "/swagger-ui.html", "/swagger-resources/**",
+				"/webjars/**", "/uploads/**")
+				.cors(cors -> cors.configurationSource(corsConfigurationSource()))
+				.csrf(AbstractHttpConfigurer::disable)
+				.authorizeHttpRequests(auth -> auth.anyRequest()
+						.permitAll());
+>>>>>>> Stashed changes
 
         return http.build();
     }
 
+<<<<<<< Updated upstream
     // 1. Backoffice APIs Chain
     @Bean
     @Order(1)
@@ -97,6 +109,18 @@ public class SecurityConfig {
             )
             .sessionManagement(sess -> sess.sessionCreationPolicy(SessionCreationPolicy.STATELESS))
             .addFilterBefore(backofficeFilter, UsernamePasswordAuthenticationFilter.class);
+=======
+	// Main Branch မှ အသစ်ပါလာသော Public Locations API
+	@Bean
+	@Order(1)
+	public SecurityFilterChain publicLocationsSecurityFilterChain(HttpSecurity http) throws Exception {
+		http.securityMatcher("/api/locations/**")
+				.cors(cors -> cors.configurationSource(corsConfigurationSource()))
+				.csrf(AbstractHttpConfigurer::disable)
+				.authorizeHttpRequests(auth -> auth.anyRequest()
+						.permitAll())
+				.sessionManagement(sess -> sess.sessionCreationPolicy(SessionCreationPolicy.STATELESS));
+>>>>>>> Stashed changes
 
         return http.build();
     }
@@ -114,11 +138,88 @@ public class SecurityConfig {
                 .requestMatchers("/api/storefront/v1/products/**", "/api/storefront/v1/categories/**", "/api/storefront/v1/cart/guest/**").permitAll()
                 .requestMatchers("/api/storefront/v1/tags/**", "/api/storefront/v1/brands/**").permitAll()
 
+<<<<<<< Updated upstream
 //                .requestMatchers("/api/storefront/v1/delivery-zones/**", "/api/storefront/v1/shipping/quote/**", "/api/storefront/v1/payment-callbacks/g3").permitAll()
                 .anyRequest().authenticated()
             )
             .sessionManagement(sess -> sess.sessionCreationPolicy(SessionCreationPolicy.STATELESS))
             .addFilterBefore(storefrontFilter , UsernamePasswordAuthenticationFilter.class);
+=======
+	// 1. Backoffice APIs Chain (Role-Based လုံခြုံရေးများ ပေါင်းထည့်ထားပါသည်)
+	@Bean
+	@Order(2)
+	public SecurityFilterChain securityFilterChain(HttpSecurity http, JwtUtil jwtUtil,
+			CustomUserDetailsService userDetailsService) throws Exception {
+		JwtAuthenticationFilter backofficeFilter = new JwtAuthenticationFilter(jwtUtil, userDetailsService);
+
+		http.securityMatcher("/api/backoffice/**")
+				.cors(cors -> cors.configurationSource(corsConfigurationSource()))
+				.csrf(AbstractHttpConfigurer::disable)
+				.authorizeHttpRequests(auth -> auth.requestMatchers("/api/backoffice/auth/**")
+						.permitAll()
+
+						// Staff များကို ADMIN သာ စီမံနိုင်သည်
+						.requestMatchers("/api/backoffice/staff", "/api/backoffice/staff/**")
+						.hasAnyAuthority("ADMIN", "ROLE_ADMIN")
+
+						// Products များကို ADMIN နှင့် INVENTORY_STAFF ကိုင်တွယ်နိုင်သည်
+						.requestMatchers("/api/backoffice/categories", "/api/backoffice/categories/**",
+								"/api/backoffice/brands", "/api/backoffice/brands/**", "/api/backoffice/products",
+								"/api/backoffice/products/**", "/api/backoffice/product-images/**",
+								"/api/backoffice/variations", "/api/backoffice/variations/**",
+								"/api/backoffice/variation-options/**", "/api/backoffice/product-variants/**",
+								"/api/backoffice/variant-option-values/**", "/api/backoffice/tags",
+								"/api/backoffice/tags/**", "/api/backoffice/product-tags/**",
+								"/api/backoffice/product-variant-images/**", "/api/backoffice/inventory",
+								"/api/backoffice/inventory/**")
+						.hasAnyAuthority("ADMIN", "ROLE_ADMIN", "INVENTORY_STAFF", "ROLE_INVENTORY_STAFF")
+
+						// Orders များကို ADMIN နှင့် SALES_STAFF ကိုင်တွယ်နိုင်သည်
+						.requestMatchers("/api/backoffice/orders", "/api/backoffice/orders/**")
+						.hasAnyAuthority("ADMIN", "ROLE_ADMIN", "SALES_STAFF", "ROLE_SALES_STAFF")
+
+						// Main မှ အသစ်ပါလာသော Reports များကို ADMIN သာ ကြည့်ခွင့်ပေးမည်
+						.requestMatchers("/api/backoffice/reports", "/api/backoffice/reports/**")
+						.hasAnyAuthority("ADMIN", "ROLE_ADMIN")
+
+						.anyRequest()
+						.authenticated())
+				.sessionManagement(sess -> sess.sessionCreationPolicy(SessionCreationPolicy.STATELESS))
+				.addFilterBefore(backofficeFilter, UsernamePasswordAuthenticationFilter.class);
+
+		return http.build();
+	}
+
+	@Bean
+	@Order(3)
+	public SecurityFilterChain g5SecurityFilterChain(HttpSecurity http, G5JwtUtil g5JwtUtil) throws Exception {
+		G5JwtAuthenticationFilter storefrontFilter = new G5JwtAuthenticationFilter(g5JwtUtil);
+		http.securityMatcher("/api/storefront/v1/**")
+				.cors(cors -> cors.configurationSource(corsConfigurationSource()))
+				.csrf(csrf -> csrf.disable())
+				.authorizeHttpRequests(auth -> auth
+						.requestMatchers("/api/storefront/v1/auth/customer/login",
+								"/api/storefront/v1/auth/customer/register",
+								"/api/storefront/v1/auth/customer/forgot-password",
+								"/api/storefront/v1/auth/customer/reset-password",
+								"/api/storefront/v1/auth/customer/verify-code")
+						.permitAll()
+						.requestMatchers("/api/storefront/v1/products/**", "/api/storefront/v1/categories/**",
+								"/api/storefront/v1/cart/guest/**")
+						.permitAll()
+						.requestMatchers("/api/storefront/v1/tags/**", "/api/storefront/v1/brands/**")
+						.permitAll()
+						.requestMatchers(HttpMethod.GET, "/api/storefront/v1/search-history/popular")
+						.permitAll()
+//                .requestMatchers("/api/storefront/v1/delivery-zones/**", "/api/storefront/v1/shipping/quote/**", "/api/storefront/v1/payment-callbacks/g3").permitAll()
+						.requestMatchers("/api/storefront/v1/payment-callbacks/g3")
+						.permitAll()
+
+						.anyRequest()
+						.authenticated())
+				.sessionManagement(sess -> sess.sessionCreationPolicy(SessionCreationPolicy.STATELESS))
+				.addFilterBefore(storefrontFilter, UsernamePasswordAuthenticationFilter.class);
+>>>>>>> Stashed changes
 
         return http.build();
     }

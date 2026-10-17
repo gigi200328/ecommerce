@@ -22,6 +22,8 @@ import org.springframework.http.MediaType;
 import org.springframework.http.ResponseEntity;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
+import org.springframework.context.ApplicationEventPublisher;
+import com.ojt.ecommerce.storefront.payment.event.OrderPaidEvent;
 import org.springframework.web.client.RestTemplate;
 
 import java.time.LocalDateTime;
@@ -39,6 +41,7 @@ public class PaymentServiceImpl implements PaymentService {
     private final CartRepository cartRepository;
     
     private final InventoryFinalizationPort inventoryFinalizationPort;
+    private final ApplicationEventPublisher eventPublisher;
     
     @Value("${payment.gateway.base-url}")
     private String pgBaseUrl;
@@ -173,22 +176,6 @@ public class PaymentServiceImpl implements PaymentService {
         }
         
         if ("SUCCESS".equalsIgnoreCase(request.getStatus())) {
-            try {
-                inventoryFinalizationPort.finalizeInventoryForOrder(payment.getOrder());
-            } catch (InvalidRequestException ex) {
-                // Stock validation failed
-                callback.setProcessingStatus("REJECTED");
-                callback.setProcessedAt(LocalDateTime.now());
-                paymentCallbackRepository.save(callback);
-                
-                payment.setPaymentStatus("FAILED");
-            Order order = payment.getOrder();
-            order.setPaymentStatus("FAILED");
-            orderRepository.save(order);                paymentRepository.save(payment);
-                
-                throw ex; // rollback the transaction and fail
-            }
-            
             payment.setPaymentStatus("SUCCESS");
             payment.setPaidAt(LocalDateTime.now());
             paymentRepository.save(payment);
@@ -203,7 +190,7 @@ public class PaymentServiceImpl implements PaymentService {
             history.setOldStatus("PENDING");
             history.setNewStatus("PAID");
             history.setChangedAt(LocalDateTime.now());
-            history.setRemark("Payment successful via mock callback");
+            history.setRemark("Payment successful via MMSPG webhook callback");
             orderStatusHistoryRepository.save(history);
             
             Cart cart = cartRepository.findByCustomerCustomerIdAndStatus(order.getCustomer().getCustomerId(), "ACTIVE")
@@ -216,6 +203,15 @@ public class PaymentServiceImpl implements PaymentService {
             callback.setProcessingStatus("PROCESSED");
             callback.setProcessedAt(LocalDateTime.now());
             paymentCallbackRepository.save(callback);
+            
+            // Publish OrderPaidEvent -> Handled AFTER_COMMIT by TransactionalEventListener
+            eventPublisher.publishEvent(new OrderPaidEvent(
+                    order.getOrderId(),
+                    order.getOrderNo(),
+                    payment.getTransactionRef(),
+                    payment.getAmount(),
+                    payment.getPaidAt()
+            ));
             
             return MockCallbackResponse.builder()
                     .orderId(order.getOrderId())
