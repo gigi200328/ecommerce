@@ -10,7 +10,6 @@ import com.ojt.ecommerce.storefront.cart.repository.CartRepository;
 import com.ojt.ecommerce.storefront.checkout.repository.G5OrderRepository;
 import com.ojt.ecommerce.storefront.checkout.repository.G5OrderStatusHistoryRepository;
 import com.ojt.ecommerce.storefront.payment.dto.*;
-import com.ojt.ecommerce.storefront.payment.port.InventoryFinalizationPort;
 import com.ojt.ecommerce.storefront.payment.repository.PaymentCallbackRepository;
 import com.ojt.ecommerce.storefront.payment.repository.G5PaymentRepository;
 import lombok.RequiredArgsConstructor;
@@ -40,7 +39,6 @@ public class PaymentServiceImpl implements PaymentService {
     private final G5OrderStatusHistoryRepository orderStatusHistoryRepository;
     private final CartRepository cartRepository;
     
-    private final InventoryFinalizationPort inventoryFinalizationPort;
     private final ApplicationEventPublisher eventPublisher;
     
     @Value("${payment.gateway.base-url}")
