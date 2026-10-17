@@ -16,6 +16,7 @@ public class ProductResponseDto {
     private String productName;
     private String description;
     private ProductStatus status;
+    private Boolean isPerishable;
 
     private Long categoryId;
     private String categoryName;

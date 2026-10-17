@@ -100,13 +100,12 @@ public class InventoryServiceImpl implements InventoryService {
         LocalDateTime now = LocalDateTime.now();
 
         if (inventoryRepository.existsByVariant_VariantId(variantId)) {
-            Inventory existing = inventoryRepository.findByVariant_VariantId(variantId).get();
-            existing.setQuantity(initialQty);
-            existing.setReorderLevel(reorderLevel);
-            existing.setStatus(calculateStatus(initialQty, reorderLevel));
-            existing.setModifiedBy(currentUser);
-            existing.setModifiedAt(now);
-            return inventoryMapper.toResponseDto(inventoryRepository.save(existing));
+            throw new IllegalArgumentException("Inventory tracking is already initialized for variant id: " + variantId);
+        }
+
+        Boolean isPerishable = request.getIsPerishable();
+        if (isPerishable == null && variant.getProduct() != null) {
+            isPerishable = variant.getProduct().getIsPerishable();
         }
 
         Inventory inventory = Inventory.builder()
@@ -115,6 +114,9 @@ public class InventoryServiceImpl implements InventoryService {
                 .reservedQuantity(0)
                 .reorderLevel(reorderLevel)
                 .status(calculateStatus(initialQty, reorderLevel))
+                .isPerishable(Boolean.TRUE.equals(isPerishable))
+                .expiryDate(request.getExpiryDate())
+                .batchNumber(request.getBatchNumber())
                 .createdBy(currentUser)
                 .createdAt(now)
                 .modifiedBy(currentUser)
@@ -125,7 +127,7 @@ public class InventoryServiceImpl implements InventoryService {
 
         InventoryTransaction txn = InventoryTransaction.builder()
                 .variant(variant)
-                .txnType("INITIAL_STOCK")
+                .txnType("RESTOCK")
                 .qty(initialQty)
                 .beforeQty(0)
                 .afterQty(initialQty)
@@ -158,6 +160,13 @@ public class InventoryServiceImpl implements InventoryService {
 
         inventory.setQuantity(afterQty);
         inventory.setStatus(calculateStatus(afterQty, inventory.getReorderLevel()));
+        if (request.getExpiryDate() != null) {
+            inventory.setExpiryDate(request.getExpiryDate());
+            inventory.setIsPerishable(true);
+        }
+        if (request.getBatchNumber() != null && !request.getBatchNumber().trim().isEmpty()) {
+            inventory.setBatchNumber(request.getBatchNumber().trim());
+        }
         inventory.setModifiedBy(currentUser);
         inventory.setModifiedAt(now);
 
@@ -192,10 +201,15 @@ public class InventoryServiceImpl implements InventoryService {
                 .orElseThrow(() -> new EntityNotFoundException("Inventory not found for variant id: " + variantId));
 
         int beforeQty = inventory.getQuantity() != null ? inventory.getQuantity() : 0;
+        int reservedQty = inventory.getReservedQuantity() != null ? inventory.getReservedQuantity() : 0;
+        int availableQty = Math.max(0, beforeQty - reservedQty);
         int writeOffQty = request.getQuantity();
 
         if (writeOffQty > beforeQty) {
             throw new IllegalArgumentException("Cannot write off " + writeOffQty + " units. Current stock is only " + beforeQty + " units.");
+        }
+        if (writeOffQty > availableQty) {
+            throw new IllegalArgumentException("Cannot write off " + writeOffQty + " units. Available stock is only " + availableQty + " units (" + reservedQty + " reserved for customer orders).");
         }
 
         int afterQty = beforeQty - writeOffQty;
@@ -291,12 +305,14 @@ public class InventoryServiceImpl implements InventoryService {
         LocalDateTime now = LocalDateTime.now();
 
         int defaultQty = 25;
+        Boolean isPerishable = variant.getProduct() != null && Boolean.TRUE.equals(variant.getProduct().getIsPerishable());
         Inventory newInventory = Inventory.builder()
                 .variant(variant)
                 .quantity(defaultQty)
                 .reservedQuantity(0)
                 .reorderLevel(10)
                 .status("NORMAL")
+                .isPerishable(isPerishable)
                 .createdBy(currentUser)
                 .createdAt(now)
                 .modifiedBy(currentUser)

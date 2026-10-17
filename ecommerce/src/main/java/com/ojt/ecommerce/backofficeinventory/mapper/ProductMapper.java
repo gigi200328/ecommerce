@@ -25,6 +25,7 @@ public class ProductMapper {
                 .productName(product.getProductName())
                 .description(product.getDescription())
                 .status(product.getStatus())
+                .isPerishable(product.getIsPerishable())
                 .categoryId(product.getCategory() != null ? product.getCategory().getCategoryId() : null)
                 .categoryName(product.getCategory() != null ? product.getCategory().getCategoryName() : null)
                 .brandId(product.getBrand() != null ? product.getBrand().getBrandId() : null)

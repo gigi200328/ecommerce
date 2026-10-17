@@ -82,6 +82,10 @@ public class Product {
     )
     private ProductStatus status;
 
+    @Column(name = "is_perishable", nullable = false)
+    @Builder.Default
+    private Boolean isPerishable = false;
+
     
     @JsonIgnore
     @OneToMany(
