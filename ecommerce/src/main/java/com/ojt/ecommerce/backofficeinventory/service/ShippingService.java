@@ -59,6 +59,11 @@ public class ShippingService {
 	public void createZoneGroup(CreateZoneGroupRequest request) {
 		LocalDateTime now = LocalDateTime.now();
 
+		boolean isZoneNameExists = zoneRepository.existsByCityAndZoneName(request.getCity(), request.getZoneName());
+		if (isZoneNameExists) {
+			throw new IllegalArgumentException(
+					"A zone named '" + request.getZoneName() + "' already exists in " + request.getCity() + ".");
+		}
 		// City ရှေ့ ၃ လုံးဖြင့် Auto-generate လုပ်မည်(ဥပမာ - YAN-101)
 		String baseCode = request.getCity().substring(0, Math.min(3, request.getCity().length())).toUpperCase() + "-"
 				+ (System.currentTimeMillis() % 1000);
