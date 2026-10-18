@@ -63,9 +63,16 @@
               "raw": "{\n  \"email\": \"admin@ecommerce.com\",\n  \"password\": \"admin123\"\n}"
             },
             "url": {
-              "raw": "{{baseUrl}}/api/v1/auth/login",
-              "host": ["{{baseUrl}}"],
-              "path": ["api", "v1", "auth", "login"]
+              "raw": "{{baseUrl}}/api/backoffice/auth/login",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "api",
+                "backoffice",
+                "auth",
+                "login"
+              ]
             }
           }
         }
@@ -89,9 +96,15 @@
               "raw": "{\n  \"name\": \"Color\"\n}"
             },
             "url": {
-              "raw": "{{baseUrl}}/api/variations",
-              "host": ["{{baseUrl}}"],
-              "path": ["api", "variations"]
+              "raw": "{{baseUrl}}/api/backoffice/variations",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "api",
+                "backoffice",
+                "variations"
+              ]
             }
           }
         },
@@ -110,9 +123,15 @@
               "raw": "{\n  \"name\": \"Size\"\n}"
             },
             "url": {
-              "raw": "{{baseUrl}}/api/variations",
-              "host": ["{{baseUrl}}"],
-              "path": ["api", "variations"]
+              "raw": "{{baseUrl}}/api/backoffice/variations",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "api",
+                "backoffice",
+                "variations"
+              ]
             }
           }
         },
@@ -122,9 +141,15 @@
             "method": "GET",
             "header": [],
             "url": {
-              "raw": "{{baseUrl}}/api/variations",
-              "host": ["{{baseUrl}}"],
-              "path": ["api", "variations"]
+              "raw": "{{baseUrl}}/api/backoffice/variations",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "api",
+                "backoffice",
+                "variations"
+              ]
             }
           }
         },
@@ -134,9 +159,16 @@
             "method": "GET",
             "header": [],
             "url": {
-              "raw": "{{baseUrl}}/api/variations/1",
-              "host": ["{{baseUrl}}"],
-              "path": ["api", "variations", "1"]
+              "raw": "{{baseUrl}}/api/backoffice/variations/1",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "api",
+                "backoffice",
+                "variations",
+                "1"
+              ]
             }
           }
         },
@@ -155,9 +187,16 @@
               "raw": "{\n  \"name\": \"Colour\"\n}"
             },
             "url": {
-              "raw": "{{baseUrl}}/api/variations/1",
-              "host": ["{{baseUrl}}"],
-              "path": ["api", "variations", "1"]
+              "raw": "{{baseUrl}}/api/backoffice/variations/1",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "api",
+                "backoffice",
+                "variations",
+                "1"
+              ]
             }
           }
         },
@@ -167,9 +206,16 @@
             "method": "DELETE",
             "header": [],
             "url": {
-              "raw": "{{baseUrl}}/api/variations/1",
-              "host": ["{{baseUrl}}"],
-              "path": ["api", "variations", "1"]
+              "raw": "{{baseUrl}}/api/backoffice/variations/1",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "api",
+                "backoffice",
+                "variations",
+                "1"
+              ]
             }
           }
         }
@@ -193,9 +239,15 @@
               "raw": "{\n  \"variation\": {\n    \"variationId\": 1\n  },\n  \"value\": \"Black\"\n}"
             },
             "url": {
-              "raw": "{{baseUrl}}/api/variation-options",
-              "host": ["{{baseUrl}}"],
-              "path": ["api", "variation-options"]
+              "raw": "{{baseUrl}}/api/backoffice/variation-options",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "api",
+                "backoffice",
+                "variation-options"
+              ]
             }
           }
         },
@@ -214,9 +266,15 @@
               "raw": "{\n  \"variation\": {\n    \"variationId\": 1\n  },\n  \"value\": \"White\"\n}"
             },
             "url": {
-              "raw": "{{baseUrl}}/api/variation-options",
-              "host": ["{{baseUrl}}"],
-              "path": ["api", "variation-options"]
+              "raw": "{{baseUrl}}/api/backoffice/variation-options",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "api",
+                "backoffice",
+                "variation-options"
+              ]
             }
           }
         },
@@ -235,9 +293,15 @@
               "raw": "{\n  \"variation\": {\n    \"variationId\": 2\n  },\n  \"value\": \"M\"\n}"
             },
             "url": {
-              "raw": "{{baseUrl}}/api/variation-options",
-              "host": ["{{baseUrl}}"],
-              "path": ["api", "variation-options"]
+              "raw": "{{baseUrl}}/api/backoffice/variation-options",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "api",
+                "backoffice",
+                "variation-options"
+              ]
             }
           }
         },
@@ -247,9 +311,15 @@
             "method": "GET",
             "header": [],
             "url": {
-              "raw": "{{baseUrl}}/api/variation-options",
-              "host": ["{{baseUrl}}"],
-              "path": ["api", "variation-options"]
+              "raw": "{{baseUrl}}/api/backoffice/variation-options",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "api",
+                "backoffice",
+                "variation-options"
+              ]
             }
           }
         },
@@ -259,9 +329,16 @@
             "method": "GET",
             "header": [],
             "url": {
-              "raw": "{{baseUrl}}/api/variation-options/1",
-              "host": ["{{baseUrl}}"],
-              "path": ["api", "variation-options", "1"]
+              "raw": "{{baseUrl}}/api/backoffice/variation-options/1",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "api",
+                "backoffice",
+                "variation-options",
+                "1"
+              ]
             }
           }
         },
@@ -271,9 +348,17 @@
             "method": "GET",
             "header": [],
             "url": {
-              "raw": "{{baseUrl}}/api/variation-options/variation/1",
-              "host": ["{{baseUrl}}"],
-              "path": ["api", "variation-options", "variation", "1"]
+              "raw": "{{baseUrl}}/api/backoffice/variation-options/variation/1",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "api",
+                "backoffice",
+                "variation-options",
+                "variation",
+                "1"
+              ]
             }
           }
         },
@@ -292,9 +377,16 @@
               "raw": "{\n  \"value\": \"Midnight Black\"\n}"
             },
             "url": {
-              "raw": "{{baseUrl}}/api/variation-options/1",
-              "host": ["{{baseUrl}}"],
-              "path": ["api", "variation-options", "1"]
+              "raw": "{{baseUrl}}/api/backoffice/variation-options/1",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "api",
+                "backoffice",
+                "variation-options",
+                "1"
+              ]
             }
           }
         },
@@ -304,9 +396,16 @@
             "method": "DELETE",
             "header": [],
             "url": {
-              "raw": "{{baseUrl}}/api/variation-options/1",
-              "host": ["{{baseUrl}}"],
-              "path": ["api", "variation-options", "1"]
+              "raw": "{{baseUrl}}/api/backoffice/variation-options/1",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "api",
+                "backoffice",
+                "variation-options",
+                "1"
+              ]
             }
           }
         }
@@ -330,9 +429,15 @@
               "raw": "{\n  \"product\": {\n    \"productId\": 1\n  },\n  \"sku\": \"TS-BLK-M\",\n  \"sellingPrice\": 25.00,\n  \"costPrice\": 12.50,\n  \"status\": \"ACTIVE\"\n}"
             },
             "url": {
-              "raw": "{{baseUrl}}/api/product-variants",
-              "host": ["{{baseUrl}}"],
-              "path": ["api", "product-variants"]
+              "raw": "{{baseUrl}}/api/backoffice/product-variants",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "api",
+                "backoffice",
+                "product-variants"
+              ]
             }
           }
         },
@@ -342,9 +447,15 @@
             "method": "GET",
             "header": [],
             "url": {
-              "raw": "{{baseUrl}}/api/product-variants",
-              "host": ["{{baseUrl}}"],
-              "path": ["api", "product-variants"]
+              "raw": "{{baseUrl}}/api/backoffice/product-variants",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "api",
+                "backoffice",
+                "product-variants"
+              ]
             }
           }
         },
@@ -354,9 +465,16 @@
             "method": "GET",
             "header": [],
             "url": {
-              "raw": "{{baseUrl}}/api/product-variants/1",
-              "host": ["{{baseUrl}}"],
-              "path": ["api", "product-variants", "1"]
+              "raw": "{{baseUrl}}/api/backoffice/product-variants/1",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "api",
+                "backoffice",
+                "product-variants",
+                "1"
+              ]
             }
           }
         },
@@ -366,9 +484,17 @@
             "method": "GET",
             "header": [],
             "url": {
-              "raw": "{{baseUrl}}/api/product-variants/product/1",
-              "host": ["{{baseUrl}}"],
-              "path": ["api", "product-variants", "product", "1"]
+              "raw": "{{baseUrl}}/api/backoffice/product-variants/product/1",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "api",
+                "backoffice",
+                "product-variants",
+                "product",
+                "1"
+              ]
             }
           }
         },
@@ -387,9 +513,16 @@
               "raw": "{\n  \"sku\": \"TS-BLK-M-V2\",\n  \"sellingPrice\": 28.00,\n  \"costPrice\": 13.00,\n  \"status\": \"ACTIVE\"\n}"
             },
             "url": {
-              "raw": "{{baseUrl}}/api/product-variants/1",
-              "host": ["{{baseUrl}}"],
-              "path": ["api", "product-variants", "1"]
+              "raw": "{{baseUrl}}/api/backoffice/product-variants/1",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "api",
+                "backoffice",
+                "product-variants",
+                "1"
+              ]
             }
           }
         },
@@ -399,9 +532,16 @@
             "method": "DELETE",
             "header": [],
             "url": {
-              "raw": "{{baseUrl}}/api/product-variants/1",
-              "host": ["{{baseUrl}}"],
-              "path": ["api", "product-variants", "1"]
+              "raw": "{{baseUrl}}/api/backoffice/product-variants/1",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "api",
+                "backoffice",
+                "product-variants",
+                "1"
+              ]
             }
           }
         },
@@ -411,9 +551,16 @@
             "method": "GET",
             "header": [],
             "url": {
-              "raw": "{{baseUrl}}/api/product-variants/generate-sku?productId=1&optionIds=1,2",
-              "host": ["{{baseUrl}}"],
-              "path": ["api", "product-variants", "generate-sku"],
+              "raw": "{{baseUrl}}/api/backoffice/product-variants/generate-sku?productId=1&optionIds=1,2",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "api",
+                "backoffice",
+                "product-variants",
+                "generate-sku"
+              ],
               "query": [
                 {
                   "key": "productId",
@@ -423,6 +570,34 @@
                   "key": "optionIds",
                   "value": "1,2"
                 }
+              ]
+            }
+          }
+        },
+        {
+          "name": "8. Create Product Variant With Options (Atomic: Variant + Options + Stock)",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"productId\": 1,\n  \"sku\": \"TS-BLK-M-ATOMIC\",\n  \"sellingPrice\": 29.99,\n  \"costPrice\": 15,\n  \"status\": \"ACTIVE\",\n  \"optionIds\": [\n    1,\n    3\n  ],\n  \"initialStock\": 50\n}"
+            },
+            "url": {
+              "raw": "{{baseUrl}}/api/backoffice/product-variants/create-with-options",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "api",
+                "backoffice",
+                "product-variants",
+                "create-with-options"
               ]
             }
           }
@@ -447,9 +622,15 @@
               "raw": "{\n  \"variant\": {\n    \"variantId\": 1\n  },\n  \"option\": {\n    \"optionId\": 1\n  }\n}"
             },
             "url": {
-              "raw": "{{baseUrl}}/api/variant-option-values",
-              "host": ["{{baseUrl}}"],
-              "path": ["api", "variant-option-values"]
+              "raw": "{{baseUrl}}/api/backoffice/variant-option-values",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "api",
+                "backoffice",
+                "variant-option-values"
+              ]
             }
           }
         },
@@ -468,9 +649,15 @@
               "raw": "{\n  \"variant\": {\n    \"variantId\": 1\n  },\n  \"option\": {\n    \"optionId\": 3\n  }\n}"
             },
             "url": {
-              "raw": "{{baseUrl}}/api/variant-option-values",
-              "host": ["{{baseUrl}}"],
-              "path": ["api", "variant-option-values"]
+              "raw": "{{baseUrl}}/api/backoffice/variant-option-values",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "api",
+                "backoffice",
+                "variant-option-values"
+              ]
             }
           }
         },
@@ -480,9 +667,15 @@
             "method": "GET",
             "header": [],
             "url": {
-              "raw": "{{baseUrl}}/api/variant-option-values",
-              "host": ["{{baseUrl}}"],
-              "path": ["api", "variant-option-values"]
+              "raw": "{{baseUrl}}/api/backoffice/variant-option-values",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "api",
+                "backoffice",
+                "variant-option-values"
+              ]
             }
           }
         },
@@ -492,9 +685,17 @@
             "method": "GET",
             "header": [],
             "url": {
-              "raw": "{{baseUrl}}/api/variant-option-values/variant/1",
-              "host": ["{{baseUrl}}"],
-              "path": ["api", "variant-option-values", "variant", "1"]
+              "raw": "{{baseUrl}}/api/backoffice/variant-option-values/variant/1",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "api",
+                "backoffice",
+                "variant-option-values",
+                "variant",
+                "1"
+              ]
             }
           }
         },
@@ -504,9 +705,17 @@
             "method": "GET",
             "header": [],
             "url": {
-              "raw": "{{baseUrl}}/api/variant-option-values/option/1",
-              "host": ["{{baseUrl}}"],
-              "path": ["api", "variant-option-values", "option", "1"]
+              "raw": "{{baseUrl}}/api/backoffice/variant-option-values/option/1",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "api",
+                "backoffice",
+                "variant-option-values",
+                "option",
+                "1"
+              ]
             }
           }
         },
@@ -525,9 +734,16 @@
               "raw": "{\n  \"variant\": {\n    \"variantId\": 1\n  },\n  \"option\": {\n    \"optionId\": 2\n  }\n}"
             },
             "url": {
-              "raw": "{{baseUrl}}/api/variant-option-values/1",
-              "host": ["{{baseUrl}}"],
-              "path": ["api", "variant-option-values", "1"]
+              "raw": "{{baseUrl}}/api/backoffice/variant-option-values/1",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "api",
+                "backoffice",
+                "variant-option-values",
+                "1"
+              ]
             }
           }
         },
@@ -537,9 +753,16 @@
             "method": "DELETE",
             "header": [],
             "url": {
-              "raw": "{{baseUrl}}/api/variant-option-values/1",
-              "host": ["{{baseUrl}}"],
-              "path": ["api", "variant-option-values", "1"]
+              "raw": "{{baseUrl}}/api/backoffice/variant-option-values/1",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "api",
+                "backoffice",
+                "variant-option-values",
+                "1"
+              ]
             }
           }
         }
@@ -564,8 +787,15 @@
             },
             "url": {
               "raw": "{{baseUrl}}/api/backoffice/inventory/initialize",
-              "host": ["{{baseUrl}}"],
-              "path": ["api", "backoffice", "inventory", "initialize"]
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "api",
+                "backoffice",
+                "inventory",
+                "initialize"
+              ]
             }
           }
         },
@@ -576,8 +806,14 @@
             "header": [],
             "url": {
               "raw": "{{baseUrl}}/api/backoffice/inventory",
-              "host": ["{{baseUrl}}"],
-              "path": ["api", "backoffice", "inventory"]
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "api",
+                "backoffice",
+                "inventory"
+              ]
             }
           }
         },
@@ -588,8 +824,16 @@
             "header": [],
             "url": {
               "raw": "{{baseUrl}}/api/backoffice/inventory/variant/1",
-              "host": ["{{baseUrl}}"],
-              "path": ["api", "backoffice", "inventory", "variant", "1"]
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "api",
+                "backoffice",
+                "inventory",
+                "variant",
+                "1"
+              ]
             }
           }
         },
@@ -600,8 +844,15 @@
             "header": [],
             "url": {
               "raw": "{{baseUrl}}/api/backoffice/inventory/low-stock",
-              "host": ["{{baseUrl}}"],
-              "path": ["api", "backoffice", "inventory", "low-stock"]
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "api",
+                "backoffice",
+                "inventory",
+                "low-stock"
+              ]
             }
           }
         },
@@ -621,8 +872,15 @@
             },
             "url": {
               "raw": "{{baseUrl}}/api/backoffice/inventory/restock",
-              "host": ["{{baseUrl}}"],
-              "path": ["api", "backoffice", "inventory", "restock"]
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "api",
+                "backoffice",
+                "inventory",
+                "restock"
+              ]
             }
           }
         },
@@ -642,8 +900,15 @@
             },
             "url": {
               "raw": "{{baseUrl}}/api/backoffice/inventory/write-off",
-              "host": ["{{baseUrl}}"],
-              "path": ["api", "backoffice", "inventory", "write-off"]
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "api",
+                "backoffice",
+                "inventory",
+                "write-off"
+              ]
             }
           }
         },
@@ -663,8 +928,15 @@
             },
             "url": {
               "raw": "{{baseUrl}}/api/backoffice/inventory/adjust",
-              "host": ["{{baseUrl}}"],
-              "path": ["api", "backoffice", "inventory", "adjust"]
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "api",
+                "backoffice",
+                "inventory",
+                "adjust"
+              ]
             }
           }
         },
@@ -675,8 +947,15 @@
             "header": [],
             "url": {
               "raw": "{{baseUrl}}/api/backoffice/inventory/transactions",
-              "host": ["{{baseUrl}}"],
-              "path": ["api", "backoffice", "inventory", "transactions"]
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "api",
+                "backoffice",
+                "inventory",
+                "transactions"
+              ]
             }
           }
         },
@@ -687,8 +966,17 @@
             "header": [],
             "url": {
               "raw": "{{baseUrl}}/api/backoffice/inventory/transactions/variant/1",
-              "host": ["{{baseUrl}}"],
-              "path": ["api", "backoffice", "inventory", "transactions", "variant", "1"]
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "api",
+                "backoffice",
+                "inventory",
+                "transactions",
+                "variant",
+                "1"
+              ]
             }
           }
         }

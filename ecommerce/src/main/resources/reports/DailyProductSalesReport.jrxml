@@ -1,72 +1,197 @@
-<!-- Created with Jaspersoft Studio version 7.0.6.final using JasperReports Library version 7.0.6-5d2a603fdc6b3db8f842a83383e594f41891534d  -->
-<jasperReport name="DailyProductSalesReport" language="java" pageWidth="595" pageHeight="842" columnWidth="555" leftMargin="20" rightMargin="20" topMargin="20" bottomMargin="20" uuid="6e933c25-b58d-47c1-9871-cd8d8ec99b69">
-	<property name="com.jaspersoft.studio.data.sql.tables" value=""/>
-	<property name="com.jaspersoft.studio.data.defaultdataadapter" value="One Empty Record"/>
-	<query language="SQL"><![CDATA[]]></query>
+<?xml version="1.0" encoding="UTF-8"?>
+<!-- Created with Jaspersoft Studio version 6.20.6 -->
+<jasperReport xmlns="http://jasperreports.sourceforge.net/jasperreports" 
+              xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance" 
+              xsi:schemaLocation="http://jasperreports.sourceforge.net/jasperreports http://jasperreports.sourceforge.net/xsd/jasperreport.xsd" 
+              name="DailyProductSalesReport" pageWidth="595" pageHeight="842" columnWidth="555" leftMargin="20" rightMargin="20" topMargin="20" bottomMargin="20" whenNoDataType="AllSectionsNoDetail" uuid="6e933c25-b58d-47c1-9871-cd8d8ec99b69">
 	<field name="salesDate" class="java.util.Date"/>
 	<field name="productName" class="java.lang.String"/>
 	<field name="categoryName" class="java.lang.String"/>
 	<field name="quantitySold" class="java.lang.Long"/>
 	<field name="pricePerUnit" class="java.math.BigDecimal"/>
 	<field name="totalSales" class="java.math.BigDecimal"/>
-	<background splitType="Stretch"/>
-	<title height="80" splitType="Stretch">
-		<element kind="staticText" uuid="d305dd26-ed7f-4398-b036-6116e472978d" x="190" y="30" width="170" height="30" fontSize="14.0" hTextAlign="Center" vTextAlign="Middle">
-			<text><![CDATA[Daily Product Sales Report]]></text>
-		</element>
-		<element kind="textField" uuid="bde686ab-d6f5-4b8e-9431-fa2ceadc1e04" x="510" y="0" width="40" height="30">
-			<expression><![CDATA[$V{PAGE_NUMBER}]]></expression>
-		</element>
-		<element kind="textField" uuid="442db88a-02d1-4b3d-a636-2de6f0773711" x="0" y="0" width="80" height="30" pattern="MMMMM dd, yyyy">
-			<expression><![CDATA[new java.util.Date()]]></expression>
-		</element>
+	<background>
+		<band splitType="Stretch"/>
+	</background>
+	<title>
+		<band height="80" splitType="Stretch">
+			<staticText>
+				<reportElement x="190" y="30" width="170" height="30" uuid="d305dd26-ed7f-4398-b036-6116e472978d"/>
+				<textElement textAlignment="Center" verticalAlignment="Middle">
+					<font size="14"/>
+				</textElement>
+				<text><![CDATA[Daily Product Sales Report]]></text>
+			</staticText>
+			<textField>
+				<reportElement x="510" y="0" width="40" height="30" uuid="bde686ab-d6f5-4b8e-9431-fa2ceadc1e04"/>
+				<textFieldExpression><![CDATA[$V{PAGE_NUMBER}]]></textFieldExpression>
+			</textField>
+			<textField pattern="MMMMM dd, yyyy">
+				<reportElement x="0" y="0" width="80" height="30" uuid="442db88a-02d1-4b3d-a636-2de6f0773711"/>
+				<textFieldExpression><![CDATA[new java.util.Date()]]></textFieldExpression>
+			</textField>
+		</band>
 	</title>
-	<columnHeader height="37" splitType="Stretch">
-		<element kind="staticText" uuid="420f2537-de0e-4e62-b47e-ace5a42e7c0e" x="0" y="0" width="60" height="30" hTextAlign="Center" vTextAlign="Middle">
-			<text><![CDATA[No]]></text>
-		</element>
-		<element kind="staticText" uuid="71de5c18-1b19-45da-996f-ef9796a465f4" x="60" y="0" width="100" height="30" hTextAlign="Center" vTextAlign="Middle">
-			<text><![CDATA[Date]]></text>
-		</element>
-		<element kind="staticText" uuid="605f9ed9-4d88-451a-aff1-615a872e5950" x="160" y="0" width="100" height="30" hTextAlign="Center" vTextAlign="Middle">
-			<text><![CDATA[Product Name]]></text>
-		</element>
-		<element kind="staticText" uuid="3695e4e4-af8d-40ff-9886-30546a76a3bd" x="260" y="0" width="90" height="30" hTextAlign="Center" vTextAlign="Middle">
-			<text><![CDATA[Category Name]]></text>
-		</element>
-		<element kind="staticText" uuid="3536811f-e5f5-423e-b0ec-85e7c8001a11" x="350" y="0" width="50" height="30" hTextAlign="Center" vTextAlign="Middle">
-			<text><![CDATA[Quantity]]></text>
-		</element>
-		<element kind="staticText" uuid="b7008b0d-14f0-417f-bb4a-c90cdf686a3b" x="400" y="0" width="80" height="30" hTextAlign="Center" vTextAlign="Middle">
-			<text><![CDATA[Unit price]]></text>
-		</element>
-		<element kind="staticText" uuid="a67932f6-b835-4fc9-a2f7-81f0c77b362e" x="480" y="0" width="72" height="30" hTextAlign="Center" vTextAlign="Middle">
-			<text><![CDATA[Total Sales]]></text>
-		</element>
+	<columnHeader>
+		<band height="30" splitType="Stretch">
+			<staticText>
+				<reportElement x="0" y="0" width="60" height="30" uuid="420f2537-de0e-4e62-b47e-ace5a42e7c0e"/>
+				<box>
+					<topPen lineWidth="1.0" lineStyle="Solid" lineColor="#000000"/>
+					<leftPen lineWidth="1.0" lineStyle="Solid" lineColor="#000000"/>
+					<bottomPen lineWidth="1.0" lineStyle="Solid" lineColor="#000000"/>
+					<rightPen lineWidth="1.0" lineStyle="Solid" lineColor="#000000"/>
+				</box>
+				<textElement textAlignment="Center" verticalAlignment="Middle"/>
+				<text><![CDATA[No]]></text>
+			</staticText>
+			<staticText>
+				<reportElement x="60" y="0" width="100" height="30" uuid="71de5c18-1b19-45da-996f-ef9796a465f4"/>
+				<box>
+					<topPen lineWidth="1.0" lineStyle="Solid" lineColor="#000000"/>
+					<leftPen lineWidth="1.0" lineStyle="Solid" lineColor="#000000"/>
+					<bottomPen lineWidth="1.0" lineStyle="Solid" lineColor="#000000"/>
+					<rightPen lineWidth="1.0" lineStyle="Solid" lineColor="#000000"/>
+				</box>
+				<textElement textAlignment="Center" verticalAlignment="Middle"/>
+				<text><![CDATA[Date]]></text>
+			</staticText>
+			<staticText>
+				<reportElement x="160" y="0" width="100" height="30" uuid="605f9ed9-4d88-451a-aff1-615a872e5950"/>
+				<box>
+					<topPen lineWidth="1.0" lineStyle="Solid" lineColor="#000000"/>
+					<leftPen lineWidth="1.0" lineStyle="Solid" lineColor="#000000"/>
+					<bottomPen lineWidth="1.0" lineStyle="Solid" lineColor="#000000"/>
+					<rightPen lineWidth="1.0" lineStyle="Solid" lineColor="#000000"/>
+				</box>
+				<textElement textAlignment="Center" verticalAlignment="Middle"/>
+				<text><![CDATA[Product Name]]></text>
+			</staticText>
+			<staticText>
+				<reportElement x="260" y="0" width="90" height="30" uuid="3695e4e4-af8d-40ff-9886-30546a76a3bd"/>
+				<box>
+					<topPen lineWidth="1.0" lineStyle="Solid" lineColor="#000000"/>
+					<leftPen lineWidth="1.0" lineStyle="Solid" lineColor="#000000"/>
+					<bottomPen lineWidth="1.0" lineStyle="Solid" lineColor="#000000"/>
+					<rightPen lineWidth="1.0" lineStyle="Solid" lineColor="#000000"/>
+				</box>
+				<textElement textAlignment="Center" verticalAlignment="Middle"/>
+				<text><![CDATA[Category Name]]></text>
+			</staticText>
+			<staticText>
+				<reportElement x="350" y="0" width="50" height="30" uuid="3536811f-e5f5-423e-b0ec-85e7c8001a11"/>
+				<box>
+					<topPen lineWidth="1.0" lineStyle="Solid" lineColor="#000000"/>
+					<leftPen lineWidth="1.0" lineStyle="Solid" lineColor="#000000"/>
+					<bottomPen lineWidth="1.0" lineStyle="Solid" lineColor="#000000"/>
+					<rightPen lineWidth="1.0" lineStyle="Solid" lineColor="#000000"/>
+				</box>
+				<textElement textAlignment="Center" verticalAlignment="Middle"/>
+				<text><![CDATA[Quantity]]></text>
+			</staticText>
+			<staticText>
+				<reportElement x="400" y="0" width="80" height="30" uuid="b7008b0d-14f0-417f-bb4a-c90cdf686a3b"/>
+				<box>
+					<topPen lineWidth="1.0" lineStyle="Solid" lineColor="#000000"/>
+					<leftPen lineWidth="1.0" lineStyle="Solid" lineColor="#000000"/>
+					<bottomPen lineWidth="1.0" lineStyle="Solid" lineColor="#000000"/>
+					<rightPen lineWidth="1.0" lineStyle="Solid" lineColor="#000000"/>
+				</box>
+				<textElement textAlignment="Center" verticalAlignment="Middle"/>
+				<text><![CDATA[Unit price]]></text>
+			</staticText>
+			<staticText>
+				<reportElement x="480" y="0" width="75" height="30" uuid="a67932f6-b835-4fc9-a2f7-81f0c77b362e"/>
+				<box>
+					<topPen lineWidth="1.0" lineStyle="Solid" lineColor="#000000"/>
+					<leftPen lineWidth="1.0" lineStyle="Solid" lineColor="#000000"/>
+					<bottomPen lineWidth="1.0" lineStyle="Solid" lineColor="#000000"/>
+					<rightPen lineWidth="1.0" lineStyle="Solid" lineColor="#000000"/>
+				</box>
+				<textElement textAlignment="Center" verticalAlignment="Middle"/>
+				<text><![CDATA[Total Sales]]></text>
+			</staticText>
+		</band>
 	</columnHeader>
 	<detail>
-		<band height="99" splitType="Stretch">
-			<element kind="textField" uuid="7357db4d-eef2-4ce1-a2b9-f6213ad4602f" x="0" y="10" width="60" height="30" hTextAlign="Center" vTextAlign="Middle">
-				<expression><![CDATA[$V{REPORT_COUNT}]]></expression>
-			</element>
-			<element kind="textField" uuid="12f202ef-53c3-4a87-a26b-c1c27e4b441c" x="60" y="10" width="100" height="30" hTextAlign="Center" vTextAlign="Middle">
-				<expression><![CDATA[$F{salesDate}]]></expression>
-			</element>
-			<element kind="textField" uuid="e2510d76-928a-4f10-907b-39fe6411e6c6" x="160" y="10" width="100" height="30" hTextAlign="Center" vTextAlign="Middle">
-				<expression><![CDATA[$F{productName}]]></expression>
-			</element>
-			<element kind="textField" uuid="850b5cff-b66e-427b-bb67-6003c50479e3" x="260" y="10" width="90" height="30" hTextAlign="Center" vTextAlign="Middle">
-				<expression><![CDATA[$F{categoryName}]]></expression>
-			</element>
-			<element kind="textField" uuid="cd02c817-b1b4-480a-b75a-70e09ada4bb9" x="350" y="10" width="50" height="30" hTextAlign="Center" vTextAlign="Middle">
-				<expression><![CDATA[$F{quantitySold}]]></expression>
-			</element>
-			<element kind="textField" uuid="f42f0326-2a45-469c-bb98-73fcbc6bee39" x="400" y="10" width="74" height="30" hTextAlign="Center" vTextAlign="Middle">
-				<expression><![CDATA[$F{pricePerUnit}]]></expression>
-			</element>
-			<element kind="textField" uuid="215ac726-fd3d-4d44-a1e8-67fc8ad369f3" x="475" y="10" width="78" height="30" hTextAlign="Center" vTextAlign="Middle">
-				<expression><![CDATA[$F{totalSales}]]></expression>
-			</element>
+		<band height="30" splitType="Stretch">
+			<textField>
+				<reportElement x="0" y="0" width="60" height="30" uuid="7357db4d-eef2-4ce1-a2b9-f6213ad4602f"/>
+				<box>
+					<topPen lineWidth="1.0" lineStyle="Solid" lineColor="#000000"/>
+					<leftPen lineWidth="1.0" lineStyle="Solid" lineColor="#000000"/>
+					<bottomPen lineWidth="1.0" lineStyle="Solid" lineColor="#000000"/>
+					<rightPen lineWidth="1.0" lineStyle="Solid" lineColor="#000000"/>
+				</box>
+				<textElement textAlignment="Center" verticalAlignment="Middle"/>
+				<textFieldExpression><![CDATA[$V{REPORT_COUNT}]]></textFieldExpression>
+			</textField>
+			<textField>
+				<reportElement x="60" y="0" width="100" height="30" uuid="12f202ef-53c3-4a87-a26b-c1c27e4b441c"/>
+				<box>
+					<topPen lineWidth="1.0" lineStyle="Solid" lineColor="#000000"/>
+					<leftPen lineWidth="1.0" lineStyle="Solid" lineColor="#000000"/>
+					<bottomPen lineWidth="1.0" lineStyle="Solid" lineColor="#000000"/>
+					<rightPen lineWidth="1.0" lineStyle="Solid" lineColor="#000000"/>
+				</box>
+				<textElement textAlignment="Center" verticalAlignment="Middle"/>
+				<textFieldExpression><![CDATA[$F{salesDate}]]></textFieldExpression>
+			</textField>
+			<textField>
+				<reportElement x="160" y="0" width="100" height="30" uuid="e2510d76-928a-4f10-907b-39fe6411e6c6"/>
+				<box>
+					<topPen lineWidth="1.0" lineStyle="Solid" lineColor="#000000"/>
+					<leftPen lineWidth="1.0" lineStyle="Solid" lineColor="#000000"/>
+					<bottomPen lineWidth="1.0" lineStyle="Solid" lineColor="#000000"/>
+					<rightPen lineWidth="1.0" lineStyle="Solid" lineColor="#000000"/>
+				</box>
+				<textElement textAlignment="Center" verticalAlignment="Middle"/>
+				<textFieldExpression><![CDATA[$F{productName}]]></textFieldExpression>
+			</textField>
+			<textField>
+				<reportElement x="260" y="0" width="90" height="30" uuid="850b5cff-b66e-427b-bb67-6003c50479e3"/>
+				<box>
+					<topPen lineWidth="1.0" lineStyle="Solid" lineColor="#000000"/>
+					<leftPen lineWidth="1.0" lineStyle="Solid" lineColor="#000000"/>
+					<bottomPen lineWidth="1.0" lineStyle="Solid" lineColor="#000000"/>
+					<rightPen lineWidth="1.0" lineStyle="Solid" lineColor="#000000"/>
+				</box>
+				<textElement textAlignment="Center" verticalAlignment="Middle"/>
+				<textFieldExpression><![CDATA[$F{categoryName}]]></textFieldExpression>
+			</textField>
+			<textField>
+				<reportElement x="350" y="0" width="50" height="30" uuid="cd02c817-b1b4-480a-b75a-70e09ada4bb9"/>
+				<box>
+					<topPen lineWidth="1.0" lineStyle="Solid" lineColor="#000000"/>
+					<leftPen lineWidth="1.0" lineStyle="Solid" lineColor="#000000"/>
+					<bottomPen lineWidth="1.0" lineStyle="Solid" lineColor="#000000"/>
+					<rightPen lineWidth="1.0" lineStyle="Solid" lineColor="#000000"/>
+				</box>
+				<textElement textAlignment="Center" verticalAlignment="Middle"/>
+				<textFieldExpression><![CDATA[$F{quantitySold}]]></textFieldExpression>
+			</textField>
+			<textField>
+				<reportElement x="400" y="0" width="80" height="30" uuid="f42f0326-2a45-469c-bb98-73fcbc6bee39"/>
+				<box>
+					<topPen lineWidth="1.0" lineStyle="Solid" lineColor="#000000"/>
+					<leftPen lineWidth="1.0" lineStyle="Solid" lineColor="#000000"/>
+					<bottomPen lineWidth="1.0" lineStyle="Solid" lineColor="#000000"/>
+					<rightPen lineWidth="1.0" lineStyle="Solid" lineColor="#000000"/>
+				</box>
+				<textElement textAlignment="Center" verticalAlignment="Middle"/>
+				<textFieldExpression><![CDATA[$F{pricePerUnit}]]></textFieldExpression>
+			</textField>
+			<textField>
+				<reportElement x="480" y="0" width="75" height="30" uuid="215ac726-fd3d-4d44-a1e8-67fc8ad369f3"/>
+				<box>
+					<topPen lineWidth="1.0" lineStyle="Solid" lineColor="#000000"/>
+					<leftPen lineWidth="1.0" lineStyle="Solid" lineColor="#000000"/>
+					<bottomPen lineWidth="1.0" lineStyle="Solid" lineColor="#000000"/>
+					<rightPen lineWidth="1.0" lineStyle="Solid" lineColor="#000000"/>
+				</box>
+				<textElement textAlignment="Center" verticalAlignment="Middle"/>
+				<textFieldExpression><![CDATA[$F{totalSales}]]></textFieldExpression>
+			</textField>
 		</band>
 	</detail>
 </jasperReport>

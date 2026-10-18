@@ -13,4 +13,5 @@ import java.util.List;
     private List<ProductImageResponse> images;
     private List<ProductVariantResponse> variants;
     private List<String> tags;
+    private Boolean isPerishable;
 }

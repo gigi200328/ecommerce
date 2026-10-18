@@ -10,6 +10,8 @@ public interface CatalogService {
                                                   String availability, List<String> tags, 
                                                   String sort, int page, int size);
     PageResponse<ProductListResponse> getBestSellers(int page, int size);
+    PageResponse<ProductListResponse> getTrendingProducts(int page, int size);
+    List<ProductListResponse> getTrendingSuggestions(String prefix);
     List<ProductListResponse> getRelatedProducts(Long productId);
     List<String> getAllTags();
     ProductDetailResponse getProductDetail(Long productId);

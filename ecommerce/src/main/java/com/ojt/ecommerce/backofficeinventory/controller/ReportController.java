@@ -16,7 +16,7 @@ import com.ojt.ecommerce.backofficeinventory.service.JasperReportService;
 import lombok.RequiredArgsConstructor;
 
 @RestController
-@RequestMapping("/api/v1/reports")
+@RequestMapping("/api/backoffice/reports")
 @RequiredArgsConstructor
 public class ReportController {
 

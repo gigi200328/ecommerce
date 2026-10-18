@@ -93,6 +93,16 @@ public class ProductVariantController {
         return productVariantService.createProductVariant(productVariant);
     }
 
+    // CREATE WITH OPTIONS & INITIAL STOCK
+    @Operation(
+        summary = "Create a product variant with options and initial stock atomically",
+        description = "Creates a variant, links specified variation options, and initializes inventory in one atomic transaction."
+    )
+    @PostMapping("/create-with-options")
+    public ProductVariant createProductVariantWithOptions(@RequestBody com.ojt.ecommerce.backofficeinventory.dto.ProductVariantCreateDto dto) {
+        return productVariantService.createProductVariantWithOptions(dto);
+    }
+
     // GET ALL
     @Operation(
         summary = "Get all product variants",

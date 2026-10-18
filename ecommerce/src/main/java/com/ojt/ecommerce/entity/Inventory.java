@@ -34,6 +34,16 @@ public class Inventory {
     @Column(name = "status", nullable = false, columnDefinition = "ENUM('NORMAL', 'LOW_STOCK', 'OUT_OF_STOCK')")
     private String status;
 
+    @Column(name = "is_perishable", nullable = false)
+    @Builder.Default
+    private Boolean isPerishable = false;
+
+    @Column(name = "expiry_date")
+    private LocalDate expiryDate;
+
+    @Column(name = "batch_number", length = 100)
+    private String batchNumber;
+
     @ManyToOne(fetch = FetchType.LAZY, optional = false)
     @JoinColumn(name = "created_by", referencedColumnName = "user_id", nullable = false, foreignKey = @ForeignKey(name = "fk_inventory_users1"))
     private User createdBy;

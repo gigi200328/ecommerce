@@ -10,14 +10,23 @@ import com.ojt.ecommerce.storefront.cart.repository.CartRepository;
 import com.ojt.ecommerce.storefront.checkout.repository.G5OrderRepository;
 import com.ojt.ecommerce.storefront.checkout.repository.G5OrderStatusHistoryRepository;
 import com.ojt.ecommerce.storefront.payment.dto.*;
-import com.ojt.ecommerce.storefront.payment.port.InventoryFinalizationPort;
 import com.ojt.ecommerce.storefront.payment.repository.PaymentCallbackRepository;
 import com.ojt.ecommerce.storefront.payment.repository.G5PaymentRepository;
 import lombok.RequiredArgsConstructor;
+
+import org.springframework.beans.factory.annotation.Value;
+import org.springframework.http.HttpEntity;
+import org.springframework.http.HttpHeaders;
+import org.springframework.http.MediaType;
+import org.springframework.http.ResponseEntity;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
+import org.springframework.context.ApplicationEventPublisher;
+import com.ojt.ecommerce.storefront.payment.event.OrderPaidEvent;
+import org.springframework.web.client.RestTemplate;
 
 import java.time.LocalDateTime;
+import java.util.Map;
 import java.util.UUID;
 
 @Service
@@ -30,40 +39,78 @@ public class PaymentServiceImpl implements PaymentService {
     private final G5OrderStatusHistoryRepository orderStatusHistoryRepository;
     private final CartRepository cartRepository;
     
-    private final InventoryFinalizationPort inventoryFinalizationPort;
+    private final ApplicationEventPublisher eventPublisher;
+    
+    @Value("${payment.gateway.base-url}")
+    private String pgBaseUrl;
 
+    @Value("${payment.gateway.client-id}")
+    private String pgClientId;
+
+    @Value("${payment.gateway.branch-id}")
+    private String pgBranchId;
+
+    @Value("${payment.gateway.client-secret}")
+    private String pgClientSecret;
     @Override
     @Transactional
     public PaymentInitiateResponse initiatePayment(Long customerId, Long orderId, PaymentInitiateRequest request) {
-        Order order = orderRepository.findById(orderId)
-                .orElseThrow(() -> new ResourceNotFoundException("Order not found"));
-                
-        if (!order.getCustomer().getCustomerId().equals(customerId)) {
-            throw new AccessDeniedException("Order belongs to a different customer");
-        }
-        
-        if (!"PENDING".equals(order.getPaymentStatus()) && !"FAILED".equals(order.getPaymentStatus())) {
-            throw new InvalidRequestException("Order is not payable");
-        }
-        
-        Payment payment = new Payment();
-        payment.setOrder(order);
-        payment.setTransactionRef(UUID.randomUUID().toString());
-        payment.setPaymentMethod(request.getPaymentMethod());
-        payment.setPaymentStatus("PENDING");
-        payment.setAmount(order.getTotalAmount());
-        payment.setCreatedAt(LocalDateTime.now());
-        
-        payment = paymentRepository.save(payment);
-        
-        return PaymentInitiateResponse.builder()
-                .paymentId(payment.getPaymentId())
-                .orderId(orderId)
-                .paymentStatus(payment.getPaymentStatus())
-                .amount(payment.getAmount())
-                .redirectUrl("/mock-g3/" + payment.getTransactionRef())
-                .build();
-    }
+    	Order order = orderRepository.findById(orderId)
+    	.orElseThrow(() -> new ResourceNotFoundException("Order not found"));
+
+    	if (!order.getCustomer()
+    	.getCustomerId()
+    	.equals(customerId)) {
+    	throw new AccessDeniedException("Order belongs to a different customer");
+    	}
+
+    	if (!"PENDING".equals(order.getPaymentStatus()) && !"FAILED".equals(order.getPaymentStatus())) {
+    	throw new InvalidRequestException("Order is not payable");
+    	}
+
+    	String idempotencyKey = UUID.randomUUID()
+    	.toString();
+
+    	// 🔴 1. Call Payment Gateway (MMSPG) API
+    	HttpHeaders headers = new HttpHeaders();
+    	headers.setContentType(MediaType.APPLICATION_JSON);
+    	headers.set("X-Client-ID", pgClientId); // Configured in application.properties
+    	headers.set("X-Client-Secret", pgClientSecret); // Configured in application.properties
+    	headers.set("Idempotency-Key", idempotencyKey);
+
+    	Map<String, Object> pgRequest = Map.of("orderId", String.valueOf(orderId), "amount", order.getTotalAmount(),
+    	"currency", "MMK", "branchId", pgBranchId // Or terminalId
+    	);
+
+    	HttpEntity<Map<String, Object>> entity = new HttpEntity<>(pgRequest, headers);
+
+    	RestTemplate restTemplate = new RestTemplate();
+    	// Call: POST http://<pg-url>/api/v1/payments/initiate
+    	ResponseEntity<MmspgInitiateResponse> pgResponse = restTemplate.postForEntity(pgBaseUrl + "/payments/initiate",
+    	entity, MmspgInitiateResponse.class);
+
+    	MmspgInitiateResponse gatewayData = pgResponse.getBody();
+
+    	// 🔴 2. Save PG's transaction reference & token in E-commerce DB
+    	Payment payment = new Payment();
+    	payment.setOrder(order);
+    	payment.setTransactionRef(gatewayData.getTransactionReference()); // PG transaction ref (TXN-...)
+    	payment.setPaymentMethod(request.getPaymentMethod());
+    	payment.setPaymentStatus("PENDING");
+    	payment.setAmount(order.getTotalAmount());
+    	payment.setCreatedAt(LocalDateTime.now());
+
+    	payment = paymentRepository.save(payment);
+
+    	// 🔴 3. Return the real redirect URL from MMSPG!
+    	return PaymentInitiateResponse.builder()
+    	.paymentId(payment.getPaymentId())
+    	.orderId(orderId)
+    	.paymentStatus(payment.getPaymentStatus())
+    	.amount(payment.getAmount())
+    	.redirectUrl(gatewayData.getPaymentUrl()) // e.g. https://customer-portal.../checkout?token=...
+    	.build();
+    	}
 
     @Override
     @Transactional(readOnly = true)
@@ -127,22 +174,6 @@ public class PaymentServiceImpl implements PaymentService {
         }
         
         if ("SUCCESS".equalsIgnoreCase(request.getStatus())) {
-            try {
-                inventoryFinalizationPort.finalizeInventoryForOrder(payment.getOrder());
-            } catch (InvalidRequestException ex) {
-                // Stock validation failed
-                callback.setProcessingStatus("REJECTED");
-                callback.setProcessedAt(LocalDateTime.now());
-                paymentCallbackRepository.save(callback);
-                
-                payment.setPaymentStatus("FAILED");
-            Order order = payment.getOrder();
-            order.setPaymentStatus("FAILED");
-            orderRepository.save(order);                paymentRepository.save(payment);
-                
-                throw ex; // rollback the transaction and fail
-            }
-            
             payment.setPaymentStatus("SUCCESS");
             payment.setPaidAt(LocalDateTime.now());
             paymentRepository.save(payment);
@@ -157,7 +188,7 @@ public class PaymentServiceImpl implements PaymentService {
             history.setOldStatus("PENDING");
             history.setNewStatus("PAID");
             history.setChangedAt(LocalDateTime.now());
-            history.setRemark("Payment successful via mock callback");
+            history.setRemark("Payment successful via MMSPG webhook callback");
             orderStatusHistoryRepository.save(history);
             
             Cart cart = cartRepository.findByCustomerCustomerIdAndStatus(order.getCustomer().getCustomerId(), "ACTIVE")
@@ -170,6 +201,15 @@ public class PaymentServiceImpl implements PaymentService {
             callback.setProcessingStatus("PROCESSED");
             callback.setProcessedAt(LocalDateTime.now());
             paymentCallbackRepository.save(callback);
+            
+            // Publish OrderPaidEvent -> Handled AFTER_COMMIT by TransactionalEventListener
+            eventPublisher.publishEvent(new OrderPaidEvent(
+                    order.getOrderId(),
+                    order.getOrderNo(),
+                    payment.getTransactionRef(),
+                    payment.getAmount(),
+                    payment.getPaidAt()
+            ));
             
             return MockCallbackResponse.builder()
                     .orderId(order.getOrderId())
