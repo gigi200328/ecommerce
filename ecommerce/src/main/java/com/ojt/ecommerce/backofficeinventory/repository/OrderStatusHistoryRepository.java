@@ -12,4 +12,6 @@ public interface OrderStatusHistoryRepository extends JpaRepository<OrderStatusH
 
 	// Tracking order status changes history (audit)
 	List<OrderStatusHistory> findByhistoryIdOrderByChangedAtDesc(Long historyId);
+
+	List<OrderStatusHistory> findByOrder_OrderIdOrderByChangedAtDesc(Long orderId);
 }
