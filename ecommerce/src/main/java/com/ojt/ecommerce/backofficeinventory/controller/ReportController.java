@@ -1,6 +1,7 @@
 package com.ojt.ecommerce.backofficeinventory.controller;
 
 import java.time.LocalDate;
+import java.util.List;
 
 import org.springframework.format.annotation.DateTimeFormat;
 import org.springframework.http.HttpHeaders;
@@ -16,7 +17,7 @@ import com.ojt.ecommerce.backofficeinventory.service.JasperReportService;
 import lombok.RequiredArgsConstructor;
 
 @RestController
-@RequestMapping("/api/backoffice/reports")
+@RequestMapping({"/api/backoffice/reports", "/api/v1/reports"})
 @RequiredArgsConstructor
 public class ReportController {
 
@@ -177,6 +178,129 @@ public class ReportController {
                     .body(reportBytes);
         } catch (Exception e) {
             throw new RuntimeException("Failed to generate order fulfillment report: " + e.getMessage(), e);
+        }
+    }
+
+    @GetMapping("/products/export/pdf")
+    public ResponseEntity<byte[]> exportProductsPdf(
+            @RequestParam(value = "search", required = false) String search,
+            @RequestParam(value = "categoryId", required = false) Long categoryId,
+            @RequestParam(value = "brandId", required = false) Long brandId,
+            @RequestParam(value = "status", required = false) String status,
+            @RequestParam(value = "columns", required = false) List<String> columns) {
+        if (columns == null || columns.isEmpty()) {
+            columns = List.of("productName", "sku", "price", "stock", "status");
+        }
+        try {
+            byte[] pdfBytes = jasperReportService.generateDynamicProductPdf(search, categoryId, brandId, status, columns);
+            return ResponseEntity.ok()
+                    .headers(getReportHeaders("pdf", "Product_List_Report"))
+                    .body(pdfBytes);
+        } catch (Exception e) {
+            throw new RuntimeException("Failed to generate dynamic product PDF: " + e.getMessage(), e);
+        }
+    }
+
+    @GetMapping({"/products/export/excel", "/products/export/xlsx"})
+    public ResponseEntity<byte[]> exportProductsExcel(
+            @RequestParam(value = "search", required = false) String search,
+            @RequestParam(value = "categoryId", required = false) Long categoryId,
+            @RequestParam(value = "brandId", required = false) Long brandId,
+            @RequestParam(value = "status", required = false) String status,
+            @RequestParam(value = "columns", required = false) List<String> columns) {
+        if (columns == null || columns.isEmpty()) {
+            columns = List.of("productName", "sku", "price", "stock", "status");
+        }
+        try {
+            byte[] excelBytes = jasperReportService.generateDynamicProductExcel(search, categoryId, brandId, status, columns);
+            return ResponseEntity.ok()
+                    .headers(getReportHeaders("excel", "Product_List_Report"))
+                    .body(excelBytes);
+        } catch (Exception e) {
+            throw new RuntimeException("Failed to generate dynamic product Excel: " + e.getMessage(), e);
+        }
+    }
+
+
+    @GetMapping("/products/export")
+    public ResponseEntity<byte[]> exportProductsReport(
+            @RequestParam(value = "search", required = false) String search,
+            @RequestParam(value = "categoryId", required = false) Long categoryId,
+            @RequestParam(value = "brandId", required = false) Long brandId,
+            @RequestParam(value = "status", required = false) String status,
+            @RequestParam(value = "columns", required = false) List<String> columns,
+            @RequestParam(value = "format", defaultValue = "pdf") String format) {
+        if (columns == null || columns.isEmpty()) {
+            columns = List.of("productName", "sku", "price", "stock", "status");
+        }
+        if (!"pdf".equalsIgnoreCase(format) && !"excel".equalsIgnoreCase(format) && !"xlsx".equalsIgnoreCase(format)) {
+            return ResponseEntity.badRequest().body("Unsupported export format. Supported formats: pdf, excel.".getBytes());
+        }
+        try {
+            byte[] reportBytes = jasperReportService.generateDynamicProductReport(search, categoryId, brandId, status, columns, format);
+            return ResponseEntity.ok()
+                    .headers(getReportHeaders(format, "Product_List_Report"))
+                    .body(reportBytes);
+        } catch (Exception e) {
+            throw new RuntimeException("Failed to generate dynamic product report: " + e.getMessage(), e);
+        }
+    }
+
+    @GetMapping("/brands/export/pdf")
+    public ResponseEntity<byte[]> exportBrandsPdf(
+            @RequestParam(value = "search", required = false) String search,
+            @RequestParam(value = "status", required = false, defaultValue = "ALL") String status,
+            @RequestParam(value = "columns", required = false) List<String> columns) {
+        if (columns == null || columns.isEmpty()) {
+            columns = List.of("brandName", "categoryName", "description", "status");
+        }
+        try {
+            byte[] pdfBytes = jasperReportService.generateDynamicBrandPdf(search, status, columns);
+            return ResponseEntity.ok()
+                    .headers(getReportHeaders("pdf", "Brand_Management_Report"))
+                    .body(pdfBytes);
+        } catch (Exception e) {
+            throw new RuntimeException("Failed to generate dynamic brand PDF: " + e.getMessage(), e);
+        }
+    }
+
+    @GetMapping({"/brands/export/excel", "/brands/export/xlsx"})
+    public ResponseEntity<byte[]> exportBrandsExcel(
+            @RequestParam(value = "search", required = false) String search,
+            @RequestParam(value = "status", required = false, defaultValue = "ALL") String status,
+            @RequestParam(value = "columns", required = false) List<String> columns) {
+        if (columns == null || columns.isEmpty()) {
+            columns = List.of("brandName", "categoryName", "description", "status");
+        }
+        try {
+            byte[] excelBytes = jasperReportService.generateDynamicBrandExcel(search, status, columns);
+            return ResponseEntity.ok()
+                    .headers(getReportHeaders("excel", "Brand_Management_Report"))
+                    .body(excelBytes);
+        } catch (Exception e) {
+            throw new RuntimeException("Failed to generate dynamic brand Excel: " + e.getMessage(), e);
+        }
+    }
+
+    @GetMapping("/brands/export")
+    public ResponseEntity<byte[]> exportBrandsReport(
+            @RequestParam(value = "search", required = false) String search,
+            @RequestParam(value = "status", required = false, defaultValue = "ALL") String status,
+            @RequestParam(value = "columns", required = false) List<String> columns,
+            @RequestParam(value = "format", defaultValue = "pdf") String format) {
+        if (columns == null || columns.isEmpty()) {
+            columns = List.of("brandName", "categoryName", "description", "status");
+        }
+        if (!"pdf".equalsIgnoreCase(format) && !"excel".equalsIgnoreCase(format) && !"xlsx".equalsIgnoreCase(format)) {
+            return ResponseEntity.badRequest().body("Unsupported export format. Supported formats: pdf, excel.".getBytes());
+        }
+        try {
+            byte[] reportBytes = jasperReportService.generateDynamicBrandReport(search, status, columns, format);
+            return ResponseEntity.ok()
+                    .headers(getReportHeaders(format, "Brand_Management_Report"))
+                    .body(reportBytes);
+        } catch (Exception e) {
+            throw new RuntimeException("Failed to generate dynamic brand report: " + e.getMessage(), e);
         }
     }
 }

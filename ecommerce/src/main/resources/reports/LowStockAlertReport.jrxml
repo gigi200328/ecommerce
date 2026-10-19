@@ -313,4 +313,24 @@
 		</band>
 	</pageFooter>
 
+	<summary>
+		<band height="28" splitType="Stretch">
+			<printWhenExpression><![CDATA[$V{REPORT_COUNT} == null || $V{REPORT_COUNT} == 0]]></printWhenExpression>
+			<staticText>
+				<reportElement mode="Opaque" x="0" y="0" width="802" height="28" forecolor="#64748B" backcolor="#F8FAFC" uuid="e1f2a3b4-c5d6-7e8f-9a0b-1c2d3e4f5a03"/>
+				<box>
+					<pen lineWidth="0.5" lineColor="#CBD5E1"/>
+					<topPen lineWidth="0.5" lineColor="#CBD5E1"/>
+					<leftPen lineWidth="0.5" lineColor="#CBD5E1"/>
+					<bottomPen lineWidth="0.5" lineColor="#CBD5E1"/>
+					<rightPen lineWidth="0.5" lineColor="#CBD5E1"/>
+				</box>
+				<textElement textAlignment="Center" verticalAlignment="Middle">
+					<font fontName="SansSerif" size="9" isItalic="true"/>
+				</textElement>
+				<text><![CDATA[No low stock items found. All inventory levels are adequate.]]></text>
+			</staticText>
+		</band>
+	</summary>
+
 </jasperReport>

@@ -43,4 +43,20 @@ public interface ReportRepository extends JpaRepository<Product, Long> {
             @Param("endDate") LocalDate endDate,
             @Param("statusFilter") String statusFilter
     );
+
+    // Calls the Stored Procedure for the Product Catalog Dynamic Export
+    @Query(value = "CALL SP_GetProductCatalogExport(:search, :categoryId, :brandId, :status)", nativeQuery = true)
+    List<com.ojt.ecommerce.backofficeinventory.dto.ProductCatalogExportDTO> getProductCatalogExport(
+            @Param("search") String search,
+            @Param("categoryId") Long categoryId,
+            @Param("brandId") Long brandId,
+            @Param("status") String status
+    );
+
+    // Calls the Stored Procedure for the Brand Management Dynamic Export
+    @Query(value = "CALL SP_GetBrandExportReport(:search, :status)", nativeQuery = true)
+    List<com.ojt.ecommerce.backofficeinventory.dto.BrandExportDTO> getBrandExportReport(
+            @Param("search") String search,
+            @Param("status") String status
+    );
 }

@@ -283,4 +283,24 @@
 		</band>
 	</pageFooter>
 
+	<summary>
+		<band height="28" splitType="Stretch">
+			<printWhenExpression><![CDATA[$V{REPORT_COUNT} == null || $V{REPORT_COUNT} == 0]]></printWhenExpression>
+			<staticText>
+				<reportElement mode="Opaque" x="0" y="0" width="555" height="28" forecolor="#64748B" backcolor="#F8FAFC" uuid="f1a2b3c4-d5e6-7f8a-9b0c-1d2e3f4a5b04"/>
+				<box>
+					<pen lineWidth="0.5" lineColor="#CBD5E1"/>
+					<topPen lineWidth="0.5" lineColor="#CBD5E1"/>
+					<leftPen lineWidth="0.5" lineColor="#CBD5E1"/>
+					<bottomPen lineWidth="0.5" lineColor="#CBD5E1"/>
+					<rightPen lineWidth="0.5" lineColor="#CBD5E1"/>
+				</box>
+				<textElement textAlignment="Center" verticalAlignment="Middle">
+					<font fontName="SansSerif" size="9" isItalic="true"/>
+				</textElement>
+				<text><![CDATA[No order fulfillment records found for the selected criteria.]]></text>
+			</staticText>
+		</band>
+	</summary>
+
 </jasperReport>

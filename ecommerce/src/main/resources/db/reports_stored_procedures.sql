@@ -157,3 +157,80 @@ BEGIN
     ORDER BY o.created_at DESC;
 END //
 DELIMITER ;
+
+
+-- -----------------------------------------------------------------------------
+-- 7. Dynamic Product List Export (Product, SKU, Price, Stock, Status)
+-- -----------------------------------------------------------------------------
+DROP PROCEDURE IF EXISTS `SP_GetProductCatalogExport`;
+DELIMITER //
+CREATE PROCEDURE `SP_GetProductCatalogExport`(
+    IN search_keyword VARCHAR(100),
+    IN category_id_filter BIGINT,
+    IN brand_id_filter BIGINT,
+    IN status_filter VARCHAR(50)
+)
+BEGIN
+    SELECT 
+        p.product_name AS productName,
+        p.product_name AS product_name,
+        COALESCE(pv.sku, '-') AS sku,
+        COALESCE(pv.selling_price, 0.00) AS price,
+        IFNULL(i.quantity, 0) AS stock,
+        p.status AS status
+    FROM products p
+    LEFT JOIN product_variants pv ON p.product_id = pv.product_id
+    LEFT JOIN categories c ON p.category_id = c.category_id
+    LEFT JOIN brands b ON p.brand_id = b.brand_id
+    LEFT JOIN inventory i ON pv.variant_id = i.variant_id
+    WHERE (search_keyword IS NULL OR search_keyword = '' 
+           OR p.product_name LIKE CONCAT('%', search_keyword, '%') 
+           OR pv.sku LIKE CONCAT('%', search_keyword, '%')
+           OR b.brand_name LIKE CONCAT('%', search_keyword, '%'))
+      AND (category_id_filter IS NULL OR category_id_filter = 0 OR p.category_id = category_id_filter)
+      AND (brand_id_filter IS NULL OR brand_id_filter = 0 OR p.brand_id = brand_id_filter)
+      AND (status_filter IS NULL OR status_filter = '' OR UPPER(status_filter) = 'ALL' OR UPPER(p.status) = UPPER(status_filter))
+    ORDER BY p.product_name ASC;
+END //
+DELIMITER ;
+
+-- -----------------------------------------------------------------------------
+-- 8. Dynamic Brand Management Export (Brand, Category, Description, Status)
+-- -----------------------------------------------------------------------------
+DROP PROCEDURE IF EXISTS `SP_GetBrandExportReport`;
+DELIMITER //
+CREATE PROCEDURE `SP_GetBrandExportReport`(
+    IN search_keyword VARCHAR(100),
+    IN status_filter VARCHAR(50) -- 'ALL', 'ACTIVE', 'INACTIVE'
+)
+BEGIN
+    SELECT 
+        b.brand_name AS brandName,
+        b.brand_name AS brand_name,
+        IFNULL(
+            GROUP_CONCAT(DISTINCT COALESCE(c_direct.category_name, c_prod.category_name) ORDER BY COALESCE(c_direct.category_name, c_prod.category_name) SEPARATOR ', '), 
+            'No category'
+        ) AS categoryName,
+        IFNULL(
+            GROUP_CONCAT(DISTINCT COALESCE(c_direct.category_name, c_prod.category_name) ORDER BY COALESCE(c_direct.category_name, c_prod.category_name) SEPARATOR ', '), 
+            'No category'
+        ) AS category_name,
+        IFNULL(b.description, '-') AS description,
+        b.status AS status
+    FROM brands b
+    LEFT JOIN brand_categories bc ON b.brand_id = bc.brand_id
+    LEFT JOIN categories c_direct ON bc.category_id = c_direct.category_id
+    LEFT JOIN products p ON b.brand_id = p.brand_id
+    LEFT JOIN categories c_prod ON p.category_id = c_prod.category_id
+    WHERE (search_keyword IS NULL OR search_keyword = '' 
+           OR b.brand_name LIKE CONCAT('%', search_keyword, '%') 
+           OR b.description LIKE CONCAT('%', search_keyword, '%') 
+           OR c_direct.category_name LIKE CONCAT('%', search_keyword, '%')
+           OR c_prod.category_name LIKE CONCAT('%', search_keyword, '%'))
+      AND (status_filter IS NULL OR status_filter = '' OR status_filter = 'ALL' 
+           OR UPPER(b.status) = UPPER(status_filter))
+    GROUP BY b.brand_id, b.brand_name, b.description, b.status
+    ORDER BY b.brand_name ASC;
+END //
+DELIMITER ;
+

@@ -254,4 +254,24 @@
 		</band>
 	</pageFooter>
 
+	<summary>
+		<band height="28" splitType="Stretch">
+			<printWhenExpression><![CDATA[$V{REPORT_COUNT} == null || $V{REPORT_COUNT} == 0]]></printWhenExpression>
+			<staticText>
+				<reportElement mode="Opaque" x="0" y="0" width="555" height="28" forecolor="#64748B" backcolor="#F8FAFC" uuid="b2c3d4e5-f6a7-8b9c-0d1e-2f3a4b5c6d06"/>
+				<box>
+					<pen lineWidth="0.5" lineColor="#CBD5E1"/>
+					<topPen lineWidth="0.5" lineColor="#CBD5E1"/>
+					<leftPen lineWidth="0.5" lineColor="#CBD5E1"/>
+					<bottomPen lineWidth="0.5" lineColor="#CBD5E1"/>
+					<rightPen lineWidth="0.5" lineColor="#CBD5E1"/>
+				</box>
+				<textElement textAlignment="Center" verticalAlignment="Middle">
+					<font fontName="SansSerif" size="9" isItalic="true"/>
+				</textElement>
+				<text><![CDATA[No top selling products found for the specified limit.]]></text>
+			</staticText>
+		</band>
+	</summary>
+
 </jasperReport>
