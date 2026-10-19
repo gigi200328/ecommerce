@@ -1,0 +1,85 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!-- ============================================================
+     Subreport  :  order_invoice_items.jrxml
+     Design     :  Matches 6SYNC Customer Receipt screenshot
+     DataSource :  JRBeanCollectionDataSource(OrderItemDetailDTO)
+     Columns    :  Item | Qty | Price | Total  (headers in MAIN report)
+     ============================================================ -->
+<jasperReport
+        xmlns="http://jasperreports.sourceforge.net/jasperreports"
+        xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"
+        xsi:schemaLocation="http://jasperreports.sourceforge.net/jasperreports
+            http://jasperreports.sourceforge.net/xsd/jasperreport.xsd"
+        name="order_invoice_items"
+        pageWidth="535"
+        pageHeight="842"
+        columnWidth="535"
+        leftMargin="0"
+        rightMargin="0"
+        topMargin="0"
+        bottomMargin="0"
+        uuid="cc11ee33-1111-4ccc-aaaa-000000000001">
+
+    <field name="orderItemId"       class="java.lang.Long"/>
+    <field name="productName"       class="java.lang.String"/>
+    <field name="sku"               class="java.lang.String"/>
+    <field name="variantAttributes" class="java.lang.String"/>
+    <field name="unitPrice"         class="java.math.BigDecimal"/>
+    <field name="qty"               class="java.lang.Integer"/>
+    <field name="discountAmount"    class="java.math.BigDecimal"/>
+    <field name="subtotal"          class="java.math.BigDecimal"/>
+
+    <!-- ── Detail: one row per item ──────────────────────────── -->
+    <detail>
+        <band height="36" splitType="Stretch">
+
+            <!-- Product Name — bold, dark -->
+            <textField isBlankWhenNull="true" textAdjust="StretchHeight">
+                <reportElement x="0" y="8" width="380" height="14" uuid="3b241101-0000-4000-8000-000000000101"/>
+                <textElement verticalAlignment="Middle">
+                    <font size="9" isBold="true"/>
+                </textElement>
+                <textFieldExpression><![CDATA[$F{productName} != null ? $F{productName} : ""]]></textFieldExpression>
+            </textField>
+
+            <!-- Qty — centered -->
+            <textField isBlankWhenNull="true">
+                <reportElement x="380" y="8" width="40" height="14" uuid="3b241101-0000-4000-8000-000000000102"/>
+                <textElement textAlignment="Center" verticalAlignment="Middle">
+                    <font size="9"/>
+                </textElement>
+                <textFieldExpression><![CDATA[$F{qty} != null ? String.valueOf($F{qty}) : "0"]]></textFieldExpression>
+            </textField>
+
+            <!-- Unit Price — "999 MMK", right-aligned -->
+            <textField isBlankWhenNull="true">
+                <reportElement x="420" y="8" width="55" height="14" uuid="3b241101-0000-4000-8000-000000000103"/>
+                <textElement textAlignment="Right" verticalAlignment="Middle">
+                    <font size="9"/>
+                </textElement>
+                <textFieldExpression>
+                    <![CDATA[new java.text.DecimalFormat("#,##0").format($F{unitPrice} != null ? $F{unitPrice} : java.math.BigDecimal.ZERO) + " MMK"]]>
+                </textFieldExpression>
+            </textField>
+
+            <!-- Line Total — "1,998 MMK", bold, right-aligned -->
+            <textField isBlankWhenNull="true">
+                <reportElement x="475" y="8" width="60" height="14" uuid="3b241101-0000-4000-8000-000000000104"/>
+                <textElement textAlignment="Right" verticalAlignment="Middle">
+                    <font size="9" isBold="true"/>
+                </textElement>
+                <textFieldExpression>
+                    <![CDATA[new java.text.DecimalFormat("#,##0").format($F{subtotal} != null ? $F{subtotal} : java.math.BigDecimal.ZERO) + " MMK"]]>
+                </textFieldExpression>
+            </textField>
+
+            <!-- Bottom row separator (light gray) -->
+            <line>
+                <reportElement x="0" y="35" width="535" height="1"
+                               forecolor="#E2E8F0" uuid="3b241101-0000-4000-8000-000000000105"/>
+            </line>
+
+        </band>
+    </detail>
+
+</jasperReport>

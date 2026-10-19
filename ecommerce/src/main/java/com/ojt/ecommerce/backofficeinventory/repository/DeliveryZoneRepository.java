@@ -13,4 +13,6 @@ public interface DeliveryZoneRepository extends JpaRepository<DeliveryZone, Long
 	Optional<DeliveryZone> findByCityAndTownshipIsNull(String city);
 
 	List<DeliveryZone> findAllByOrderByZoneIdAsc();
+
+	boolean existsByCityAndZoneName(String city, String zoneName);
 }
