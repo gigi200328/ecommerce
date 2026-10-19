@@ -59,7 +59,7 @@ public class OrderMapper {
 				.variantAttributes(item.getVariantAttributes()).build();
 	}
 
-	private OrderStatusHistoryDto toHistoryDto(OrderStatusHistory history) {
+	public OrderStatusHistoryDto toHistoryDto(OrderStatusHistory history) {
 		if (history == null)
 			return null;
 		return OrderStatusHistoryDto.builder().historyId(history.getHistoryId()).oldStatus(history.getOldStatus())
