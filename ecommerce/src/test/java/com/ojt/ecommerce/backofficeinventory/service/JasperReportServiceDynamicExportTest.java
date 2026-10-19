@@ -193,4 +193,81 @@ public class JasperReportServiceDynamicExportTest {
         assertNotNull(pdfBytes);
         assertTrue(pdfBytes.length > 500);
     }
+
+    private static class TestRefundExportDTO implements com.ojt.ecommerce.backofficeinventory.dto.RefundExportDTO {
+        private final Long refundId;
+        private final String orderNo;
+        private final String customerName;
+        private final BigDecimal refundAmount;
+        private final String reason;
+        private final String status;
+        private final String requestedDate;
+
+        TestRefundExportDTO(Long refundId, String orderNo, String customerName, BigDecimal refundAmount, String reason, String status, String requestedDate) {
+            this.refundId = refundId;
+            this.orderNo = orderNo;
+            this.customerName = customerName;
+            this.refundAmount = refundAmount;
+            this.reason = reason;
+            this.status = status;
+            this.requestedDate = requestedDate;
+        }
+
+        @Override public Long getRefundId() { return refundId; }
+        @Override public String getOrderNo() { return orderNo; }
+        @Override public String getCustomerName() { return customerName; }
+        @Override public BigDecimal getRefundAmount() { return refundAmount; }
+        @Override public String getReason() { return reason; }
+        @Override public String getStatus() { return status; }
+        @Override public String getRequestedDate() { return requestedDate; }
+    }
+
+    @Test
+    void testGenerateDynamicRefundPdf_WithData() throws Exception {
+        when(reportRepository.getRefundExportReport(any(), any(), any(), any()))
+                .thenReturn(List.of(
+                        new TestRefundExportDTO(1L, "ORD-1001", "Aung Aung", BigDecimal.valueOf(50.0), "DAMAGED_ITEM", "PENDING", "2026-10-18"),
+                        new TestRefundExportDTO(2L, "ORD-1002", "Su Su", BigDecimal.valueOf(100.0), "DEFECTIVE_PRODUCT", "APPROVED", "2026-10-17")
+                ));
+
+        byte[] pdfBytes = jasperReportService.generateDynamicRefundPdf(
+                java.time.LocalDate.now().minusDays(7),
+                java.time.LocalDate.now(),
+                null,
+                "ALL",
+                List.of("refundId", "orderNo", "customerName", "refundAmount", "reason", "status", "requestedDate")
+        );
+        assertNotNull(pdfBytes);
+        assertTrue(pdfBytes.length > 500);
+    }
+
+    @Test
+    void testGenerateDynamicRefundExcel_WithData() throws Exception {
+        when(reportRepository.getRefundExportReport(any(), any(), any(), any()))
+                .thenReturn(List.of(
+                        new TestRefundExportDTO(1L, "ORD-1001", "Aung Aung", BigDecimal.valueOf(50.0), "DAMAGED_ITEM", "PENDING", "2026-10-18")
+                ));
+
+        byte[] excelBytes = jasperReportService.generateDynamicRefundExcel(
+                java.time.LocalDate.now().minusDays(7),
+                java.time.LocalDate.now(),
+                null,
+                "ALL",
+                List.of("refundId", "orderNo", "customerName", "refundAmount", "status")
+        );
+        assertNotNull(excelBytes);
+        assertTrue(excelBytes.length > 500);
+    }
+
+    @Test
+    void testGenerateDynamicRefundPdf_EmptyData() throws Exception {
+        when(reportRepository.getRefundExportReport(any(), any(), any(), any()))
+                .thenReturn(Collections.emptyList());
+
+        byte[] pdfBytes = jasperReportService.generateDynamicRefundPdf(
+                null, null, null, "ALL", null
+        );
+        assertNotNull(pdfBytes);
+        assertTrue(pdfBytes.length > 500);
+    }
 }

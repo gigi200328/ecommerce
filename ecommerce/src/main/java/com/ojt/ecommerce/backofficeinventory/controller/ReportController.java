@@ -303,4 +303,68 @@ public class ReportController {
             throw new RuntimeException("Failed to generate dynamic brand report: " + e.getMessage(), e);
         }
     }
+
+    @GetMapping("/refunds/export/pdf")
+    public ResponseEntity<byte[]> exportRefundsPdf(
+            @RequestParam(value = "startDate", required = false) @DateTimeFormat(iso = DateTimeFormat.ISO.DATE) LocalDate startDate,
+            @RequestParam(value = "endDate", required = false) @DateTimeFormat(iso = DateTimeFormat.ISO.DATE) LocalDate endDate,
+            @RequestParam(value = "search", required = false) String search,
+            @RequestParam(value = "status", required = false, defaultValue = "ALL") String status,
+            @RequestParam(value = "columns", required = false) List<String> columns) {
+        if (columns == null || columns.isEmpty()) {
+            columns = List.of("refundId", "orderNo", "customerName", "refundAmount", "reason", "status", "requestedDate");
+        }
+        try {
+            byte[] pdfBytes = jasperReportService.generateDynamicRefundPdf(startDate, endDate, search, status, columns);
+            return ResponseEntity.ok()
+                    .headers(getReportHeaders("pdf", "Refund_Management_Report"))
+                    .body(pdfBytes);
+        } catch (Exception e) {
+            throw new RuntimeException("Failed to generate dynamic refund PDF: " + e.getMessage(), e);
+        }
+    }
+
+    @GetMapping({"/refunds/export/excel", "/refunds/export/xlsx"})
+    public ResponseEntity<byte[]> exportRefundsExcel(
+            @RequestParam(value = "startDate", required = false) @DateTimeFormat(iso = DateTimeFormat.ISO.DATE) LocalDate startDate,
+            @RequestParam(value = "endDate", required = false) @DateTimeFormat(iso = DateTimeFormat.ISO.DATE) LocalDate endDate,
+            @RequestParam(value = "search", required = false) String search,
+            @RequestParam(value = "status", required = false, defaultValue = "ALL") String status,
+            @RequestParam(value = "columns", required = false) List<String> columns) {
+        if (columns == null || columns.isEmpty()) {
+            columns = List.of("refundId", "orderNo", "customerName", "refundAmount", "reason", "status", "requestedDate");
+        }
+        try {
+            byte[] excelBytes = jasperReportService.generateDynamicRefundExcel(startDate, endDate, search, status, columns);
+            return ResponseEntity.ok()
+                    .headers(getReportHeaders("excel", "Refund_Management_Report"))
+                    .body(excelBytes);
+        } catch (Exception e) {
+            throw new RuntimeException("Failed to generate dynamic refund Excel: " + e.getMessage(), e);
+        }
+    }
+
+    @GetMapping("/refunds/export")
+    public ResponseEntity<byte[]> exportRefundsReport(
+            @RequestParam(value = "startDate", required = false) @DateTimeFormat(iso = DateTimeFormat.ISO.DATE) LocalDate startDate,
+            @RequestParam(value = "endDate", required = false) @DateTimeFormat(iso = DateTimeFormat.ISO.DATE) LocalDate endDate,
+            @RequestParam(value = "search", required = false) String search,
+            @RequestParam(value = "status", required = false, defaultValue = "ALL") String status,
+            @RequestParam(value = "columns", required = false) List<String> columns,
+            @RequestParam(value = "format", defaultValue = "pdf") String format) {
+        if (columns == null || columns.isEmpty()) {
+            columns = List.of("refundId", "orderNo", "customerName", "refundAmount", "reason", "status", "requestedDate");
+        }
+        if (!"pdf".equalsIgnoreCase(format) && !"excel".equalsIgnoreCase(format) && !"xlsx".equalsIgnoreCase(format)) {
+            return ResponseEntity.badRequest().body("Unsupported export format. Supported formats: pdf, excel.".getBytes());
+        }
+        try {
+            byte[] reportBytes = jasperReportService.generateDynamicRefundReport(startDate, endDate, search, status, columns, format);
+            return ResponseEntity.ok()
+                    .headers(getReportHeaders(format, "Refund_Management_Report"))
+                    .body(reportBytes);
+        } catch (Exception e) {
+            throw new RuntimeException("Failed to generate dynamic refund report: " + e.getMessage(), e);
+        }
+    }
 }

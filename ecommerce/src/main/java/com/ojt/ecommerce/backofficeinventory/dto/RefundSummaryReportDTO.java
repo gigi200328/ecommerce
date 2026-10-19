@@ -11,6 +11,10 @@ public interface RefundSummaryReportDTO {
     Long getRefundId();             // Maps to refund_id
     
     Long getOrderId();              // Maps to order_id
+
+    String getOrderNo();            // Maps to order_no
+
+    String getCustomerName();       // Maps to customer_name
     
     String getProductName();        // Maps to product_name
     
@@ -19,8 +23,10 @@ public interface RefundSummaryReportDTO {
     BigDecimal getRefundAmount();   // Maps to refund_amount
     
     String getRequestReason();      // Maps to request_reason
+
+    String getReason();             // Maps to reason
     
     String getStatus();             // Maps to status
     
-    Date getRequestedDate();        // Maps to requested_date
+    Object getRequestedDate();      // Maps to requested_date
 }

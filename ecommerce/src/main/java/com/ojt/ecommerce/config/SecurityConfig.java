@@ -84,7 +84,7 @@ public class SecurityConfig {
 			CustomUserDetailsService userDetailsService) throws Exception {
 		JwtAuthenticationFilter backofficeFilter = new JwtAuthenticationFilter(jwtUtil, userDetailsService);
 		
-        http.securityMatcher("/api/backoffice/**", "/api/v1/reports/**").cors(cors -> cors.configurationSource(corsConfigurationSource()))
+        http.securityMatcher("/api/backoffice/**", "/api/v1/reports/**", "/api/v1/admin/**", "/api/admin/**").cors(cors -> cors.configurationSource(corsConfigurationSource()))
 				.csrf(AbstractHttpConfigurer::disable)
 				.authorizeHttpRequests(auth -> auth
                         .requestMatchers("/api/backoffice/auth/**").permitAll()
@@ -112,8 +112,14 @@ public class SecurityConfig {
                         // Orders များကို ADMIN နှင့် SALES_STAFF ကိုင်တွယ်နိုင်သည်
                         .requestMatchers("/api/backoffice/orders", "/api/backoffice/orders/**")
                         .hasAnyAuthority("ADMIN", "ROLE_ADMIN", "SALES_STAFF", "ROLE_SALES_STAFF")
+
+                        // Refunds များကို ADMIN နှင့် SALES_STAFF ကိုင်တွယ်နိုင်သည်
+                        .requestMatchers(
+                            "/api/v1/admin/refunds", "/api/v1/admin/refunds/**",
+                            "/api/backoffice/refunds", "/api/backoffice/refunds/**"
+                        ).hasAnyAuthority("ADMIN", "ROLE_ADMIN", "SALES_STAFF", "ROLE_SALES_STAFF")
                         
-                        // Main မှ အသစ်ပါလာသော Reports များကို ADMIN သာ ကြည့်ခွင့်ပေးမည်
+                        // Reports များကို ADMIN သာ ကြည့်ခွင့်ပေးမည်
                         .requestMatchers("/api/backoffice/reports", "/api/backoffice/reports/**", "/api/v1/reports/**")
                         .hasAnyAuthority("ADMIN", "ROLE_ADMIN")
 

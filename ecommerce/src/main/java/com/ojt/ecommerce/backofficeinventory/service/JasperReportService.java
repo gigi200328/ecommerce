@@ -19,6 +19,7 @@ import com.ojt.ecommerce.backofficeinventory.dto.DailyProductSalesDTO;
 import com.ojt.ecommerce.backofficeinventory.dto.LowStockAlertDTO;
 import com.ojt.ecommerce.backofficeinventory.dto.OrderFulfillmentReportDTO;
 import com.ojt.ecommerce.backofficeinventory.dto.ProductCatalogExportDTO;
+import com.ojt.ecommerce.backofficeinventory.dto.RefundExportDTO;
 import com.ojt.ecommerce.backofficeinventory.dto.RefundSummaryReportDTO;
 import com.ojt.ecommerce.backofficeinventory.dto.TopSellingProductDTO;
 import com.ojt.ecommerce.backofficeinventory.repository.ReportRepository;
@@ -844,6 +845,363 @@ public class JasperReportService {
         noDataText.setWidth(555);
         noDataText.setHeight(26);
         noDataText.setText("No brand records found matching the selected filter criteria.");
+        noDataText.setFontName("SansSerif");
+        noDataText.setFontSize(9f);
+        noDataText.setItalic(true);
+        noDataText.setMode(ModeEnum.OPAQUE);
+        noDataText.setBackcolor(Color.decode("#F8FAFC"));
+        noDataText.setForecolor(Color.decode("#64748B"));
+        noDataText.setHorizontalTextAlign(HorizontalTextAlignEnum.CENTER);
+        noDataText.setVerticalTextAlign(VerticalTextAlignEnum.MIDDLE);
+        noDataText.getLineBox().getPen().setLineWidth(0.5f);
+        noDataText.getLineBox().getPen().setLineColor(Color.decode("#CBD5E1"));
+        summaryBand.addElement(noDataText);
+
+        JRDesignExpression noDataBandExpr = new JRDesignExpression();
+        noDataBandExpr.setText("$V{REPORT_COUNT} == null || $V{REPORT_COUNT} == 0");
+        summaryBand.setPrintWhenExpression(noDataBandExpr);
+
+        jasperDesign.setSummary(summaryBand);
+
+        // 7. Page Footer Band (height = 25)
+        JRDesignBand footerBand = new JRDesignBand();
+        footerBand.setHeight(25);
+
+        JRDesignStaticText confText = new JRDesignStaticText();
+        confText.setX(0);
+        confText.setY(5);
+        confText.setWidth(300);
+        confText.setHeight(15);
+        confText.setText("Confidential - Internal Back-Office Use Only");
+        confText.setFontName("SansSerif");
+        confText.setFontSize(8f);
+        confText.setItalic(true);
+        confText.setForecolor(Color.decode("#64748B"));
+        confText.setVerticalTextAlign(VerticalTextAlignEnum.MIDDLE);
+        footerBand.addElement(confText);
+
+        JRDesignTextField pageField = new JRDesignTextField();
+        pageField.setX(400);
+        pageField.setY(5);
+        pageField.setWidth(155);
+        pageField.setHeight(15);
+        pageField.setFontName("SansSerif");
+        pageField.setFontSize(8f);
+        pageField.setForecolor(Color.decode("#64748B"));
+        pageField.setHorizontalTextAlign(HorizontalTextAlignEnum.RIGHT);
+        pageField.setVerticalTextAlign(VerticalTextAlignEnum.MIDDLE);
+        JRDesignExpression pageExpr = new JRDesignExpression();
+        pageExpr.setText("\"Page \" + $V{PAGE_NUMBER}");
+        pageField.setExpression(pageExpr);
+        footerBand.addElement(pageField);
+
+        jasperDesign.setPageFooter(footerBand);
+
+        return jasperDesign;
+    }
+
+    // =========================================================================
+    // DYNAMIC REFUND EXPORT (Programmatic JasperDesign with Dynamic Columns)
+    // =========================================================================
+
+    public static class RefundExportItem {
+        private String refundId;
+        private String orderNo;
+        private String customerName;
+        private String refundAmount;
+        private String reason;
+        private String status;
+        private String requestedDate;
+
+        public RefundExportItem(String refundId, String orderNo, String customerName, String refundAmount, String reason, String status, String requestedDate) {
+            this.refundId = refundId != null && !refundId.isBlank() ? refundId : "-";
+            this.orderNo = orderNo != null && !orderNo.isBlank() ? orderNo : "-";
+            this.customerName = customerName != null && !customerName.isBlank() ? customerName : "Unknown";
+            this.refundAmount = refundAmount != null && !refundAmount.isBlank() ? refundAmount : "$0.00";
+            this.reason = reason != null && !reason.isBlank() ? reason : "-";
+            this.status = status != null && !status.isBlank() ? status : "UNKNOWN";
+            this.requestedDate = requestedDate != null && !requestedDate.isBlank() ? requestedDate : "-";
+        }
+
+        public String getRefundId() { return refundId; }
+        public String getOrderNo() { return orderNo; }
+        public String getCustomerName() { return customerName; }
+        public String getRefundAmount() { return refundAmount; }
+        public String getReason() { return reason; }
+        public String getStatus() { return status; }
+        public String getRequestedDate() { return requestedDate; }
+    }
+
+    private static final Map<String, ColumnDef> REFUND_AVAILABLE_COLUMNS = new LinkedHashMap<>();
+    static {
+        REFUND_AVAILABLE_COLUMNS.put("refundId", new ColumnDef("refundId", "REFUND ID", String.class, HorizontalTextAlignEnum.CENTER, null));
+        REFUND_AVAILABLE_COLUMNS.put("orderNo", new ColumnDef("orderNo", "ORDER NO", String.class, HorizontalTextAlignEnum.LEFT, null));
+        REFUND_AVAILABLE_COLUMNS.put("customerName", new ColumnDef("customerName", "CUSTOMER", String.class, HorizontalTextAlignEnum.LEFT, null));
+        REFUND_AVAILABLE_COLUMNS.put("refundAmount", new ColumnDef("refundAmount", "REFUND AMOUNT", String.class, HorizontalTextAlignEnum.RIGHT, null));
+        REFUND_AVAILABLE_COLUMNS.put("reason", new ColumnDef("reason", "REASON", String.class, HorizontalTextAlignEnum.LEFT, null));
+        REFUND_AVAILABLE_COLUMNS.put("status", new ColumnDef("status", "STATUS", String.class, HorizontalTextAlignEnum.CENTER, null));
+        REFUND_AVAILABLE_COLUMNS.put("requestedDate", new ColumnDef("requestedDate", "REQUESTED DATE", String.class, HorizontalTextAlignEnum.CENTER, null));
+    }
+
+    public byte[] generateDynamicRefundPdf(LocalDate startDate, LocalDate endDate, String search, String status, List<String> selectedColumns) throws Exception {
+        return generateDynamicRefundReport(startDate, endDate, search, status, selectedColumns, "pdf");
+    }
+
+    public byte[] generateDynamicRefundExcel(LocalDate startDate, LocalDate endDate, String search, String status, List<String> selectedColumns) throws Exception {
+        return generateDynamicRefundReport(startDate, endDate, search, status, selectedColumns, "excel");
+    }
+
+    public byte[] generateDynamicRefundReport(LocalDate startDate, LocalDate endDate, String search, String status, List<String> selectedColumns, String format) throws Exception {
+        List<RefundExportDTO> rawData = reportRepository.getRefundExportReport(startDate, endDate, search, status);
+        List<RefundExportItem> data = new ArrayList<>();
+        if (rawData != null) {
+            for (RefundExportDTO dto : rawData) {
+                if (dto != null) {
+                    String amtStr = dto.getRefundAmount() != null ? String.format("$%.2f", dto.getRefundAmount()) : "$0.00";
+                    data.add(new RefundExportItem(
+                            dto.getRefundId() != null ? String.valueOf(dto.getRefundId()) : "-",
+                            dto.getOrderNo() != null ? dto.getOrderNo() : "-",
+                            dto.getCustomerName() != null ? dto.getCustomerName() : "Unknown",
+                            amtStr,
+                            dto.getReason() != null ? dto.getReason() : "-",
+                            dto.getStatus() != null ? dto.getStatus() : "-",
+                            dto.getRequestedDate() != null ? dto.getRequestedDate() : "-"
+                    ));
+                }
+            }
+        }
+        JasperDesign jasperDesign = buildRefundJasperDesign(selectedColumns, status, startDate, endDate);
+        JasperReport jasperReport = JasperCompileManager.compileReport(jasperDesign);
+        JasperPrint jasperPrint = JasperFillManager.fillReport(jasperReport, new HashMap<>(), new JRBeanCollectionDataSource(data));
+        return exportReport(jasperPrint, format);
+    }
+
+    private JasperDesign buildRefundJasperDesign(List<String> selectedColumns, String statusFilter, LocalDate startDate, LocalDate endDate) throws Exception {
+        // 1. Resolve and filter requested columns against available columns
+        List<ColumnDef> activeColumns = new ArrayList<>();
+        if (selectedColumns != null && !selectedColumns.isEmpty()) {
+            for (String col : selectedColumns) {
+                if (col == null) continue;
+                String trimmed = col.trim();
+                for (Map.Entry<String, ColumnDef> entry : REFUND_AVAILABLE_COLUMNS.entrySet()) {
+                    if (entry.getKey().equalsIgnoreCase(trimmed) || entry.getKey().equalsIgnoreCase(trimmed.replace("_", ""))) {
+                        if (!activeColumns.contains(entry.getValue())) {
+                            activeColumns.add(entry.getValue());
+                        }
+                        break;
+                    }
+                }
+            }
+        }
+        if (activeColumns.isEmpty()) {
+            activeColumns.addAll(REFUND_AVAILABLE_COLUMNS.values());
+        }
+
+        // 2. Initialize JasperDesign with standard A4 Portrait dimensions
+        JasperDesign jasperDesign = new JasperDesign();
+        jasperDesign.setName("DynamicRefundExportReport");
+        jasperDesign.setPageWidth(595);
+        jasperDesign.setPageHeight(842);
+        jasperDesign.setColumnWidth(555);
+        jasperDesign.setLeftMargin(20);
+        jasperDesign.setRightMargin(20);
+        jasperDesign.setTopMargin(20);
+        jasperDesign.setBottomMargin(20);
+
+        // 3. Register all available fields on the report
+        for (ColumnDef def : REFUND_AVAILABLE_COLUMNS.values()) {
+            JRDesignField field = new JRDesignField();
+            field.setName(def.key);
+            field.setValueClass(def.valueClass);
+            jasperDesign.addField(field);
+        }
+
+        // 4. Corporate Title Band (height = 65)
+        JRDesignBand titleBand = new JRDesignBand();
+        titleBand.setHeight(65);
+
+        JRDesignStaticText systemText = new JRDesignStaticText();
+        systemText.setX(0);
+        systemText.setY(0);
+        systemText.setWidth(350);
+        systemText.setHeight(20);
+        systemText.setText("E-COMMERCE BACK-OFFICE SYSTEM");
+        systemText.setFontName("SansSerif");
+        systemText.setFontSize(14f);
+        systemText.setBold(true);
+        systemText.setForecolor(Color.decode("#1E293B"));
+        systemText.setVerticalTextAlign(VerticalTextAlignEnum.MIDDLE);
+        titleBand.addElement(systemText);
+
+        JRDesignStaticText reportTitleText = new JRDesignStaticText();
+        reportTitleText.setX(0);
+        reportTitleText.setY(22);
+        reportTitleText.setWidth(350);
+        reportTitleText.setHeight(18);
+        reportTitleText.setText("REFUND MANAGEMENT REPORT");
+        reportTitleText.setFontName("SansSerif");
+        reportTitleText.setFontSize(12f);
+        reportTitleText.setBold(true);
+        reportTitleText.setForecolor(Color.decode("#475569"));
+        reportTitleText.setVerticalTextAlign(VerticalTextAlignEnum.MIDDLE);
+        titleBand.addElement(reportTitleText);
+
+        String activeStatus = (statusFilter != null && !statusFilter.isBlank()) ? statusFilter.toUpperCase() : "ALL";
+        String dateSubtitle = "Filter Status: " + activeStatus;
+        if (startDate != null || endDate != null) {
+            dateSubtitle += " | Date: " + (startDate != null ? startDate : "All") + " to " + (endDate != null ? endDate : "Present");
+        }
+        JRDesignStaticText filterSubtitle = new JRDesignStaticText();
+        filterSubtitle.setX(0);
+        filterSubtitle.setY(42);
+        filterSubtitle.setWidth(350);
+        filterSubtitle.setHeight(14);
+        filterSubtitle.setText(dateSubtitle);
+        filterSubtitle.setFontName("SansSerif");
+        filterSubtitle.setFontSize(9f);
+        filterSubtitle.setBold(true);
+        filterSubtitle.setForecolor(Color.decode("#64748B"));
+        filterSubtitle.setVerticalTextAlign(VerticalTextAlignEnum.MIDDLE);
+        titleBand.addElement(filterSubtitle);
+
+        JRDesignTextField dateField = new JRDesignTextField();
+        dateField.setX(355);
+        dateField.setY(10);
+        dateField.setWidth(200);
+        dateField.setHeight(20);
+        dateField.setFontName("SansSerif");
+        dateField.setFontSize(9f);
+        dateField.setForecolor(Color.decode("#64748B"));
+        dateField.setHorizontalTextAlign(HorizontalTextAlignEnum.RIGHT);
+        dateField.setVerticalTextAlign(VerticalTextAlignEnum.MIDDLE);
+        JRDesignExpression dateExpr = new JRDesignExpression();
+        dateExpr.setText("\"Generated on: \" + new java.text.SimpleDateFormat(\"yyyy-MM-dd HH:mm\").format(new java.util.Date())");
+        dateField.setExpression(dateExpr);
+        titleBand.addElement(dateField);
+
+        JRDesignLine headerLine = new JRDesignLine();
+        headerLine.setX(0);
+        headerLine.setY(60);
+        headerLine.setWidth(555);
+        headerLine.setHeight(1);
+        headerLine.setForecolor(Color.decode("#CBD5E1"));
+        titleBand.addElement(headerLine);
+
+        jasperDesign.setTitle(titleBand);
+
+        // 5. Column Header Band (height = 28) & Detail Band (height = 24)
+        JRDesignBand columnHeaderBand = new JRDesignBand();
+        columnHeaderBand.setHeight(28);
+
+        JRDesignBand detailBand = new JRDesignBand();
+        detailBand.setHeight(24);
+
+        // First Column: "#" / "No." (width = 35px)
+        int noWidth = 35;
+
+        JRDesignStaticText noHeader = new JRDesignStaticText();
+        noHeader.setX(0);
+        noHeader.setY(0);
+        noHeader.setWidth(noWidth);
+        noHeader.setHeight(28);
+        noHeader.setText("No.");
+        noHeader.setMode(ModeEnum.OPAQUE);
+        noHeader.setBackcolor(Color.decode("#1E293B"));
+        noHeader.setForecolor(Color.WHITE);
+        noHeader.setFontName("SansSerif");
+        noHeader.setFontSize(10f);
+        noHeader.setBold(true);
+        noHeader.setHorizontalTextAlign(HorizontalTextAlignEnum.CENTER);
+        noHeader.setVerticalTextAlign(VerticalTextAlignEnum.MIDDLE);
+        noHeader.getLineBox().getPen().setLineWidth(0.5f);
+        noHeader.getLineBox().getPen().setLineColor(Color.decode("#CBD5E1"));
+        columnHeaderBand.addElement(noHeader);
+
+        JRDesignTextField noDetail = new JRDesignTextField();
+        noDetail.setX(0);
+        noDetail.setY(0);
+        noDetail.setWidth(noWidth);
+        noDetail.setHeight(24);
+        noDetail.setFontName("SansSerif");
+        noDetail.setFontSize(9f);
+        noDetail.setHorizontalTextAlign(HorizontalTextAlignEnum.CENTER);
+        noDetail.setVerticalTextAlign(VerticalTextAlignEnum.MIDDLE);
+        noDetail.setBlankWhenNull(true);
+        noDetail.getLineBox().getPen().setLineWidth(0.5f);
+        noDetail.getLineBox().getPen().setLineColor(Color.decode("#CBD5E1"));
+        noDetail.getLineBox().setLeftPadding(5);
+        noDetail.getLineBox().setRightPadding(5);
+        JRDesignExpression noExpr = new JRDesignExpression();
+        noExpr.setText("$V{REPORT_COUNT}");
+        noDetail.setExpression(noExpr);
+        detailBand.addElement(noDetail);
+
+        // Dynamic Columns (evenly distribute remaining 520px)
+        int remainingWidth = 555 - noWidth; // 520px
+        int numCols = activeColumns.size();
+        int baseWidth = remainingWidth / numCols;
+        int remainder = remainingWidth % numCols;
+
+        int currentX = noWidth;
+        for (int i = 0; i < numCols; i++) {
+            ColumnDef colDef = activeColumns.get(i);
+            int colWidth = baseWidth + (i == numCols - 1 ? remainder : 0);
+
+            // Column Header
+            JRDesignStaticText colHeader = new JRDesignStaticText();
+            colHeader.setX(currentX);
+            colHeader.setY(0);
+            colHeader.setWidth(colWidth);
+            colHeader.setHeight(28);
+            colHeader.setText(colDef.header);
+            colHeader.setMode(ModeEnum.OPAQUE);
+            colHeader.setBackcolor(Color.decode("#1E293B"));
+            colHeader.setForecolor(Color.WHITE);
+            colHeader.setFontName("SansSerif");
+            colHeader.setFontSize(10f);
+            colHeader.setBold(true);
+            colHeader.setHorizontalTextAlign(HorizontalTextAlignEnum.CENTER);
+            colHeader.setVerticalTextAlign(VerticalTextAlignEnum.MIDDLE);
+            colHeader.getLineBox().getPen().setLineWidth(0.5f);
+            colHeader.getLineBox().getPen().setLineColor(Color.decode("#CBD5E1"));
+            columnHeaderBand.addElement(colHeader);
+
+            // Detail Cell
+            JRDesignTextField colDetail = new JRDesignTextField();
+            colDetail.setX(currentX);
+            colDetail.setY(0);
+            colDetail.setWidth(colWidth);
+            colDetail.setHeight(24);
+            colDetail.setFontName("SansSerif");
+            colDetail.setFontSize(9f);
+            colDetail.setHorizontalTextAlign(colDef.detailAlign);
+            colDetail.setVerticalTextAlign(VerticalTextAlignEnum.MIDDLE);
+            colDetail.setBlankWhenNull(true);
+            colDetail.getLineBox().getPen().setLineWidth(0.5f);
+            colDetail.getLineBox().getPen().setLineColor(Color.decode("#CBD5E1"));
+            colDetail.getLineBox().setLeftPadding(5);
+            colDetail.getLineBox().setRightPadding(5);
+            JRDesignExpression colExpr = new JRDesignExpression();
+            colExpr.setText("$F{" + colDef.key + "}");
+            colDetail.setExpression(colExpr);
+            detailBand.addElement(colDetail);
+
+            currentX += colWidth;
+        }
+
+        jasperDesign.setColumnHeader(columnHeaderBand);
+        ((JRDesignSection) jasperDesign.getDetailSection()).addBand(detailBand);
+
+        // 6. Summary Band (displays a message row if no records match)
+        JRDesignBand summaryBand = new JRDesignBand();
+        summaryBand.setHeight(26);
+
+        JRDesignStaticText noDataText = new JRDesignStaticText();
+        noDataText.setX(0);
+        noDataText.setY(0);
+        noDataText.setWidth(555);
+        noDataText.setHeight(26);
+        noDataText.setText("No refund records found matching the selected filter criteria.");
         noDataText.setFontName("SansSerif");
         noDataText.setFontSize(9f);
         noDataText.setItalic(true);
