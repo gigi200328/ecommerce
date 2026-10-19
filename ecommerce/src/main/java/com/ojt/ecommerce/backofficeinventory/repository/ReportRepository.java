@@ -27,10 +27,19 @@ public interface ReportRepository extends JpaRepository<Product, Long> {
     @Query(value = "CALL SP_GetTopSellingProducts(:limitCount)", nativeQuery = true)
     List<com.ojt.ecommerce.backofficeinventory.dto.TopSellingProductDTO> getTopSellingProducts(@Param("limitCount") Integer limitCount);
     // Calls the Stored Procedure for the Refund Summary Report
-    @Query(value = "CALL SP_GetRefundSummaryReport(:startDate, :endDate)", nativeQuery = true)
+    @Query(value = "CALL SP_GetRefundSummaryReport(:startDate, :endDate, null, 'ALL')", nativeQuery = true)
     List<com.ojt.ecommerce.backofficeinventory.dto.RefundSummaryReportDTO> getRefundSummaryReport(
             @Param("startDate") LocalDate startDate, 
             @Param("endDate") LocalDate endDate
+    );
+
+    // Calls the Stored Procedure for the Refund Management Dynamic Export
+    @Query(value = "CALL SP_GetRefundSummaryReport(:startDate, :endDate, :search, :status)", nativeQuery = true)
+    List<com.ojt.ecommerce.backofficeinventory.dto.RefundExportDTO> getRefundExportReport(
+            @Param("startDate") LocalDate startDate, 
+            @Param("endDate") LocalDate endDate,
+            @Param("search") String search,
+            @Param("status") String status
     );
     // Calls the Stored Procedure for the Low Stock Alert Report
     @Query(value = "CALL SP_GetLowStockAlertReport()", nativeQuery = true)

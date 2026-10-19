@@ -123,22 +123,46 @@ public class ReportProcedureSeeder implements CommandLineRunner {
         jdbcTemplate.execute("DROP PROCEDURE IF EXISTS `SP_GetRefundSummaryReport`");
         String sql = """
             CREATE PROCEDURE `SP_GetRefundSummaryReport`(
-                IN startDate DATE,
-                IN endDate DATE
+                IN start_date DATE,
+                IN end_date DATE,
+                IN search_keyword VARCHAR(100),
+                IN status_filter VARCHAR(50)
             )
             BEGIN
                 SELECT 
+                    rr.refund_id AS refund_id,
                     rr.refund_id AS refundId,
-                    oi.order_id AS orderId,
-                    oi.product_name AS productName,
+                    o.order_id AS order_id,
+                    o.order_id AS orderId,
+                    o.order_no AS order_no,
+                    o.order_no AS orderNo,
+                    c.full_name AS customer_name,
+                    c.full_name AS customerName,
+                    COALESCE(oi.product_name, 'Product') AS product_name,
+                    COALESCE(oi.product_name, 'Product') AS productName,
+                    rr.refund_quantity AS refund_quantity,
                     rr.refund_quantity AS refundQuantity,
+                    rr.refund_amount AS refund_amount,
                     rr.refund_amount AS refundAmount,
+                    rr.request_reason AS reason,
                     rr.request_reason AS requestReason,
+                    rr.request_reason AS request_reason,
                     rr.status AS status,
-                    DATE(rr.requested_at) AS requestedDate
+                    DATE_FORMAT(rr.requested_at, '%Y-%m-%d') AS requested_date,
+                    DATE_FORMAT(rr.requested_at, '%Y-%m-%d') AS requestedDate
                 FROM refund_requests rr
                 JOIN order_items oi ON rr.order_item_id = oi.order_item_id
-                WHERE DATE(rr.requested_at) BETWEEN startDate AND endDate
+                JOIN orders o ON oi.order_id = o.order_id
+                JOIN customers c ON o.customer_id = c.customer_id
+                WHERE (start_date IS NULL OR DATE(rr.requested_at) >= start_date)
+                  AND (end_date IS NULL OR DATE(rr.requested_at) <= end_date)
+                  AND (search_keyword IS NULL OR search_keyword = '' 
+                       OR o.order_no LIKE CONCAT('%', search_keyword, '%')
+                       OR c.full_name LIKE CONCAT('%', search_keyword, '%')
+                       OR oi.product_name LIKE CONCAT('%', search_keyword, '%')
+                       OR rr.request_reason LIKE CONCAT('%', search_keyword, '%'))
+                  AND (status_filter IS NULL OR status_filter = '' OR UPPER(status_filter) = 'ALL' 
+                       OR UPPER(rr.status) = UPPER(status_filter))
                 ORDER BY rr.requested_at DESC;
             END
             """;
