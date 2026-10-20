@@ -34,3 +34,5 @@ build/
 
 # === Local Configuration Files (Added to protect passwords) ===
 application-dev.properties
+
+uploads/
