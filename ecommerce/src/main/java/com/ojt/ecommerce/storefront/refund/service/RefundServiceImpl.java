@@ -17,6 +17,7 @@ import java.time.Duration;
 import java.time.LocalDateTime;
 import java.util.Arrays;
 import java.util.List;
+import java.util.Optional;
 import java.util.stream.Collectors;
 
 @Service
@@ -133,6 +134,9 @@ public class RefundServiceImpl implements RefundService {
         int reservedQty = refundRequestRepository.getReservedQuantity(orderItemId);
         int remainingQty = orderItem.getQty() - reservedQty;
 
+        Optional<RefundRequest> latestRefund = refundRequestRepository.findFirstByOrderItemOrderItemIdOrderByRequestedAtDesc(orderItemId);
+        String refundStatus = latestRefund.map(RefundRequest::getStatus).orElse(null);
+
         boolean canRequestRefund = true;
         String ineligibleReason = null;
         Integer daysRemaining = null;
@@ -174,7 +178,15 @@ public class RefundServiceImpl implements RefundService {
                 .canRequestRefund(canRequestRefund)
                 .ineligibleReason(ineligibleReason)
                 .daysRemaining(daysRemaining)
+                .refundStatus(refundStatus)
                 .build();
+    }
+
+    @Override
+    @Transactional(readOnly = true)
+    public boolean isCanRequestRefund(Long customerId, Long orderItemId) {
+        RefundEligibilityDto dto = getRefundEligibility(customerId, orderItemId);
+        return dto != null && Boolean.TRUE.equals(dto.getCanRequestRefund());
     }
 
     /**

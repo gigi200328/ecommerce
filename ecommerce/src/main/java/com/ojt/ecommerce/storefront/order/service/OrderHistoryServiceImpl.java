@@ -11,7 +11,9 @@ import java.util.Map;
 import java.util.stream.Collectors;
 
 import org.springframework.data.domain.Page;
+import org.springframework.data.domain.PageRequest;
 import org.springframework.data.domain.Pageable;
+import org.springframework.data.domain.Sort;
 import org.springframework.data.jpa.domain.Specification;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
@@ -101,7 +103,15 @@ public class OrderHistoryServiceImpl implements OrderHistoryService {
 			return cb.and(predicates.toArray(new Predicate[0]));
 		};
 
-		Page<Order> ordersPage = orderRepository.findAll(spec, pageable);
+		Pageable effectivePageable = pageable;
+		if (effectivePageable == null || effectivePageable.getSort().isUnsorted()) {
+			effectivePageable = PageRequest.of(
+					pageable != null ? pageable.getPageNumber() : 0,
+					pageable != null ? pageable.getPageSize() : 10,
+					Sort.by(Sort.Direction.DESC, "createdAt").and(Sort.by(Sort.Direction.DESC, "orderId")));
+		}
+
+		Page<Order> ordersPage = orderRepository.findAll(spec, effectivePageable);
 
 		List<Long> orderIds = ordersPage.getContent().stream().map(Order::getOrderId).collect(Collectors.toList());
 

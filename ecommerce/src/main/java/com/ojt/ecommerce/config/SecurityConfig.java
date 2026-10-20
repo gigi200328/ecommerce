@@ -44,39 +44,26 @@ public class SecurityConfig {
 	}
 
 	@Bean
-    @Order(0)
-    public SecurityFilterChain swaggerSecurityFilterChain(HttpSecurity http) throws Exception {
-        http
-            .securityMatcher(
-                "/v3/api-docs/**",
-                "/swagger-ui/**",
-                "/swagger-ui.html",
-                "/swagger-resources/**",
-                "/webjars/**",
-                "/uploads/**"
-            )
-            .cors(cors -> cors.configurationSource(corsConfigurationSource()))
-            .csrf(AbstractHttpConfigurer::disable)
-            .authorizeHttpRequests(auth -> auth.anyRequest().permitAll());
-
+	@Order(0)
+	public SecurityFilterChain swaggerSecurityFilterChain(HttpSecurity http) throws Exception {
+		http.securityMatcher("/v3/api-docs/**", "/swagger-ui/**", "/swagger-ui.html", "/swagger-resources/**",
+				"/webjars/**", "/uploads/**").cors(cors -> cors.configurationSource(corsConfigurationSource()))
+				.csrf(AbstractHttpConfigurer::disable).authorizeHttpRequests(auth -> auth.anyRequest().permitAll());
 
 		return http.build();
 	}
+
 	// Main Branch မှ အသစ်ပါလာသော Public Locations API
 	@Bean
 	@Order(1)
 	public SecurityFilterChain publicLocationsSecurityFilterChain(HttpSecurity http) throws Exception {
-		http.securityMatcher("/api/locations/**")
-				.cors(cors -> cors.configurationSource(corsConfigurationSource()))
-				.csrf(AbstractHttpConfigurer::disable)
-				.authorizeHttpRequests(auth -> auth.anyRequest()
-						.permitAll())
+		http.securityMatcher("/api/locations/**").cors(cors -> cors.configurationSource(corsConfigurationSource()))
+				.csrf(AbstractHttpConfigurer::disable).authorizeHttpRequests(auth -> auth.anyRequest().permitAll())
 				.sessionManagement(sess -> sess.sessionCreationPolicy(SessionCreationPolicy.STATELESS));
 
-        return http.build();
-    }
-	
-   
+		return http.build();
+	}
+
 	// 1. Backoffice APIs Chain (Role-Based လုံခြုံရေးများ ပေါင်းထည့်ထားပါသည်)
 	@Bean
 	@Order(2)
@@ -84,11 +71,9 @@ public class SecurityConfig {
 			CustomUserDetailsService userDetailsService) throws Exception {
 		JwtAuthenticationFilter backofficeFilter = new JwtAuthenticationFilter(jwtUtil, userDetailsService);
 
-		http.securityMatcher("/api/backoffice/**")
-				.cors(cors -> cors.configurationSource(corsConfigurationSource()))
+		http.securityMatcher("/api/backoffice/**").cors(cors -> cors.configurationSource(corsConfigurationSource()))
 				.csrf(AbstractHttpConfigurer::disable)
-				.authorizeHttpRequests(auth -> auth.requestMatchers("/api/backoffice/auth/**")
-						.permitAll()
+				.authorizeHttpRequests(auth -> auth.requestMatchers("/api/backoffice/auth/**").permitAll()
 
 						// Staff များကို ADMIN သာ စီမံနိုင်သည်
 						.requestMatchers("/api/backoffice/staff", "/api/backoffice/staff/**")
@@ -114,8 +99,7 @@ public class SecurityConfig {
 						.requestMatchers("/api/backoffice/reports", "/api/backoffice/reports/**")
 						.hasAnyAuthority("ADMIN", "ROLE_ADMIN")
 
-						.anyRequest()
-						.authenticated())
+						.anyRequest().authenticated())
 				.sessionManagement(sess -> sess.sessionCreationPolicy(SessionCreationPolicy.STATELESS))
 				.addFilterBefore(backofficeFilter, UsernamePasswordAuthenticationFilter.class);
 
@@ -126,8 +110,7 @@ public class SecurityConfig {
 	@Order(3)
 	public SecurityFilterChain g5SecurityFilterChain(HttpSecurity http, G5JwtUtil g5JwtUtil) throws Exception {
 		G5JwtAuthenticationFilter storefrontFilter = new G5JwtAuthenticationFilter(g5JwtUtil);
-		http.securityMatcher("/api/storefront/v1/**")
-				.cors(cors -> cors.configurationSource(corsConfigurationSource()))
+		http.securityMatcher("/api/storefront/v1/**").cors(cors -> cors.configurationSource(corsConfigurationSource()))
 				.csrf(csrf -> csrf.disable())
 				.authorizeHttpRequests(auth -> auth
 						.requestMatchers("/api/storefront/v1/auth/customer/login",
@@ -138,29 +121,23 @@ public class SecurityConfig {
 						.permitAll()
 						.requestMatchers("/api/storefront/v1/products/**", "/api/storefront/v1/categories/**",
 								"/api/storefront/v1/cart/guest/**")
-						.permitAll()
-						.requestMatchers("/api/storefront/v1/tags/**", "/api/storefront/v1/brands/**")
-						.permitAll()
-						.requestMatchers(HttpMethod.GET, "/api/storefront/v1/search-history/popular")
+						.permitAll().requestMatchers("/api/storefront/v1/tags/**", "/api/storefront/v1/brands/**")
+						.permitAll().requestMatchers(HttpMethod.GET, "/api/storefront/v1/search-history/popular")
 						.permitAll()
 //                .requestMatchers("/api/storefront/v1/delivery-zones/**", "/api/storefront/v1/shipping/quote/**", "/api/storefront/v1/payment-callbacks/g3").permitAll()
-						.requestMatchers("/api/storefront/v1/payment-callbacks/g3")
-						.permitAll()
+						.requestMatchers("/api/storefront/v1/payment-callbacks/g3").permitAll()
 
-						.anyRequest()
-						.authenticated())
+						.anyRequest().authenticated())
 				.sessionManagement(sess -> sess.sessionCreationPolicy(SessionCreationPolicy.STATELESS))
 				.addFilterBefore(storefrontFilter, UsernamePasswordAuthenticationFilter.class);
 
-        return http.build();
-    }
-
-	
+		return http.build();
+	}
 
 	@Bean
 	public CorsConfigurationSource corsConfigurationSource() {
 		CorsConfiguration configuration = new CorsConfiguration();
-		configuration.setAllowedOrigins(List.of("http://localhost:5173", "http://localhost:3000"));
+		configuration.setAllowedOrigins(List.of("http://localhost:5173", "http://localhost:5174"));
 		configuration.setAllowedMethods(List.of("GET", "POST", "PUT", "DELETE", "PATCH", "OPTIONS"));
 		configuration.setAllowedHeaders(
 				List.of("Authorization", "Content-Type", "Cache-Control", "Accept", "X-Requested-With"));
