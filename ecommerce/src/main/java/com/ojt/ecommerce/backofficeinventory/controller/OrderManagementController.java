@@ -16,6 +16,7 @@ import org.springframework.web.bind.annotation.RequestParam;
 import org.springframework.web.bind.annotation.RestController;
 
 import com.ojt.ecommerce.backofficeinventory.dto.OrderResponseDto;
+import com.ojt.ecommerce.backofficeinventory.dto.OrderStatusHistoryDto;
 import com.ojt.ecommerce.backofficeinventory.dto.OrderStatusUpdateRequestDto;
 import com.ojt.ecommerce.backofficeinventory.dto.PaginatedResponseDto;
 import com.ojt.ecommerce.backofficeinventory.dto.PaymentVerificationDto;
@@ -32,11 +33,6 @@ import lombok.RequiredArgsConstructor;
 public class OrderManagementController {
 
 	private final OrderManagementService orderManagementService;
-
-//	@GetMapping
-//	public List<OrderResponseDto> getOrders(@RequestParam(required = false) String status) {
-//		return orderService.getOrders(status);
-//	}
 
 	@GetMapping
 	public ResponseEntity<PaginatedResponseDto<OrderResponseDto>> getOrders(
@@ -82,6 +78,12 @@ public class OrderManagementController {
 
 		return ResponseEntity.ok()
 				.body(Map.of("message", "Shipment details saved and Order status updated to SHIPPED successfully."));
+	}
+
+	@GetMapping("/{orderNo}/history")
+	public ResponseEntity<List<OrderStatusHistoryDto>> getOrderStatusHistory(@PathVariable String orderNo) {
+		List<OrderStatusHistoryDto> historyList = orderManagementService.getOrderStatusHistory(orderNo);
+		return ResponseEntity.ok(historyList);
 	}
 
 }
