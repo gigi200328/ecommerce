@@ -6,4 +6,5 @@ public interface RefundService {
     List<RefundResponseDto> getMyRefunds(Long customerId);
     RefundResponseDto getRefundById(Long customerId, Long refundId);
     RefundEligibilityDto getRefundEligibility(Long customerId, Long orderItemId);
+    boolean isCanRequestRefund(Long customerId, Long orderItemId);
 }
