@@ -6,7 +6,8 @@ import com.ojt.ecommerce.backofficeinventory.dto.ChangePasswordRequest;
 import com.ojt.ecommerce.backofficeinventory.security.CustomUserDetails;
 import com.ojt.ecommerce.backofficeinventory.security.JwtUtil;
 import com.ojt.ecommerce.backofficeinventory.service.StaffService;
-import jakarta.validation.Valid; // <--- @Valid ကို Import လုပ်ရန်
+import com.ojt.ecommerce.entity.Permission;
+import jakarta.validation.Valid;
 import lombok.RequiredArgsConstructor;
 import org.springframework.http.ResponseEntity;
 import org.springframework.security.authentication.AuthenticationManager;
@@ -15,6 +16,8 @@ import org.springframework.security.core.Authentication;
 import org.springframework.web.bind.annotation.*;
 
 import java.security.Principal;
+import java.util.Collections;
+import java.util.List;
 import java.util.Map;
 
 @RestController
@@ -27,7 +30,6 @@ public class AuthController {
     private final StaffService staffService; 
 
     @PostMapping("/login")
-    // အောက်ပါစာကြောင်းတွင် @RequestBody ရှေ့၌ @Valid ကို ထည့်ပေးထားပါသည်
     public ResponseEntity<AuthResponseDto> login(@Valid @RequestBody AuthRequestDto request) {
         Authentication authentication = authenticationManager.authenticate(
                 new UsernamePasswordAuthenticationToken(request.getEmail(), request.getPassword())
@@ -37,11 +39,19 @@ public class AuthController {
 
         String token = jwtUtil.generateToken(userDetails);
 
+        List<String> permissions = Collections.emptyList();
+        if (userDetails.getUser().getUserRole() != null && userDetails.getUser().getUserRole().getPermissions() != null) {
+            permissions = userDetails.getUser().getUserRole().getPermissions().stream()
+                    .map(Permission::getPermissionName)
+                    .toList();
+        }
+
         AuthResponseDto response = AuthResponseDto.builder()
                 .token(token)
                 .username(userDetails.getUser().getUserName())
                 .email(userDetails.getUser().getEmail()) 
                 .role(userDetails.getUser().getUserRole().getRoleName())
+                .permissions(permissions)
                 .build();
 
         return ResponseEntity.ok(response);

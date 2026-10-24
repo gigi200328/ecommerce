@@ -49,13 +49,18 @@ public class DatabaseSeeder implements CommandLineRunner {
         inventoryRole.setPermissions(new HashSet<>(List.of(manageProduct, manageInventory)));
         roleRepository.save(inventoryRole);
 
-        // (ဂ) Sales Staff Role
+        // (ဂ) Sales Staff & Order Staff Role
         Role salesRole = roleRepository.findByRoleName("SALES_STAFF")
                 .orElseGet(() -> Role.builder().roleName("SALES_STAFF").build());
         salesRole.setPermissions(new HashSet<>(List.of(viewOrder)));
         roleRepository.save(salesRole);
 
-        // ၃။ Users များကို ဖန်တီးပါမည် (Password များအားလုံးကို လုံခြုံရေးစည်းကမ်းနှင့်ကိုက်ညီသော Admin@123 သို့ ပြောင်းထားပါသည်)
+        Role orderRole = roleRepository.findByRoleName("ORDER_STAFF")
+                .orElseGet(() -> Role.builder().roleName("ORDER_STAFF").build());
+        orderRole.setPermissions(new HashSet<>(List.of(viewOrder)));
+        roleRepository.save(orderRole);
+
+        // ၃။ Users များကို ဖန်တီးပါမည်
         if (userRepository.findByEmail("admin@ecommerce.com").isEmpty()) {
             User adminUser = User.builder()
                     .userName("System Admin")
@@ -90,6 +95,18 @@ public class DatabaseSeeder implements CommandLineRunner {
                     .userRole(salesRole)
                     .build();
             userRepository.save(salesUser);
+        }
+
+        if (userRepository.findByEmail("order@ecommerce.com").isEmpty()) {
+            User orderUser = User.builder()
+                    .userName("Order Representative")
+                    .email("order@ecommerce.com")
+                    .passwordHash(passwordEncoder.encode("Admin@123"))
+                    .status("ACTIVE")
+                    .createdAt(LocalDateTime.now())
+                    .userRole(orderRole)
+                    .build();
+            userRepository.save(orderUser);
         }
     }
 
