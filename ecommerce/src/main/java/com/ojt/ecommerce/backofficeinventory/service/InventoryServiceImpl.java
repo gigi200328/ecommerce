@@ -20,25 +20,33 @@ import com.ojt.ecommerce.backofficeinventory.mapper.InventoryMapper;
 import com.ojt.ecommerce.backofficeinventory.mapper.InventoryTransactionMapper;
 import com.ojt.ecommerce.backofficeinventory.repository.InventoryRepository;
 import com.ojt.ecommerce.backofficeinventory.repository.InventoryTransactionRepository;
+import com.ojt.ecommerce.backofficeinventory.repository.OrderItemRepository;
+import com.ojt.ecommerce.backofficeinventory.repository.OrderRepository;
 import com.ojt.ecommerce.backofficeinventory.repository.ProductVariantRepository;
 import com.ojt.ecommerce.backofficeinventory.repository.UserRepository;
 import com.ojt.ecommerce.backofficeinventory.security.CustomUserDetails;
 import com.ojt.ecommerce.entity.Inventory;
 import com.ojt.ecommerce.entity.InventoryTransaction;
+import com.ojt.ecommerce.entity.Order;
+import com.ojt.ecommerce.entity.OrderItem;
 import com.ojt.ecommerce.entity.ProductVariant;
 import com.ojt.ecommerce.entity.User;
 
 import jakarta.persistence.EntityNotFoundException;
 import lombok.RequiredArgsConstructor;
+import lombok.extern.slf4j.Slf4j;
 
 @Service
 @RequiredArgsConstructor
+@Slf4j
 public class InventoryServiceImpl implements InventoryService {
 
     private final InventoryRepository inventoryRepository;
     private final InventoryTransactionRepository inventoryTransactionRepository;
     private final ProductVariantRepository productVariantRepository;
     private final UserRepository userRepository;
+    private final OrderRepository orderRepository;
+    private final OrderItemRepository orderItemRepository;
     private final InventoryMapper inventoryMapper;
     private final InventoryTransactionMapper transactionMapper;
 
@@ -205,6 +213,9 @@ public class InventoryServiceImpl implements InventoryService {
         int availableQty = Math.max(0, beforeQty - reservedQty);
         int writeOffQty = request.getQuantity();
 
+        if (writeOffQty <= 0) {
+            throw new IllegalArgumentException("Write-off quantity must be greater than 0.");
+        }
         if (writeOffQty > beforeQty) {
             throw new IllegalArgumentException("Cannot write off " + writeOffQty + " units. Current stock is only " + beforeQty + " units.");
         }
@@ -300,18 +311,140 @@ public class InventoryServiceImpl implements InventoryService {
                 .collect(Collectors.toList());
     }
 
+    @Override
+    @Transactional
+    public void deductStockForOrder(Long orderId) {
+        if (orderId == null) {
+            return;
+        }
+
+        // Idempotency check: Do not deduct if already deducted for this order
+        boolean alreadyDeducted = inventoryTransactionRepository
+                .existsByTxnTypeAndReferenceTypeAndReferenceId("SALE", "ORDER", orderId);
+        if (alreadyDeducted) {
+            log.info("Stock already deducted for order #{}. Skipping.", orderId);
+            return;
+        }
+
+        Order order = orderRepository.findById(orderId).orElse(null);
+        if (order == null) {
+            log.warn("Cannot deduct stock: Order #{} not found.", orderId);
+            return;
+        }
+
+        List<OrderItem> items = orderItemRepository.findByOrder_OrderId(orderId);
+        if (items == null || items.isEmpty()) {
+            items = order.getOrderItems();
+        }
+
+        if (items == null || items.isEmpty()) {
+            log.warn("Order #{} has no items to deduct stock for.", orderId);
+            return;
+        }
+
+        LocalDateTime now = LocalDateTime.now();
+        User currentUser = getCurrentUser();
+
+        for (OrderItem item : items) {
+            ProductVariant variant = item.getVariant();
+            if (variant == null) {
+                continue;
+            }
+
+            Long variantId = variant.getVariantId();
+            Inventory inventory = inventoryRepository.findByVariant_VariantId(variantId)
+                    .orElseGet(() -> createDefaultInventory(variant));
+
+            int beforeQty = inventory.getQuantity() != null ? inventory.getQuantity() : 0;
+            int deductQty = item.getQty() != null ? item.getQty() : 1;
+            int afterQty = Math.max(0, beforeQty - deductQty);
+
+            inventory.setQuantity(afterQty);
+            inventory.setStatus(calculateStatus(afterQty, inventory.getReorderLevel()));
+            inventory.setModifiedAt(now);
+            if (currentUser != null) {
+                inventory.setModifiedBy(currentUser);
+            }
+            inventoryRepository.save(inventory);
+
+            // Record SALE transaction audit
+            InventoryTransaction txn = InventoryTransaction.builder()
+                    .variant(variant)
+                    .txnType("SALE")
+                    .qty(-deductQty)
+                    .beforeQty(beforeQty)
+                    .afterQty(afterQty)
+                    .referenceType("ORDER")
+                    .referenceId(orderId)
+                    .remark("Customer Purchase - Order #" + order.getOrderNo() + " (Qty: " + deductQty + ")")
+                    .createdBy(currentUser)
+                    .createdAt(now)
+                    .build();
+
+            inventoryTransactionRepository.save(txn);
+            log.info("Deducted {} units of variant #{} for order #{}. New stock: {}", deductQty, variantId, orderId, afterQty);
+        }
+    }
+
+    @Override
+    @Transactional
+    public void restoreStockForRefund(Long variantId, int quantity, Long refundId, String remark) {
+        if (variantId == null || quantity <= 0) {
+            return;
+        }
+
+        ProductVariant variant = productVariantRepository.findById(variantId).orElse(null);
+        if (variant == null) {
+            log.warn("Cannot restore stock for refund #{}: Variant #{} not found.", refundId, variantId);
+            return;
+        }
+
+        Inventory inventory = inventoryRepository.findByVariant_VariantId(variantId)
+                .orElseGet(() -> createDefaultInventory(variant));
+
+        int beforeQty = inventory.getQuantity() != null ? inventory.getQuantity() : 0;
+        int afterQty = beforeQty + quantity;
+        LocalDateTime now = LocalDateTime.now();
+        User currentUser = getCurrentUser();
+
+        inventory.setQuantity(afterQty);
+        inventory.setStatus(calculateStatus(afterQty, inventory.getReorderLevel()));
+        inventory.setModifiedAt(now);
+        if (currentUser != null) {
+            inventory.setModifiedBy(currentUser);
+        }
+        inventoryRepository.save(inventory);
+
+        // Record RETURN transaction audit
+        InventoryTransaction txn = InventoryTransaction.builder()
+                .variant(variant)
+                .txnType("RETURN")
+                .qty(quantity)
+                .beforeQty(beforeQty)
+                .afterQty(afterQty)
+                .referenceType("REFUND")
+                .referenceId(refundId)
+                .remark(remark != null && !remark.isBlank() ? remark : ("Approved refund #" + refundId + " returned to stock"))
+                .createdBy(currentUser)
+                .createdAt(now)
+                .build();
+
+        inventoryTransactionRepository.save(txn);
+        log.info("Restocked {} units of variant #{} from refund #{}. New stock: {}", quantity, variantId, refundId, afterQty);
+    }
+
     private Inventory createDefaultInventory(ProductVariant variant) {
         User currentUser = getCurrentUser();
         LocalDateTime now = LocalDateTime.now();
 
-        int defaultQty = 25;
+        int defaultQty = 0;
         Boolean isPerishable = variant.getProduct() != null && Boolean.TRUE.equals(variant.getProduct().getIsPerishable());
         Inventory newInventory = Inventory.builder()
                 .variant(variant)
                 .quantity(defaultQty)
                 .reservedQuantity(0)
                 .reorderLevel(10)
-                .status("NORMAL")
+                .status("OUT_OF_STOCK")
                 .isPerishable(isPerishable)
                 .createdBy(currentUser)
                 .createdAt(now)

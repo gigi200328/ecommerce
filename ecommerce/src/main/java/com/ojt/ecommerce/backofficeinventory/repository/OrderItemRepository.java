@@ -11,4 +11,7 @@ import com.ojt.ecommerce.entity.OrderItem;
 public interface OrderItemRepository extends JpaRepository<OrderItem, Long> {
 	// ဆွဲထုတ်ရန် Showing exact product in exact order ID
 	List<OrderItem> orderItemId(Long orderItemId);
+
+	// Find all order items for an order
+	List<OrderItem> findByOrder_OrderId(Long orderId);
 }
