@@ -48,6 +48,7 @@ public class OrderManagementService {
 	private final ShipmentRepository shipmentRepository;
 	private final PaymentMapper paymentMapper;
 	private final ShipmentMapper shipmentMapper;
+	private final InventoryService inventoryService;
 
 	@Transactional(readOnly = true)
 	public PaginatedResponseDto<OrderResponseDto> getOrders(String status, int pageNo, int pageSize) {
@@ -69,7 +70,6 @@ public class OrderManagementService {
 			orders = orderRepository.findAll(pageable);
 		}
 		// Mapper ကို အသုံးပြု၍ Entity မှ DTO သို့ ပြောင်းလဲခြင်း
-//		return orders.stream().map(orderMapper::toDto).collect(Collectors.toList());
 		return orderMapper.toPaginatedDto(orders);
 	}
 
@@ -108,7 +108,12 @@ public class OrderManagementService {
 
 		Order updatedOrder = orderRepository.save(order);
 
-		// ၆။ ပြောင်းလဲသွားတဲ့ အော်ဒါအချက်အလက်ကို DTO ပြောင်းပြီး ပြန်ပေးမည်
+		// 🔴 FR-8: Deduct inventory stock if moving to PAID, PROCESSING, or SHIPPED
+		if ("PAID".equalsIgnoreCase(newStatus) || "PROCESSING".equalsIgnoreCase(newStatus) || "SHIPPED".equalsIgnoreCase(newStatus)) {
+			inventoryService.deductStockForOrder(updatedOrder.getOrderId());
+		}
+
+		// ပြောင်းလဲသွားတဲ့ အော်ဒါအချက်အလက်ကို DTO ပြောင်းပြီး ပြန်ပေးမည်
 		return orderMapper.toDto(updatedOrder);
 	}
 
@@ -155,6 +160,8 @@ public class OrderManagementService {
 
 		orderRepository.save(order);
 
+		// 🔴 FR-8: Ensure stock is deducted before shipment dispatch
+		inventoryService.deductStockForOrder(order.getOrderId());
 	}
 
 	@Transactional(readOnly = true)

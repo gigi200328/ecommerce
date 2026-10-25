@@ -36,6 +36,7 @@ public class AdminRefundServiceImpl implements AdminRefundService {
     private final AdminRefundRepository adminRefundRepository;
     private final OrderRepository orderRepository;
     private final OrderStatusHistoryRepository orderStatusHistoryRepository;
+    private final InventoryService inventoryService;
 
     @Override
     @Transactional(readOnly = true)
@@ -109,6 +110,16 @@ public class AdminRefundServiceImpl implements AdminRefundService {
                     .changedBy(currentUser)
                     .build();
             orderStatusHistoryRepository.save(history);
+        }
+
+        // 🔴 Member 3 Integration: Restock returned items to Inventory and log RETURN transaction
+        if (refund.getOrderItem() != null && refund.getOrderItem().getVariant() != null) {
+            Long variantId = refund.getOrderItem().getVariant().getVariantId();
+            int returnQty = refund.getRefundQuantity() != null ? refund.getRefundQuantity() : 1;
+            String note = (request != null && request.getAdminNote() != null && !request.getAdminNote().isBlank())
+                    ? request.getAdminNote().trim()
+                    : ("Restocked returned item from approved Refund #" + refundId);
+            inventoryService.restoreStockForRefund(variantId, returnQty, refundId, note);
         }
 
         RefundRequest saved = adminRefundRepository.save(refund);

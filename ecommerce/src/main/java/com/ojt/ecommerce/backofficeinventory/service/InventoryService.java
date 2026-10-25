@@ -28,4 +28,10 @@ public interface InventoryService {
     InventoryResponseDto adjustStock(StockAdjustmentRequestDto request);
 
     List<InventoryTransactionResponseDto> getTransactionHistory(Long variantId, String txnType);
+
+    // Cross-module integration: Deduct stock automatically upon order placement/payment
+    void deductStockForOrder(Long orderId);
+
+    // Cross-module integration: Restore stock upon refund approval
+    void restoreStockForRefund(Long variantId, int quantity, Long refundId, String remark);
 }

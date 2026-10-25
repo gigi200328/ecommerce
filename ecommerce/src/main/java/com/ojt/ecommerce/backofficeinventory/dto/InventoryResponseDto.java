@@ -62,6 +62,9 @@ public class InventoryResponseDto {
     @Schema(description = "Expiration Status: GOOD, EXPIRING_SOON, EXPIRED, NON_PERISHABLE", example = "EXPIRING_SOON")
     private String expiryStatus;
 
+    @Schema(description = "Summary of variant attributes (e.g. Color: Black | Size: XL)", example = "Color: Black | Size: XL")
+    private String attributeSummary;
+
     @Schema(description = "Created timestamp")
     private LocalDateTime createdAt;
 
