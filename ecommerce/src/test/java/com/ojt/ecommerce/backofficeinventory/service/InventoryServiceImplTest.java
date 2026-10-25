@@ -32,6 +32,10 @@ import com.ojt.ecommerce.backofficeinventory.repository.InventoryRepository;
 import com.ojt.ecommerce.backofficeinventory.repository.InventoryTransactionRepository;
 import com.ojt.ecommerce.backofficeinventory.repository.ProductVariantRepository;
 import com.ojt.ecommerce.backofficeinventory.repository.UserRepository;
+import com.ojt.ecommerce.backofficeinventory.repository.OrderRepository;
+import com.ojt.ecommerce.backofficeinventory.repository.OrderItemRepository;
+import com.ojt.ecommerce.entity.Order;
+import com.ojt.ecommerce.entity.OrderItem;
 import com.ojt.ecommerce.entity.Inventory;
 import com.ojt.ecommerce.entity.InventoryTransaction;
 import com.ojt.ecommerce.entity.Product;
@@ -54,6 +58,12 @@ public class InventoryServiceImplTest {
 
     @Mock
     private UserRepository userRepository;
+
+    @Mock
+    private OrderRepository orderRepository;
+
+    @Mock
+    private OrderItemRepository orderItemRepository;
 
     @Mock
     private InventoryMapper inventoryMapper;
@@ -394,5 +404,49 @@ public class InventoryServiceImplTest {
         assertEquals(1, result.size());
         assertEquals("RESTOCK", result.get(0).getTxnType());
         verify(inventoryTransactionRepository, times(1)).findAllByOrderByCreatedAtDesc();
+    }
+    // =========================================================================
+    // 9. CROSS-MODULE STOCK DEDUCTION (FR-8) & REFUND RESTOCK (FR-10)
+    // =========================================================================
+    @Test
+    @DisplayName("Test 13: deductStockForOrder deducts inventory and logs SALE transaction")
+    void testDeductStockForOrder_Success() {
+        Order mockOrder = Order.builder()
+                .orderId(101L)
+                .orderNo("ORD-TEST-101")
+                .build();
+
+        OrderItem mockItem = OrderItem.builder()
+                .orderItemId(1L)
+                .order(mockOrder)
+                .variant(mockVariant)
+                .qty(2)
+                .build();
+
+        when(inventoryTransactionRepository.existsByTxnTypeAndReferenceTypeAndReferenceId("SALE", "ORDER", 101L)).thenReturn(false);
+        when(orderRepository.findById(101L)).thenReturn(Optional.of(mockOrder));
+        when(orderItemRepository.findByOrder_OrderId(101L)).thenReturn(List.of(mockItem));
+        when(inventoryRepository.findByVariant_VariantId(1L)).thenReturn(Optional.of(mockInventory));
+        when(userRepository.findByEmail("admin@ecommerce.com")).thenReturn(Optional.of(mockUser));
+
+        inventoryService.deductStockForOrder(101L);
+
+        assertEquals(48, mockInventory.getQuantity());
+        verify(inventoryRepository, times(1)).save(mockInventory);
+        verify(inventoryTransactionRepository, times(1)).save(any(InventoryTransaction.class));
+    }
+
+    @Test
+    @DisplayName("Test 14: restoreStockForRefund restocks inventory and logs RETURN transaction")
+    void testRestoreStockForRefund_Success() {
+        when(productVariantRepository.findById(1L)).thenReturn(Optional.of(mockVariant));
+        when(inventoryRepository.findByVariant_VariantId(1L)).thenReturn(Optional.of(mockInventory));
+        when(userRepository.findByEmail("admin@ecommerce.com")).thenReturn(Optional.of(mockUser));
+
+        inventoryService.restoreStockForRefund(1L, 3, 201L, "Damaged item returned");
+
+        assertEquals(53, mockInventory.getQuantity());
+        verify(inventoryRepository, times(1)).save(mockInventory);
+        verify(inventoryTransactionRepository, times(1)).save(any(InventoryTransaction.class));
     }
 }

@@ -17,6 +17,7 @@ import jakarta.persistence.Id;
 import jakarta.persistence.JoinColumn;
 import jakarta.persistence.ManyToOne;
 import jakarta.persistence.Table;
+import jakarta.persistence.Transient;
 import jakarta.persistence.UniqueConstraint;
 import lombok.AllArgsConstructor;
 import lombok.Builder;
@@ -68,4 +69,8 @@ public class ProductVariant {
     @Column(name = "status", nullable = false, columnDefinition = "ENUM('ACTIVE', 'INACTIVE')")
     @Schema(description = "Variant status", example = "ACTIVE")
     private ProductVariantStatus status;
+
+    @Transient
+    @Schema(description = "Summary of variant attributes (e.g. Color: Black | Storage: 128GB)", example = "Color: Black | Storage: 128GB")
+    private String attributeSummary;
 }

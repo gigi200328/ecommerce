@@ -230,7 +230,7 @@ public class ProductVariantServiceImplTest {
     // 6. DELETE PRODUCT VARIANT
     // =========================================================================
     @Test
-    @DisplayName("Test 9: deleteProductVariant removes variant from repository")
+    @DisplayName("Test 9: deleteProductVariant deactivates variant (soft delete)")
     void testDeleteProductVariant_Success() {
         // Arrange
         when(productVariantRepository.findById(1L)).thenReturn(Optional.of(mockVariant));
@@ -239,7 +239,8 @@ public class ProductVariantServiceImplTest {
         productVariantService.deleteProductVariant(1L);
 
         // Assert
-        verify(productVariantRepository, times(1)).delete(mockVariant);
+        assertEquals(ProductVariantStatus.INACTIVE, mockVariant.getStatus());
+        verify(productVariantRepository, times(1)).save(mockVariant);
     }
 
     // =========================================================================

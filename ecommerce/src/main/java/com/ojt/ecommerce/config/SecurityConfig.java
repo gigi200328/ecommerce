@@ -97,14 +97,14 @@ public class SecurityConfig {
                         ).hasAnyAuthority("ADMIN", "ROLE_ADMIN", "INVENTORY_STAFF", "ROLE_INVENTORY_STAFF")
                         
                         // Orders များကို ADMIN နှင့် SALES_STAFF ကိုင်တွယ်နိုင်သည်
-                        .requestMatchers("/api/backoffice/orders", "/api/backoffice/orders/**")
-                        .hasAnyAuthority("ADMIN", "ROLE_ADMIN", "SALES_STAFF", "ROLE_SALES_STAFF")
+                        .requestMatchers("/api/backoffice/orders", "/api/backoffice/orders/**", "/api/backoffice/shipping", "/api/backoffice/shipping/**")
+                        .hasAnyAuthority("ADMIN", "ROLE_ADMIN", "SALES_STAFF", "ROLE_SALES_STAFF", "ORDER_STAFF", "ROLE_ORDER_STAFF")
 
                         // Refunds များကို ADMIN နှင့် SALES_STAFF ကိုင်တွယ်နိုင်သည်
                         .requestMatchers(
                             "/api/v1/admin/refunds", "/api/v1/admin/refunds/**",
                             "/api/backoffice/refunds", "/api/backoffice/refunds/**"
-                        ).hasAnyAuthority("ADMIN", "ROLE_ADMIN", "SALES_STAFF", "ROLE_SALES_STAFF")
+                        ).hasAnyAuthority("ADMIN", "ROLE_ADMIN", "SALES_STAFF", "ROLE_SALES_STAFF", "ORDER_STAFF", "ROLE_ORDER_STAFF")
                         
                         // Reports များကို ADMIN သာ ကြည့်ခွင့်ပေးမည်
                         .requestMatchers("/api/backoffice/reports", "/api/backoffice/reports/**", "/api/v1/reports/**")
@@ -169,7 +169,8 @@ public class SecurityConfig {
 	@Bean
 	public CorsConfigurationSource corsConfigurationSource() {
 		CorsConfiguration configuration = new CorsConfiguration();
-		configuration.setAllowedOrigins(List.of("http://localhost:5173", "http://localhost:5174"));
+		configuration.setAllowedOriginPatterns(List.of("http://localhost:*", "http://127.0.0.1:*"));
+		configuration.setAllowedOrigins(List.of("http://localhost:5173", "http://localhost:5174", "http://localhost:5175", "http://localhost:3000"));
 		configuration.setAllowedMethods(List.of("GET", "POST", "PUT", "DELETE", "PATCH", "OPTIONS"));
 		configuration.setAllowedHeaders(
 				List.of("Authorization", "Content-Type", "Cache-Control", "Accept", "X-Requested-With"));

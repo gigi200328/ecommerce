@@ -1,12 +1,22 @@
 package com.ojt.ecommerce.backofficeinventory.mapper;
 
+import java.util.List;
+import java.util.stream.Collectors;
+
 import org.springframework.stereotype.Component;
 
 import com.ojt.ecommerce.backofficeinventory.dto.InventoryResponseDto;
+import com.ojt.ecommerce.backofficeinventory.repository.VariantOptionValueRepository;
 import com.ojt.ecommerce.entity.Inventory;
+import com.ojt.ecommerce.entity.VariantOptionValue;
+
+import lombok.RequiredArgsConstructor;
 
 @Component
+@RequiredArgsConstructor
 public class InventoryMapper {
+
+    private final VariantOptionValueRepository variantOptionValueRepository;
 
     public InventoryResponseDto toResponseDto(Inventory inventory) {
         if (inventory == null) {
@@ -21,6 +31,7 @@ public class InventoryMapper {
         String sku = null;
         String productName = null;
         java.math.BigDecimal sellingPrice = null;
+        String attributeSummary = null;
 
         if (inventory.getVariant() != null) {
             variantId = inventory.getVariant().getVariantId();
@@ -28,6 +39,21 @@ public class InventoryMapper {
             sellingPrice = inventory.getVariant().getSellingPrice();
             if (inventory.getVariant().getProduct() != null) {
                 productName = inventory.getVariant().getProduct().getProductName();
+            }
+
+            if (variantId != null) {
+                List<VariantOptionValue> optionValues = variantOptionValueRepository.findByVariant_VariantId(variantId);
+                if (optionValues != null && !optionValues.isEmpty()) {
+                    attributeSummary = optionValues.stream()
+                            .filter(v -> v.getOption() != null)
+                            .map(v -> {
+                                String attrName = (v.getOption().getVariation() != null && v.getOption().getVariation().getName() != null)
+                                        ? v.getOption().getVariation().getName() : "";
+                                String val = v.getOption().getValue() != null ? v.getOption().getValue() : "";
+                                return !attrName.isEmpty() ? attrName + ": " + val : val;
+                            })
+                            .collect(Collectors.joining(" | "));
+                }
             }
         }
 
@@ -72,6 +98,7 @@ public class InventoryMapper {
                 .batchNumber(batchNumber)
                 .daysUntilExpiry(daysUntilExpiry)
                 .expiryStatus(expiryStatus)
+                .attributeSummary(attributeSummary)
                 .createdAt(inventory.getCreatedAt())
                 .modifiedAt(inventory.getModifiedAt())
                 .build();
