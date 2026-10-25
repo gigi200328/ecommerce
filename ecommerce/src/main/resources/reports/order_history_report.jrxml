@@ -23,6 +23,7 @@
     <!-- ================================================================
          Parameters
          ================================================================ -->
+    <parameter name="LOGO_IMAGE"           class="java.lang.Object" isForPrompting="false"/>
     <parameter name="CUSTOMER_NAME"        class="java.lang.String"/>
     <parameter name="CUSTOMER_EMAIL"       class="java.lang.String"/>
     <parameter name="PERIOD_STR"           class="java.lang.String"/>
@@ -54,45 +55,11 @@
     <title>
         <band height="105" splitType="Stretch">
 
-            <!-- Oval border around logo -->
-            <ellipse>
-                <reportElement x="0" y="2" width="160" height="52"
-                               backcolor="#FFFFFF" forecolor="#E040A0" uuid="3b241102-0000-4000-8000-000000000001"/>
-                <graphicElement><pen lineWidth="2.0" lineStyle="Solid"/></graphicElement>
-            </ellipse>
-            <!-- Logo circle -->
-            <ellipse>
-                <reportElement x="8" y="10" width="36" height="36"
-                               backcolor="#6B21A8" forecolor="#6B21A8" uuid="3b241102-0000-4000-8000-000000000002"/>
-                <graphicElement><pen lineWidth="0"/></graphicElement>
-            </ellipse>
-            <ellipse>
-                <reportElement x="10" y="12" width="16" height="16"
-                               backcolor="#A855F7" forecolor="#A855F7" uuid="3b241102-0000-4000-8000-000000000003"/>
-                <graphicElement><pen lineWidth="0"/></graphicElement>
-            </ellipse>
-            <staticText>
-                <reportElement x="8" y="14" width="36" height="18"
-                               forecolor="#FFFFFF" uuid="3b241102-0000-4000-8000-000000000004"/>
-                <textElement textAlignment="Center" verticalAlignment="Middle">
-                    <font size="13" isBold="true"/>
-                </textElement>
-                <text><![CDATA[6]]></text>
-            </staticText>
-            <staticText>
-                <reportElement x="48" y="9" width="105" height="18" uuid="3b241102-0000-4000-8000-000000000005"/>
-                <textElement verticalAlignment="Middle">
-                    <font size="13" isBold="true"/>
-                </textElement>
-                <text><![CDATA[6SYNC]]></text>
-            </staticText>
-            <staticText>
-                <reportElement x="48" y="28" width="105" height="12" uuid="3b241102-0000-4000-8000-000000000006"/>
-                <textElement verticalAlignment="Middle">
-                    <font size="7" isBold="true"/>
-                </textElement>
-                <text><![CDATA[ONLINE STORE]]></text>
-            </staticText>
+            <!-- Store Brand Logo -->
+            <image scaleImage="RetainShape" vAlign="Middle" onErrorType="Blank">
+                <reportElement x="0" y="2" width="160" height="52" uuid="3b241102-0000-4000-8000-000000000001"/>
+                <imageExpression><![CDATA[$P{LOGO_IMAGE}]]></imageExpression>
+            </image>
 
             <!-- Report Title -->
             <staticText>

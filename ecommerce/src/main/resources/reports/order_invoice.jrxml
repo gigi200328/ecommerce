@@ -24,6 +24,7 @@
     <!-- ================================================================
          Parameters (Header, Shipping, Payment, Financials)
          ================================================================ -->
+    <parameter name="LOGO_IMAGE"         class="java.lang.Object" isForPrompting="false"/>
     <parameter name="ORDER_NO"         class="java.lang.String"/>
     <parameter name="ORDER_DATE_STR"    class="java.lang.String"/>
     <parameter name="CUSTOMER_NAME"     class="java.lang.String"/>
@@ -57,52 +58,11 @@
     <title>
         <band height="90" splitType="Stretch">
 
-            <!-- Oval border around logo -->
-            <ellipse>
-                <reportElement x="0" y="2" width="175" height="58"
-                               backcolor="#FFFFFF" forecolor="#E040A0" uuid="3b241101-0000-4000-8000-000000000001"/>
-                <graphicElement>
-                    <pen lineWidth="2.0" lineStyle="Solid"/>
-                </graphicElement>
-            </ellipse>
-
-            <!-- Logo icon circle -->
-            <ellipse>
-                <reportElement x="8" y="10" width="40" height="40"
-                               backcolor="#6B21A8" forecolor="#6B21A8" uuid="3b241101-0000-4000-8000-000000000002"/>
-                <graphicElement><pen lineWidth="0"/></graphicElement>
-            </ellipse>
-            <!-- Inner lighter oval -->
-            <ellipse>
-                <reportElement x="10" y="12" width="18" height="18"
-                               backcolor="#A855F7" forecolor="#A855F7" uuid="3b241101-0000-4000-8000-000000000003"/>
-                <graphicElement><pen lineWidth="0"/></graphicElement>
-            </ellipse>
-            <!-- "6" on logo -->
-            <staticText>
-                <reportElement x="8" y="15" width="40" height="20"
-                               forecolor="#FFFFFF" uuid="3b241101-0000-4000-8000-000000000004"/>
-                <textElement textAlignment="Center" verticalAlignment="Middle">
-                    <font size="14" isBold="true"/>
-                </textElement>
-                <text><![CDATA[6]]></text>
-            </staticText>
-
-            <!-- Company name inside oval -->
-            <staticText>
-                <reportElement x="54" y="10" width="115" height="20" uuid="3b241101-0000-4000-8000-000000000005"/>
-                <textElement verticalAlignment="Middle">
-                    <font size="14" isBold="true"/>
-                </textElement>
-                <text><![CDATA[6SYNC]]></text>
-            </staticText>
-            <staticText>
-                <reportElement x="54" y="32" width="115" height="12" uuid="3b241101-0000-4000-8000-000000000006"/>
-                <textElement verticalAlignment="Middle">
-                    <font size="7" isBold="true"/>
-                </textElement>
-                <text><![CDATA[ONLINE STORE]]></text>
-            </staticText>
+            <!-- Store Brand Logo -->
+            <image scaleImage="RetainShape" vAlign="Middle" onErrorType="Blank">
+                <reportElement x="0" y="2" width="175" height="58" uuid="3b241101-0000-4000-8000-000000000001"/>
+                <imageExpression><![CDATA[$P{LOGO_IMAGE}]]></imageExpression>
+            </image>
 
             <!-- "Customer Receipt" below oval -->
             <staticText>
