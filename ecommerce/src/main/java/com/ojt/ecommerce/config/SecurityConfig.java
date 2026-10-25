@@ -70,14 +70,45 @@ public class SecurityConfig {
 	public SecurityFilterChain securityFilterChain(HttpSecurity http, JwtUtil jwtUtil,
 			CustomUserDetailsService userDetailsService) throws Exception {
 		JwtAuthenticationFilter backofficeFilter = new JwtAuthenticationFilter(jwtUtil, userDetailsService);
-
-		http.securityMatcher("/api/backoffice/**").cors(cors -> cors.configurationSource(corsConfigurationSource()))
+		
+        http.securityMatcher("/api/backoffice/**", "/api/v1/reports/**", "/api/v1/admin/**", "/api/admin/**").cors(cors -> cors.configurationSource(corsConfigurationSource()))
 				.csrf(AbstractHttpConfigurer::disable)
-				.authorizeHttpRequests(auth -> auth.requestMatchers("/api/backoffice/auth/**").permitAll()
+				.authorizeHttpRequests(auth -> auth
+                        .requestMatchers("/api/backoffice/auth/**").permitAll()
+						
+                        // Staff များကို ADMIN သာ စီမံနိုင်သည်
+                        .requestMatchers("/api/backoffice/staff", "/api/backoffice/staff/**")
+                        .hasAnyAuthority("ADMIN", "ROLE_ADMIN")
+                        
+                        // Products များကို ADMIN နှင့် INVENTORY_STAFF ကိုင်တွယ်နိုင်သည်
+                        .requestMatchers(
+                            "/api/backoffice/categories", "/api/backoffice/categories/**",
+                            "/api/backoffice/brands", "/api/backoffice/brands/**",
+                            "/api/backoffice/products", "/api/backoffice/products/**",
+                            "/api/backoffice/product-images/**",
+                            "/api/backoffice/variations", "/api/backoffice/variations/**",
+                            "/api/backoffice/variation-options/**",
+                            "/api/backoffice/product-variants/**",
+                            "/api/backoffice/variant-option-values/**",
+                            "/api/backoffice/tags", "/api/backoffice/tags/**",
+                            "/api/backoffice/product-tags/**",
+                            "/api/backoffice/product-variant-images/**",
+                            "/api/backoffice/inventory", "/api/backoffice/inventory/**"
+                        ).hasAnyAuthority("ADMIN", "ROLE_ADMIN", "INVENTORY_STAFF", "ROLE_INVENTORY_STAFF")
+                        
+                        // Orders များကို ADMIN နှင့် SALES_STAFF ကိုင်တွယ်နိုင်သည်
+                        .requestMatchers("/api/backoffice/orders", "/api/backoffice/orders/**")
+                        .hasAnyAuthority("ADMIN", "ROLE_ADMIN", "SALES_STAFF", "ROLE_SALES_STAFF")
 
-						// Staff များကို ADMIN သာ စီမံနိုင်သည်
-						.requestMatchers("/api/backoffice/staff", "/api/backoffice/staff/**")
-						.hasAnyAuthority("ADMIN", "ROLE_ADMIN")
+                        // Refunds များကို ADMIN နှင့် SALES_STAFF ကိုင်တွယ်နိုင်သည်
+                        .requestMatchers(
+                            "/api/v1/admin/refunds", "/api/v1/admin/refunds/**",
+                            "/api/backoffice/refunds", "/api/backoffice/refunds/**"
+                        ).hasAnyAuthority("ADMIN", "ROLE_ADMIN", "SALES_STAFF", "ROLE_SALES_STAFF")
+                        
+                        // Reports များကို ADMIN သာ ကြည့်ခွင့်ပေးမည်
+                        .requestMatchers("/api/backoffice/reports", "/api/backoffice/reports/**", "/api/v1/reports/**")
+                        .hasAnyAuthority("ADMIN", "ROLE_ADMIN")
 
 						// Products များကို ADMIN နှင့် INVENTORY_STAFF ကိုင်တွယ်နိုင်သည်
 						.requestMatchers("/api/backoffice/categories", "/api/backoffice/categories/**",
@@ -100,6 +131,7 @@ public class SecurityConfig {
 						.hasAnyAuthority("ADMIN", "ROLE_ADMIN")
 
 						.anyRequest().authenticated())
+
 				.sessionManagement(sess -> sess.sessionCreationPolicy(SessionCreationPolicy.STATELESS))
 				.addFilterBefore(backofficeFilter, UsernamePasswordAuthenticationFilter.class);
 
