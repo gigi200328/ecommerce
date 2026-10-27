@@ -5,6 +5,7 @@ import com.ojt.ecommerce.enums.BrandStatus;
 import com.ojt.ecommerce.storefront.exception.ResourceNotFoundException;
 import com.ojt.ecommerce.storefront.catalog.dto.*;
 import com.ojt.ecommerce.storefront.catalog.repository.*;
+import com.ojt.ecommerce.storefront.catalog.repository.G5ProductVariantImageRepository;
 import lombok.RequiredArgsConstructor;
 import org.springframework.data.domain.Page;
 import org.springframework.data.domain.PageRequest;
@@ -12,6 +13,7 @@ import org.springframework.data.domain.Pageable;
 import org.springframework.data.domain.Sort;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
+
 
 import java.math.BigDecimal;
 import java.util.*;
@@ -28,11 +30,13 @@ public class CatalogServiceImpl implements CatalogService {
     private final G5ProductRepository productRepository;
     private final G5ProductVariantRepository variantRepository;
     private final G5ProductImageRepository imageRepository;
+    private final G5ProductVariantImageRepository variantImageRepository;
     private final G5InventoryRepository inventoryRepository;
     private final G5VariantOptionValueRepository variantOptionValueRepository;
     private final G5ProductTagRepository productTagRepository;
     private final com.ojt.ecommerce.storefront.searchhistory.service.SearchHistoryService searchHistoryService;
     private final com.ojt.ecommerce.storefront.searchhistory.repository.SearchKeywordStatsRepository searchKeywordStatsRepository;
+ 
 
     @Override
     @Transactional(readOnly = true)
@@ -412,6 +416,35 @@ public ProductDetailResponse getProductDetail(Long productId) {
     for (ProductVariant variant : variants) {
         variantIds.add(variant.getVariantId());
     }
+    
+
+/* =========================
+   VARIANT IMAGES
+========================= */
+
+Map<Long, List<ProductVariantImage>> variantImagesMap =
+        new HashMap<>();
+
+if (!variantIds.isEmpty()) {
+
+    List<ProductVariantImage> variantImages =
+            variantImageRepository
+                    .findByProductVariantVariantIdIn(variantIds);
+
+    for (ProductVariantImage img : variantImages) {
+
+        Long variantId =
+                img.getProductVariant().getVariantId();
+
+        variantImagesMap
+                .computeIfAbsent(
+                        variantId,
+                        id -> new ArrayList<>()
+                )
+                .add(img);
+    }
+}
+
 
     // =========================
     // 5. INVENTORY + EXPIRY DATE
@@ -541,6 +574,40 @@ public ProductDetailResponse getProductDetail(Long productId) {
 
         // Get expiry date for selected variant
         LocalDate expiryDate = expiryDateMap.get(variantId);
+        
+
+List<ProductVariantImageResponse> variantImageResponses =
+        new ArrayList<>();
+
+List<ProductVariantImage> currentImages =
+        variantImagesMap.getOrDefault(
+                variantId,
+                Collections.emptyList()
+        );
+
+for (ProductVariantImage img : currentImages) {
+
+    ProductVariantImageResponse response =
+            ProductVariantImageResponse.builder()
+                    .imageId(img.getProductVariantImageId())
+                    .imageUrl(img.getImageUrl())
+                    .isPrimary(
+                            Boolean.TRUE.equals(img.getIsPrimary())
+                    )
+                    .build();
+
+    variantImageResponses.add(response);
+}
+
+variantImageResponses.sort(
+        Comparator.comparing(
+                ProductVariantImageResponse::getIsPrimary,
+                Comparator.nullsLast(
+                        Comparator.reverseOrder()
+                )
+        )
+);
+
 
         ProductVariantResponse variantResponse =
                 ProductVariantResponse.builder()
@@ -556,8 +623,11 @@ public ProductDetailResponse getProductDetail(Long productId) {
                         .stockStatus(stockStatus)
                         .options(optResponses)
 
-                        // NEW: Expiry Date
+                        // Expiry Date
                         .expiryDate(expiryDate)
+
+                        // Variant-specific images
+                        .images(variantImageResponses)
 
                         .build();
 
