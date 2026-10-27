@@ -463,4 +463,68 @@ class RefundServiceImplTest {
         assertThrows(ResourceNotFoundException.class,
                 () -> refundService.getRefundById(99L, 5L));
     }
+
+    @Test
+    @DisplayName("Should allow creating refund request when order is PARTIALLY_REFUNDED")
+    void createRefundRequest_Success_WhenOrderIsPartiallyRefunded() {
+        order.setPaymentStatus("PARTIALLY_REFUNDED");
+        Shipment shipment = Shipment.builder()
+                .shipmentStatus("DELIVERED")
+                .deliveredAt(LocalDateTime.now().minusDays(1))
+                .build();
+
+        when(orderItemRepository.findById(100L)).thenReturn(Optional.of(orderItem));
+        when(shipmentRepository.findByOrderOrderId(10L)).thenReturn(List.of(shipment));
+        when(refundRequestRepository.getReservedQuantity(100L)).thenReturn(1); // 3 ordered, 1 reserved -> 2 remaining
+
+        RefundRequest saved = RefundRequest.builder()
+                .refundId(2L)
+                .orderItem(orderItem)
+                .refundQuantity(1)
+                .requestReason("DEFECTIVE_PRODUCT")
+                .refundAmount(new BigDecimal("50000.00"))
+                .status("PENDING")
+                .requestedAt(LocalDateTime.now())
+                .build();
+        when(refundRequestRepository.save(any(RefundRequest.class))).thenReturn(saved);
+
+        RefundRequestDto dto = new RefundRequestDto();
+        dto.setOrderItemId(100L);
+        dto.setRefundQuantity(1);
+        dto.setRequestReason("DEFECTIVE_PRODUCT");
+
+        RefundResponseDto res = refundService.createRefundRequest(1L, dto);
+        assertNotNull(res);
+        assertEquals("PENDING", res.getStatus());
+        assertEquals(1, res.getRemainingRefundableQuantity());
+    }
+
+    @Test
+    @DisplayName("Should return approved ineligible reason when refund was approved and remaining qty is 0")
+    void getRefundEligibility_WhenApprovedAndFullyRefunded() {
+        order.setPaymentStatus("REFUNDED");
+        Shipment shipment = Shipment.builder()
+                .shipmentStatus("DELIVERED")
+                .deliveredAt(LocalDateTime.now().minusDays(2))
+                .build();
+
+        RefundRequest req = RefundRequest.builder()
+                .refundId(1L)
+                .orderItem(orderItem)
+                .status("APPROVED")
+                .refundQuantity(3)
+                .build();
+
+        when(orderItemRepository.findById(100L)).thenReturn(Optional.of(orderItem));
+        when(refundRequestRepository.getReservedQuantity(100L)).thenReturn(3); // ordered 3, all 3 reserved
+        when(shipmentRepository.findByOrderOrderId(10L)).thenReturn(List.of(shipment));
+        when(refundRequestRepository.findFirstByOrderItemOrderItemIdOrderByRequestedAtDesc(100L)).thenReturn(Optional.of(req));
+
+        RefundEligibilityDto eligibility = refundService.getRefundEligibility(1L, 100L);
+
+        assertNotNull(eligibility);
+        assertFalse(eligibility.isCanRequestRefund());
+        assertEquals("APPROVED", eligibility.getRefundStatus());
+        assertTrue(eligibility.getIneligibleReason().contains("approved"));
+    }
 }
