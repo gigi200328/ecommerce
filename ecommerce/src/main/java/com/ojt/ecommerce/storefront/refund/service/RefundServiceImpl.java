@@ -11,6 +11,7 @@ import com.ojt.ecommerce.storefront.shipping.repository.G5ShipmentRepository;
 import lombok.RequiredArgsConstructor;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
+import com.ojt.ecommerce.backofficeinventory.service.AdminNotificationService;
 
 import java.math.BigDecimal;
 import java.time.Duration;
@@ -28,6 +29,7 @@ public class RefundServiceImpl implements RefundService {
     private final G5OrderItemRepository orderItemRepository;
     private final G5ShipmentRepository shipmentRepository;
     private final G5OrderStatusHistoryRepository orderStatusHistoryRepository;
+    private final AdminNotificationService adminNotificationService;
 
     private static final int REFUND_WINDOW_DAYS = 7;
 
@@ -90,6 +92,12 @@ public class RefundServiceImpl implements RefundService {
         req.setRequestedAt(LocalDateTime.now());
         
         req = refundRequestRepository.save(req);
+
+        try {
+            adminNotificationService.sendRefundRequestNotification(req);
+        } catch (Exception ex) {
+            // non-blocking notification failure
+        }
 
         return buildResponse(req, remainingQty - req.getRefundQuantity());
     }

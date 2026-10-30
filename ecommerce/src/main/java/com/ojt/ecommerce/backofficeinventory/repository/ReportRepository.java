@@ -68,4 +68,18 @@ public interface ReportRepository extends JpaRepository<Product, Long> {
             @Param("search") String search,
             @Param("status") String status
     );
+
+    // Calls the Stored Procedure for the Stock Management Dynamic Export (PDF & Excel)
+    @Query(value = "CALL SP_GetInventoryExportReport(:tabFilter, :search, :status)", nativeQuery = true)
+    List<com.ojt.ecommerce.backofficeinventory.dto.InventoryExportDTO> getInventoryExportReport(
+            @Param("tabFilter") String tabFilter,
+            @Param("search") String search,
+            @Param("status") String status
+    );
+// Calls the Stored Procedure for the All Orders Page Dynamic Export (PDF & Excel)
+    @Query(value = "CALL SP_GetOrdersPageExportReport(:tabStatus, :search)", nativeQuery = true)
+    List<com.ojt.ecommerce.backofficeinventory.dto.OrderPageExportDTO> getOrdersPageExportReport(
+            @Param("tabStatus") String tabStatus,
+            @Param("search") String search
+    );
 }
