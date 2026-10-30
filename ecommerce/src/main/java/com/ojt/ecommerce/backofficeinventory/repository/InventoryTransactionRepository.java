@@ -18,4 +18,7 @@ public interface InventoryTransactionRepository extends JpaRepository<InventoryT
 
     // Find all transactions ordered by latest first
     List<InventoryTransaction> findAllByOrderByCreatedAtDesc();
+
+    // Check if a specific transaction reference exists (e.g. for idempotent stock deduction)
+    boolean existsByTxnTypeAndReferenceTypeAndReferenceId(String txnType, String referenceType, Long referenceId);
 }

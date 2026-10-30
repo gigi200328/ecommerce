@@ -40,4 +40,61 @@ public class ProductVariantCreateDto {
 
     @Schema(description = "Initial stock quantity to place in inventory", example = "20")
     private Integer initialStock;
+
+    // Explicit Getters & Setters
+    public Long getProductId() {
+        return productId;
+    }
+
+    public void setProductId(Long productId) {
+        this.productId = productId;
+    }
+
+    public String getSku() {
+        return sku;
+    }
+
+    public void setSku(String sku) {
+        this.sku = sku;
+    }
+
+    public BigDecimal getSellingPrice() {
+        return sellingPrice;
+    }
+
+    public void setSellingPrice(BigDecimal sellingPrice) {
+        this.sellingPrice = sellingPrice;
+    }
+
+    public BigDecimal getCostPrice() {
+        return costPrice;
+    }
+
+    public void setCostPrice(BigDecimal costPrice) {
+        this.costPrice = costPrice;
+    }
+
+    public ProductVariantStatus getStatus() {
+        return status;
+    }
+
+    public void setStatus(ProductVariantStatus status) {
+        this.status = status;
+    }
+
+    public List<Long> getOptionIds() {
+        return optionIds;
+    }
+
+    public void setOptionIds(List<Long> optionIds) {
+        this.optionIds = optionIds;
+    }
+
+    public Integer getInitialStock() {
+        return initialStock;
+    }
+
+    public void setInitialStock(Integer initialStock) {
+        this.initialStock = initialStock;
+    }
 }

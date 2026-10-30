@@ -14,4 +14,5 @@ import java.util.List;
     private String stockStatus;
     private List<VariantOptionResponse> options;
     private LocalDate expiryDate;
+    private List<ProductVariantImageResponse> images;
 }

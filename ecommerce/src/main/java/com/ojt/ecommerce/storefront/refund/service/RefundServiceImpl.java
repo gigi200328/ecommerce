@@ -18,6 +18,7 @@ import java.time.Duration;
 import java.time.LocalDateTime;
 import java.util.Arrays;
 import java.util.List;
+import java.util.Optional;
 import java.util.stream.Collectors;
 
 @Service
@@ -55,7 +56,8 @@ public class RefundServiceImpl implements RefundService {
             throw new ResourceNotFoundException("OrderItem not found"); // Prevents IDOR
         }
 
-        if (!"SUCCESS".equals(order.getPaymentStatus())) {
+        List<String> eligiblePaidStatuses = List.of("SUCCESS", "PARTIALLY_REFUNDED");
+        if (!eligiblePaidStatuses.contains(order.getPaymentStatus())) {
             throw new InvalidRequestException("Order is not eligible for refund (must be PAID)");
         }
 
@@ -141,34 +143,45 @@ public class RefundServiceImpl implements RefundService {
         int reservedQty = refundRequestRepository.getReservedQuantity(orderItemId);
         int remainingQty = orderItem.getQty() - reservedQty;
 
+        Optional<RefundRequest> latestRefund = refundRequestRepository.findFirstByOrderItemOrderItemIdOrderByRequestedAtDesc(orderItemId);
+        String refundStatus = latestRefund.map(RefundRequest::getStatus).orElse(null);
+
         boolean canRequestRefund = true;
         String ineligibleReason = null;
         Integer daysRemaining = null;
 
-        if (!"SUCCESS".equals(order.getPaymentStatus())) {
+        List<String> paidStatuses = List.of("SUCCESS", "PARTIALLY_REFUNDED", "REFUNDED");
+        if (!paidStatuses.contains(order.getPaymentStatus())) {
             canRequestRefund = false;
             ineligibleReason = "Order is not paid.";
         } else {
             // Rule 1: Check if delivered
             LocalDateTime deliveredAt = getDeliveryTimestampIfDelivered(order);
-            if (deliveredAt == null) {
+            boolean hasExistingRefund = refundStatus != null;
+            if (deliveredAt == null && !hasExistingRefund) {
                 canRequestRefund = false;
                 ineligibleReason = "Refund can only be requested after the order has been delivered.";
             } else {
                 // Rule 2: Check 7 days limit from delivery
-                LocalDateTime expiry = deliveredAt.plusDays(REFUND_WINDOW_DAYS);
-                if (LocalDateTime.now().isAfter(expiry)) {
+                LocalDateTime expiry = (deliveredAt != null) ? deliveredAt.plusDays(REFUND_WINDOW_DAYS) : null;
+                if (expiry != null && LocalDateTime.now().isAfter(expiry) && !hasExistingRefund) {
                     canRequestRefund = false;
                     ineligibleReason = "Refund window expired (refunds must be requested within " 
                             + REFUND_WINDOW_DAYS + " days of delivery).";
                     daysRemaining = 0;
                 } else {
-                    long hours = Duration.between(LocalDateTime.now(), expiry).toHours();
-                    daysRemaining = (int) Math.max(1, Math.ceil(hours / 24.0));
+                    if (expiry != null) {
+                        long hours = Duration.between(LocalDateTime.now(), expiry).toHours();
+                        daysRemaining = (int) Math.max(1, Math.ceil(hours / 24.0));
+                    }
 
                     if (remainingQty <= 0) {
                         canRequestRefund = false;
-                        ineligibleReason = "All items have already been refunded or have pending refund requests.";
+                        if ("APPROVED".equalsIgnoreCase(refundStatus)) {
+                            ineligibleReason = "Refund has already been approved.";
+                        } else {
+                            ineligibleReason = "All items have already been refunded or have pending refund requests.";
+                        }
                     }
                 }
             }
@@ -182,7 +195,15 @@ public class RefundServiceImpl implements RefundService {
                 .canRequestRefund(canRequestRefund)
                 .ineligibleReason(ineligibleReason)
                 .daysRemaining(daysRemaining)
+                .refundStatus(refundStatus)
                 .build();
+    }
+
+    @Override
+    @Transactional(readOnly = true)
+    public boolean isCanRequestRefund(Long customerId, Long orderItemId) {
+        RefundEligibilityDto dto = getRefundEligibility(customerId, orderItemId);
+        return dto != null && Boolean.TRUE.equals(dto.getCanRequestRefund());
     }
 
     /**
@@ -190,7 +211,8 @@ public class RefundServiceImpl implements RefundService {
      * Returns the delivery LocalDateTime if delivered; returns null if not yet delivered.
      */
     private LocalDateTime getDeliveryTimestampIfDelivered(Order order) {
-        boolean orderIsDelivered = "DELIVERED".equalsIgnoreCase(order.getOrderStatus());
+        boolean orderIsDelivered = "DELIVERED".equalsIgnoreCase(order.getOrderStatus())
+                || "REFUNDED".equalsIgnoreCase(order.getOrderStatus());
 
         List<Shipment> shipments = shipmentRepository.findByOrderOrderId(order.getOrderId());
         LocalDateTime shipmentDeliveredAt = null;
@@ -209,7 +231,19 @@ public class RefundServiceImpl implements RefundService {
             }
         }
 
-        if (!orderIsDelivered && !hasDeliveredShipment) {
+        List<OrderStatusHistory> history = orderStatusHistoryRepository.findByOrderOrderIdOrderByChangedAtAsc(order.getOrderId());
+        LocalDateTime historyDeliveredAt = null;
+        boolean hasDeliveredHistory = false;
+        if (history != null) {
+            for (OrderStatusHistory h : history) {
+                if ("DELIVERED".equalsIgnoreCase(h.getNewStatus()) && h.getChangedAt() != null) {
+                    hasDeliveredHistory = true;
+                    historyDeliveredAt = h.getChangedAt();
+                }
+            }
+        }
+
+        if (!orderIsDelivered && !hasDeliveredShipment && !hasDeliveredHistory) {
             return null; // Not delivered yet
         }
 
@@ -217,13 +251,8 @@ public class RefundServiceImpl implements RefundService {
             return shipmentDeliveredAt;
         }
 
-        List<OrderStatusHistory> history = orderStatusHistoryRepository.findByOrderOrderIdOrderByChangedAtAsc(order.getOrderId());
-        if (history != null) {
-            for (OrderStatusHistory h : history) {
-                if ("DELIVERED".equalsIgnoreCase(h.getNewStatus()) && h.getChangedAt() != null) {
-                    return h.getChangedAt();
-                }
-            }
+        if (historyDeliveredAt != null) {
+            return historyDeliveredAt;
         }
 
         if (order.getModifiedAt() != null) {

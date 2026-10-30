@@ -1,8 +1,7 @@
 package com.ojt.ecommerce.storefront.payment.service;
 
-
-
 import com.ojt.ecommerce.entity.*;
+import com.ojt.ecommerce.backofficeinventory.service.InventoryService;
 import com.ojt.ecommerce.storefront.exception.AccessDeniedException;
 import com.ojt.ecommerce.storefront.exception.InvalidRequestException;
 import com.ojt.ecommerce.storefront.exception.ResourceNotFoundException;
@@ -38,6 +37,7 @@ public class PaymentServiceImpl implements PaymentService {
     private final G5OrderRepository orderRepository;
     private final G5OrderStatusHistoryRepository orderStatusHistoryRepository;
     private final CartRepository cartRepository;
+    private final InventoryService inventoryService;
     
     private final ApplicationEventPublisher eventPublisher;
     
@@ -197,6 +197,9 @@ public class PaymentServiceImpl implements PaymentService {
                 cart.setStatus("CHECKED_OUT");
                 cartRepository.save(cart);
             }
+            
+            // 🔴 FR-8: Deduct inventory stock automatically upon successful payment
+            inventoryService.deductStockForOrder(order.getOrderId());
             
             callback.setProcessingStatus("PROCESSED");
             callback.setProcessedAt(LocalDateTime.now());
