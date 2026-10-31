@@ -1,5 +1,6 @@
 package com.ojt.ecommerce.backofficeinventory.service;
 
+import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertNotNull;
 import static org.junit.jupiter.api.Assertions.assertTrue;
 import static org.mockito.ArgumentMatchers.any;
@@ -269,5 +270,158 @@ public class JasperReportServiceDynamicExportTest {
         );
         assertNotNull(pdfBytes);
         assertTrue(pdfBytes.length > 500);
+    }
+
+    private static class TestInventoryExportDTO implements com.ojt.ecommerce.backofficeinventory.dto.InventoryExportDTO {
+        private final String variantAndSku;
+        private final String product;
+        private final BigDecimal sellingPrice;
+        private final Integer physicalStock;
+        private final Integer reservedStock;
+        private final Integer availableStock;
+        private final Integer reorderLevel;
+        private final String expiryAndBatch;
+        private final String status;
+
+        TestInventoryExportDTO(String variantAndSku, String product, BigDecimal sellingPrice,
+                               Integer physicalStock, Integer reservedStock, Integer availableStock,
+                               Integer reorderLevel, String expiryAndBatch, String status) {
+            this.variantAndSku = variantAndSku;
+            this.product = product;
+            this.sellingPrice = sellingPrice;
+            this.physicalStock = physicalStock;
+            this.reservedStock = reservedStock;
+            this.availableStock = availableStock;
+            this.reorderLevel = reorderLevel;
+            this.expiryAndBatch = expiryAndBatch;
+            this.status = status;
+        }
+
+        @Override public String getVariantAndSku() { return variantAndSku; }
+        @Override public String getProduct() { return product; }
+        @Override public BigDecimal getSellingPrice() { return sellingPrice; }
+        @Override public Integer getPhysicalStock() { return physicalStock; }
+        @Override public Integer getReservedStock() { return reservedStock; }
+        @Override public Integer getAvailableStock() { return availableStock; }
+        @Override public Integer getReorderLevel() { return reorderLevel; }
+        @Override public String getExpiryAndBatch() { return expiryAndBatch; }
+        @Override public String getStatus() { return status; }
+    }
+
+    @Test
+    void testGenerateDynamicInventoryPdf_WithData() throws Exception {
+        when(reportRepository.getInventoryExportReport(any(), any(), any()))
+                .thenReturn(List.of(
+                        new TestInventoryExportDTO("IPHONE15-PRO (Black / 128GB)", "iPhone 15 Pro", new BigDecimal("999.00"), 45, 0, 45, 10, "2026-12-31 (BATCH-1)", "NORMAL"),
+                        new TestInventoryExportDTO("MBP-16-M3", "MacBook Pro 16", new BigDecimal("2499.00"), 5, 0, 5, 10, "-", "LOW_STOCK")
+                ));
+
+        byte[] pdfBytes = jasperReportService.generateDynamicInventoryPdf(
+                "ALL", null, "ALL",
+                List.of("variantAndSku", "product", "sellingPrice", "physicalStock", "reservedStock", "availableStock", "reorderLevel", "expiryAndBatch", "status")
+        );
+        assertNotNull(pdfBytes);
+        assertTrue(pdfBytes.length > 500);
+        assertEquals("%PDF-", new String(pdfBytes, 0, 5));
+    }
+
+    @Test
+    void testGenerateDynamicInventoryExcel_WithData() throws Exception {
+        when(reportRepository.getInventoryExportReport(any(), any(), any()))
+                .thenReturn(List.of(
+                        new TestInventoryExportDTO("IPHONE15-PRO (Black / 128GB)", "iPhone 15 Pro", new BigDecimal("999.00"), 45, 0, 45, 10, "2026-12-31 (BATCH-1)", "NORMAL")
+                ));
+
+        byte[] excelBytes = jasperReportService.generateDynamicInventoryExcel(
+                "LOW_STOCK", "phone", "LOW_STOCK",
+                List.of("variantAndSku", "product", "sellingPrice", "physicalStock", "status")
+        );
+        assertNotNull(excelBytes);
+        assertTrue(excelBytes.length > 500);
+        assertEquals("PK", new String(excelBytes, 0, 2));
+    }
+
+    @Test
+    void testGenerateDynamicInventoryPdf_ExpiringSoonTab_EmptyData() throws Exception {
+        when(reportRepository.getInventoryExportReport(any(), any(), any()))
+                .thenReturn(Collections.emptyList());
+
+        byte[] pdfBytes = jasperReportService.generateDynamicInventoryPdf(
+                "EXPIRING_SOON", null, "ALL", null
+        );
+        assertNotNull(pdfBytes);
+        assertTrue(pdfBytes.length > 500);
+        assertEquals("%PDF-", new String(pdfBytes, 0, 5));
+    }
+
+    private static class TestOrderPageExportDTO implements com.ojt.ecommerce.backofficeinventory.dto.OrderPageExportDTO {
+        private final String orderNo;
+        private final String orderDate;
+        private final String customerName;
+        private final BigDecimal totalAmount;
+        private final String orderStatus;
+        private final String paymentStatus;
+
+        TestOrderPageExportDTO(String orderNo, String orderDate, String customerName, BigDecimal totalAmount, String orderStatus, String paymentStatus) {
+            this.orderNo = orderNo;
+            this.orderDate = orderDate;
+            this.customerName = customerName;
+            this.totalAmount = totalAmount;
+            this.orderStatus = orderStatus;
+            this.paymentStatus = paymentStatus;
+        }
+
+        @Override public String getOrderNo() { return orderNo; }
+        @Override public String getOrderDate() { return orderDate; }
+        @Override public String getCustomerName() { return customerName; }
+        @Override public BigDecimal getTotalAmount() { return totalAmount; }
+        @Override public String getOrderStatus() { return orderStatus; }
+        @Override public String getPaymentStatus() { return paymentStatus; }
+    }
+
+    @Test
+    void testGenerateDynamicOrdersPagePdf_WithData() throws Exception {
+        when(reportRepository.getOrdersPageExportReport(any(), any()))
+                .thenReturn(List.of(
+                        new TestOrderPageExportDTO("ORD-20261019-005", "2026-10-18", "Min Khant Ko", new BigDecimal("2499.00"), "DELIVERED", "REFUNDED"),
+                        new TestOrderPageExportDTO("ORD-20261016-002", "2026-10-16", "Su Myat Noe", new BigDecimal("2499.00"), "DELIVERED", "SUCCESS")
+                ));
+
+        byte[] pdfBytes = jasperReportService.generateDynamicOrdersPagePdf(
+                "ALL", null,
+                List.of("orderNo", "orderDate", "customerName", "totalAmount", "orderStatus", "paymentStatus")
+        );
+        assertNotNull(pdfBytes);
+        assertTrue(pdfBytes.length > 500);
+        assertEquals("%PDF-", new String(pdfBytes, 0, 5));
+    }
+
+    @Test
+    void testGenerateDynamicOrdersPageExcel_WithData() throws Exception {
+        when(reportRepository.getOrdersPageExportReport(any(), any()))
+                .thenReturn(List.of(
+                        new TestOrderPageExportDTO("ORD-20261019-005", "2026-10-18", "Min Khant Ko", new BigDecimal("2499.00"), "DELIVERED", "REFUNDED")
+                ));
+
+        byte[] excelBytes = jasperReportService.generateDynamicOrdersPageExcel(
+                "DELIVERED", "Min Khant",
+                List.of("orderNo", "orderDate", "customerName", "totalAmount")
+        );
+        assertNotNull(excelBytes);
+        assertTrue(excelBytes.length > 500);
+        assertEquals("PK", new String(excelBytes, 0, 2));
+    }
+
+    @Test
+    void testGenerateDynamicOrdersPagePdf_EmptyData() throws Exception {
+        when(reportRepository.getOrdersPageExportReport(any(), any()))
+                .thenReturn(Collections.emptyList());
+
+        byte[] pdfBytes = jasperReportService.generateDynamicOrdersPagePdf(
+                "PENDING", null, null
+        );
+        assertNotNull(pdfBytes);
+        assertTrue(pdfBytes.length > 500);
+        assertEquals("%PDF-", new String(pdfBytes, 0, 5));
     }
 }
