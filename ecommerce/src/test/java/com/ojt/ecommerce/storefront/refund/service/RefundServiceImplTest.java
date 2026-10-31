@@ -527,4 +527,71 @@ class RefundServiceImplTest {
         assertEquals("APPROVED", eligibility.getRefundStatus());
         assertTrue(eligibility.getIneligibleReason().contains("approved"));
     }
+
+    @Test
+    @DisplayName("Should throw InvalidRequestException when refund was rejected by inventory")
+    void createRefundRequest_ThrowsException_WhenRefundWasRejected() {
+        Shipment shipment = Shipment.builder()
+                .shipmentStatus("DELIVERED")
+                .deliveredAt(LocalDateTime.now().minusDays(1))
+                .build();
+
+        when(orderItemRepository.findById(100L)).thenReturn(Optional.of(orderItem));
+        when(shipmentRepository.findByOrderOrderId(10L)).thenReturn(List.of(shipment));
+        when(refundRequestRepository.existsByOrderItemOrderItemIdAndStatus(100L, "REJECTED")).thenReturn(true);
+
+        RefundRequestDto dto = new RefundRequestDto();
+        dto.setOrderItemId(100L);
+        dto.setRefundQuantity(1);
+        dto.setRequestReason("DEFECTIVE_PRODUCT");
+
+        InvalidRequestException ex = assertThrows(InvalidRequestException.class,
+                () -> refundService.createRefundRequest(1L, dto));
+        assertTrue(ex.getMessage().contains("rejected and cannot be requested again"));
+    }
+
+    @Test
+    @DisplayName("Should throw InvalidRequestException when a refund is already pending review")
+    void createRefundRequest_ThrowsException_WhenRefundIsAlreadyPending() {
+        Shipment shipment = Shipment.builder()
+                .shipmentStatus("DELIVERED")
+                .deliveredAt(LocalDateTime.now().minusDays(1))
+                .build();
+
+        when(orderItemRepository.findById(100L)).thenReturn(Optional.of(orderItem));
+        when(shipmentRepository.findByOrderOrderId(10L)).thenReturn(List.of(shipment));
+        when(refundRequestRepository.existsByOrderItemOrderItemIdAndStatus(100L, "PENDING")).thenReturn(true);
+
+        RefundRequestDto dto = new RefundRequestDto();
+        dto.setOrderItemId(100L);
+        dto.setRefundQuantity(1);
+        dto.setRequestReason("DEFECTIVE_PRODUCT");
+
+        InvalidRequestException ex = assertThrows(InvalidRequestException.class,
+                () -> refundService.createRefundRequest(1L, dto));
+        assertTrue(ex.getMessage().contains("already pending review"));
+    }
+
+    @Test
+    @DisplayName("Should return ineligible with REJECTED status when refund request was rejected")
+    void getRefundEligibility_WhenRejected_ShouldBeIneligible() {
+        RefundRequest req = RefundRequest.builder()
+                .refundId(1L)
+                .orderItem(orderItem)
+                .status("REJECTED")
+                .refundQuantity(1)
+                .build();
+
+        when(orderItemRepository.findById(100L)).thenReturn(Optional.of(orderItem));
+        when(refundRequestRepository.getReservedQuantity(100L)).thenReturn(1);
+        when(refundRequestRepository.findFirstByOrderItemOrderItemIdOrderByRequestedAtDesc(100L)).thenReturn(Optional.of(req));
+
+        RefundEligibilityDto eligibility = refundService.getRefundEligibility(1L, 100L);
+
+        assertNotNull(eligibility);
+        assertFalse(eligibility.isCanRequestRefund());
+        assertEquals("REJECTED", eligibility.getRefundStatus());
+        assertEquals(0, eligibility.getRemainingRefundableQuantity());
+        assertTrue(eligibility.getIneligibleReason().contains("rejected"));
+    }
 }

@@ -72,10 +72,20 @@ public class RefundServiceImpl implements RefundService {
                     + REFUND_WINDOW_DAYS + " days of delivery.");
         }
 
+        // Rule 3: Check if refund was already rejected by inventory/admin
+        if (refundRequestRepository.existsByOrderItemOrderItemIdAndStatus(orderItem.getOrderItemId(), "REJECTED")) {
+            throw new InvalidRequestException("Refund request for this item has been rejected and cannot be requested again.");
+        }
+
+        // Rule 4: Check if there is already a pending refund request
+        if (refundRequestRepository.existsByOrderItemOrderItemIdAndStatus(orderItem.getOrderItemId(), "PENDING")) {
+            throw new InvalidRequestException("A refund request is already pending review for this item.");
+        }
+
         int reservedQty = refundRequestRepository.getReservedQuantity(orderItem.getOrderItemId());
         int remainingQty = orderItem.getQty() - reservedQty;
 
-        if (dto.getRefundQuantity() > remainingQty) {
+        if (dto.getRefundQuantity() > remainingQty || remainingQty <= 0) {
             throw new InvalidRequestException("Requested quantity exceeds remaining refundable quantity");
         }
 
@@ -138,41 +148,54 @@ public class RefundServiceImpl implements RefundService {
         Optional<RefundRequest> latestRefund = refundRequestRepository.findFirstByOrderItemOrderItemIdOrderByRequestedAtDesc(orderItemId);
         String refundStatus = latestRefund.map(RefundRequest::getStatus).orElse(null);
 
+        boolean hasRejected = "REJECTED".equalsIgnoreCase(refundStatus)
+                || refundRequestRepository.existsByOrderItemOrderItemIdAndStatus(orderItemId, "REJECTED");
+
         boolean canRequestRefund = true;
         String ineligibleReason = null;
         Integer daysRemaining = null;
 
-        List<String> paidStatuses = List.of("SUCCESS", "PARTIALLY_REFUNDED", "REFUNDED");
-        if (!paidStatuses.contains(order.getPaymentStatus())) {
+        if (hasRejected) {
             canRequestRefund = false;
-            ineligibleReason = "Order is not paid.";
+            remainingQty = 0;
+            refundStatus = "REJECTED";
+            ineligibleReason = "Refund request has been rejected and cannot be requested again.";
         } else {
-            // Rule 1: Check if delivered
-            LocalDateTime deliveredAt = getDeliveryTimestampIfDelivered(order);
-            boolean hasExistingRefund = refundStatus != null;
-            if (deliveredAt == null && !hasExistingRefund) {
+            List<String> paidStatuses = List.of("SUCCESS", "PARTIALLY_REFUNDED", "REFUNDED");
+            if (!paidStatuses.contains(order.getPaymentStatus())) {
                 canRequestRefund = false;
-                ineligibleReason = "Refund can only be requested after the order has been delivered.";
+                ineligibleReason = "Order is not paid.";
             } else {
-                // Rule 2: Check 7 days limit from delivery
-                LocalDateTime expiry = (deliveredAt != null) ? deliveredAt.plusDays(REFUND_WINDOW_DAYS) : null;
-                if (expiry != null && LocalDateTime.now().isAfter(expiry) && !hasExistingRefund) {
+                // Rule 1: Check if delivered
+                LocalDateTime deliveredAt = getDeliveryTimestampIfDelivered(order);
+                boolean hasExistingRefund = refundStatus != null;
+                if (deliveredAt == null && !hasExistingRefund) {
                     canRequestRefund = false;
-                    ineligibleReason = "Refund window expired (refunds must be requested within " 
-                            + REFUND_WINDOW_DAYS + " days of delivery).";
-                    daysRemaining = 0;
+                    ineligibleReason = "Refund can only be requested after the order has been delivered.";
                 } else {
-                    if (expiry != null) {
-                        long hours = Duration.between(LocalDateTime.now(), expiry).toHours();
-                        daysRemaining = (int) Math.max(1, Math.ceil(hours / 24.0));
-                    }
-
-                    if (remainingQty <= 0) {
+                    // Rule 2: Check 7 days limit from delivery
+                    LocalDateTime expiry = (deliveredAt != null) ? deliveredAt.plusDays(REFUND_WINDOW_DAYS) : null;
+                    if (expiry != null && LocalDateTime.now().isAfter(expiry) && !hasExistingRefund) {
                         canRequestRefund = false;
-                        if ("APPROVED".equalsIgnoreCase(refundStatus)) {
-                            ineligibleReason = "Refund has already been approved.";
-                        } else {
-                            ineligibleReason = "All items have already been refunded or have pending refund requests.";
+                        ineligibleReason = "Refund window expired (refunds must be requested within " 
+                                + REFUND_WINDOW_DAYS + " days of delivery).";
+                        daysRemaining = 0;
+                    } else {
+                        if (expiry != null) {
+                            long hours = Duration.between(LocalDateTime.now(), expiry).toHours();
+                            daysRemaining = (int) Math.max(1, Math.ceil(hours / 24.0));
+                        }
+
+                        if ("PENDING".equalsIgnoreCase(refundStatus)) {
+                            canRequestRefund = false;
+                            ineligibleReason = "Refund request is pending review.";
+                        } else if (remainingQty <= 0) {
+                            canRequestRefund = false;
+                            if ("APPROVED".equalsIgnoreCase(refundStatus)) {
+                                ineligibleReason = "Refund has already been approved.";
+                            } else {
+                                ineligibleReason = "All items have already been refunded or have pending refund requests.";
+                            }
                         }
                     }
                 }
