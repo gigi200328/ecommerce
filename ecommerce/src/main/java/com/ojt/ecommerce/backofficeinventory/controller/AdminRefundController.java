@@ -2,11 +2,13 @@ package com.ojt.ecommerce.backofficeinventory.controller;
 
 import java.time.LocalDate;
 import java.util.List;
+import java.util.Map;
 
 import org.springframework.format.annotation.DateTimeFormat;
 import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.GetMapping;
 import org.springframework.web.bind.annotation.PathVariable;
+import org.springframework.web.bind.annotation.PostMapping;
 import org.springframework.web.bind.annotation.PutMapping;
 import org.springframework.web.bind.annotation.RequestBody;
 import org.springframework.web.bind.annotation.RequestMapping;
@@ -16,6 +18,8 @@ import org.springframework.web.bind.annotation.RestController;
 import com.ojt.ecommerce.backofficeinventory.dto.AdminRefundResponseDto;
 import com.ojt.ecommerce.backofficeinventory.dto.RefundDecisionDto;
 import com.ojt.ecommerce.backofficeinventory.dto.RefundStatsDto;
+import com.ojt.ecommerce.backofficeinventory.repository.AdminRefundRepository;
+import com.ojt.ecommerce.backofficeinventory.seeder.RefundDataSeeder;
 import com.ojt.ecommerce.backofficeinventory.service.AdminRefundService;
 
 import lombok.RequiredArgsConstructor;
@@ -26,6 +30,8 @@ import lombok.RequiredArgsConstructor;
 public class AdminRefundController {
 
     private final AdminRefundService adminRefundService;
+    private final RefundDataSeeder refundDataSeeder;
+    private final AdminRefundRepository adminRefundRepository;
 
     /**
      * Fetch refund records directly from the refund table joined with orders and customers.
@@ -89,5 +95,18 @@ public class AdminRefundController {
         }
         AdminRefundResponseDto response = adminRefundService.rejectRefund(refundId, request);
         return ResponseEntity.ok(response);
+    }
+
+    /**
+     * Endpoint to seed or refresh mock refund requests, customers, orders, and notifications for QA/testing.
+     */
+    @PostMapping("/seed-mock")
+    public ResponseEntity<Map<String, Object>> seedMockData() {
+        refundDataSeeder.seedMockData(true);
+        long count = adminRefundRepository.count();
+        return ResponseEntity.ok(Map.of(
+                "message", "Successfully seeded mock refund requests and test data.",
+                "totalRequests", count
+        ));
     }
 }

@@ -167,12 +167,12 @@ CREATE PROCEDURE `SP_GetOrderFulfillmentReport`(
 )
 BEGIN
     SELECT 
-        o.order_id,
-        DATE(o.created_at) AS order_date,
-        COUNT(oi.order_item_id) AS total_items,
-        o.total_amount,
-        o.payment_status,
-        o.order_status
+        o.order_id AS orderId,
+        DATE(o.created_at) AS orderDate,
+        COUNT(oi.order_item_id) AS totalItems,
+        o.total_amount AS totalAmount,
+        o.payment_status AS paymentStatus,
+        o.order_status AS orderStatus
     FROM orders o
     LEFT JOIN order_items oi ON o.order_id = oi.order_id
     WHERE DATE(o.created_at) BETWEEN start_date AND end_date

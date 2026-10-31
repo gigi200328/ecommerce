@@ -80,6 +80,12 @@ public class SecurityConfig {
                         .requestMatchers("/api/backoffice/staff", "/api/backoffice/staff/**")
                         .hasAnyAuthority("ADMIN", "ROLE_ADMIN")
                         
+                        // Inventory ကြည့်ရှုခြင်း (GET) ကို SALES_STAFF ပါ စစ်ဆေးခွင့်ပြုသည်
+                        .requestMatchers(
+                            HttpMethod.GET,
+                            "/api/backoffice/inventory", "/api/backoffice/inventory/**"
+                        ).hasAnyAuthority("ADMIN", "ROLE_ADMIN", "INVENTORY_STAFF", "ROLE_INVENTORY_STAFF", "SALES_STAFF", "ROLE_SALES_STAFF")
+
                         // Products များကို ADMIN နှင့် INVENTORY_STAFF ကိုင်တွယ်နိုင်သည်
                         .requestMatchers(
                             "/api/backoffice/categories", "/api/backoffice/categories/**",
@@ -102,13 +108,14 @@ public class SecurityConfig {
 
                         // Refunds များကို ADMIN နှင့် SALES_STAFF ကိုင်တွယ်နိုင်သည်
                         .requestMatchers(
+                            "/api/v1/admin/notifications", "/api/v1/admin/notifications/**",
                             "/api/v1/admin/refunds", "/api/v1/admin/refunds/**",
                             "/api/backoffice/refunds", "/api/backoffice/refunds/**"
                         ).hasAnyAuthority("ADMIN", "ROLE_ADMIN", "SALES_STAFF", "ROLE_SALES_STAFF", "ORDER_STAFF", "ROLE_ORDER_STAFF")
                         
-                        // Reports များကို ADMIN သာ ကြည့်ခွင့်ပေးမည်
+                        // Reports များကို ADMIN နှင့် INVENTORY_STAFF (စတော့အစီရင်ခံစာများအတွက်) ကြည့်ခွင့်ပေးမည်
                         .requestMatchers("/api/backoffice/reports", "/api/backoffice/reports/**", "/api/v1/reports/**")
-                        .hasAnyAuthority("ADMIN", "ROLE_ADMIN")
+                        .hasAnyAuthority("ADMIN", "ROLE_ADMIN", "INVENTORY_STAFF", "ROLE_INVENTORY_STAFF", "SALES_STAFF", "ROLE_SALES_STAFF")
 
 						// Products များကို ADMIN နှင့် INVENTORY_STAFF ကိုင်တွယ်နိုင်သည်
 						.requestMatchers("/api/backoffice/categories", "/api/backoffice/categories/**",

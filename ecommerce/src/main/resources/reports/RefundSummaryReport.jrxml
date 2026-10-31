@@ -21,7 +21,7 @@
 	<field name="refundAmount" class="java.math.BigDecimal"/>
 	<field name="requestReason" class="java.lang.String"/>
 	<field name="status" class="java.lang.String"/>
-	<field name="requestedDate" class="java.util.Date"/>
+	<field name="requestedDate" class="java.lang.String"/>
 
 	<title>
 		<band height="55" splitType="Stretch">
@@ -300,7 +300,7 @@
 				</textElement>
 				<textFieldExpression><![CDATA[$F{status}]]></textFieldExpression>
 			</textField>
-			<textField pattern="yyyy-MM-dd" isBlankWhenNull="true">
+			<textField isBlankWhenNull="true">
 				<reportElement x="722" y="0" width="80" height="24" uuid="99283746-5a6b-7c8d-9e0f-1a2b3c4d5e09"/>
 				<box leftPadding="5" rightPadding="5">
 					<pen lineWidth="0.5" lineColor="#CBD5E1"/>
