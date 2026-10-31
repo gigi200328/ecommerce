@@ -191,11 +191,15 @@ public class PaymentServiceImpl implements PaymentService {
             history.setRemark("Payment successful via MMSPG webhook callback");
             orderStatusHistoryRepository.save(history);
             
-            Cart cart = cartRepository.findByCustomerCustomerIdAndStatus(order.getCustomer().getCustomerId(), "ACTIVE")
-                    .orElse(null);
-            if (cart != null) {
-                cart.setStatus("CHECKED_OUT");
-                cartRepository.save(cart);
+            // 🔴 Only clean up active cart if checkout was CART-based (preserve cart for BUY_NOW)
+            boolean isBuyNow = "BUY_NOW".equalsIgnoreCase(order.getCheckoutType());
+            if (!isBuyNow) {
+                Cart cart = cartRepository.findByCustomerCustomerIdAndStatus(order.getCustomer().getCustomerId(), "ACTIVE")
+                        .orElse(null);
+                if (cart != null) {
+                    cart.setStatus("CHECKED_OUT");
+                    cartRepository.save(cart);
+                }
             }
             
             // 🔴 FR-8: Deduct inventory stock automatically upon successful payment

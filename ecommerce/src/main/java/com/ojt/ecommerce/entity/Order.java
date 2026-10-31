@@ -61,6 +61,10 @@ public class Order {
 	@Column(name = "payment_status", nullable = false, columnDefinition = "ENUM('PENDING', 'SUCCESS', 'FAILED', 'PARTIALLY_REFUNDED', 'REFUNDED')")
 	private String paymentStatus;
 
+	@Builder.Default
+	@Column(name = "checkout_type", nullable = false, length = 20, columnDefinition = "VARCHAR(20) DEFAULT 'CART'")
+	private String checkoutType = "CART";
+
 	@Column(name = "total_amount", nullable = false, precision = 12, scale = 2)
 	private BigDecimal totalAmount;
 
