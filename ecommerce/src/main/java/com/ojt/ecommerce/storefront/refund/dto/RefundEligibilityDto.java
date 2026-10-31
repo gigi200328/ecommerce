@@ -23,6 +23,7 @@ public class RefundEligibilityDto {
     private Integer daysRemaining;
 
     private String refundStatus;
+    private String remark;
 
     public Boolean isCanRequestRefund() {
         return canRequestRefund;

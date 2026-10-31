@@ -147,6 +147,7 @@ public class RefundServiceImpl implements RefundService {
 
         Optional<RefundRequest> latestRefund = refundRequestRepository.findFirstByOrderItemOrderItemIdOrderByRequestedAtDesc(orderItemId);
         String refundStatus = latestRefund.map(RefundRequest::getStatus).orElse(null);
+        String remark = latestRefund.map(RefundRequest::getRemark).orElse(null);
 
         boolean hasRejected = "REJECTED".equalsIgnoreCase(refundStatus)
                 || refundRequestRepository.existsByOrderItemOrderItemIdAndStatus(orderItemId, "REJECTED");
@@ -211,6 +212,7 @@ public class RefundServiceImpl implements RefundService {
                 .ineligibleReason(ineligibleReason)
                 .daysRemaining(daysRemaining)
                 .refundStatus(refundStatus)
+                .remark(remark)
                 .build();
     }
 
@@ -289,6 +291,7 @@ public class RefundServiceImpl implements RefundService {
                 .refundAmount(req.getRefundAmount())
                 .status(req.getStatus())
                 .requestedAt(req.getRequestedAt().toString())
+                .remark(req.getRemark())
                 .build();
     }
 }

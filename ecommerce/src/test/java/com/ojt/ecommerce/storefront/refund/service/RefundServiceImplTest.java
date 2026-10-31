@@ -580,6 +580,7 @@ class RefundServiceImplTest {
                 .orderItem(orderItem)
                 .status("REJECTED")
                 .refundQuantity(1)
+                .remark("Product was damaged after delivery by customer")
                 .build();
 
         when(orderItemRepository.findById(100L)).thenReturn(Optional.of(orderItem));
@@ -591,6 +592,7 @@ class RefundServiceImplTest {
         assertNotNull(eligibility);
         assertFalse(eligibility.isCanRequestRefund());
         assertEquals("REJECTED", eligibility.getRefundStatus());
+        assertEquals("Product was damaged after delivery by customer", eligibility.getRemark());
         assertEquals(0, eligibility.getRemainingRefundableQuantity());
         assertTrue(eligibility.getIneligibleReason().contains("rejected"));
     }
