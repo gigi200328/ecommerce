@@ -21,6 +21,11 @@ public class CustomUserDetails implements UserDetails {
         return user;
     }
 
+    // --- အသစ်ထပ်ထည့်ထားသော Method ---
+    public Integer getTokenVersion() {
+        return user.getTokenVersion() != null ? user.getTokenVersion() : 1;
+    }
+
     @Override
     public Collection<? extends GrantedAuthority> getAuthorities() {
         Set<GrantedAuthority> authorities = new HashSet<>();
@@ -46,7 +51,7 @@ public class CustomUserDetails implements UserDetails {
 
     @Override
     public String getUsername() {
-        return user.getEmail(); // Login ဝင်ရာတွင် Email ကို Username အဖြစ် အသုံးပြုမည်
+        return user.getEmail();
     }
 
     @Override
@@ -66,6 +71,6 @@ public class CustomUserDetails implements UserDetails {
 
     @Override
     public boolean isEnabled() {
-        return "ACTIVE".equalsIgnoreCase(user.getStatus()); // Status ACTIVE ဖြစ်မှသာ Login ပေးဝင်မည်
+        return "ACTIVE".equalsIgnoreCase(user.getStatus());
     }
 }
