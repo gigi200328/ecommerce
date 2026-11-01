@@ -27,12 +27,59 @@ public interface ReportRepository extends JpaRepository<Product, Long> {
     @Query(value = "CALL SP_GetTopSellingProducts(:limitCount)", nativeQuery = true)
     List<com.ojt.ecommerce.backofficeinventory.dto.TopSellingProductDTO> getTopSellingProducts(@Param("limitCount") Integer limitCount);
     // Calls the Stored Procedure for the Refund Summary Report
-    @Query(value = "CALL SP_GetRefundSummaryReport(:startDate, :endDate)", nativeQuery = true)
+    @Query(value = "CALL SP_GetRefundSummaryReport(:startDate, :endDate, null, 'ALL')", nativeQuery = true)
     List<com.ojt.ecommerce.backofficeinventory.dto.RefundSummaryReportDTO> getRefundSummaryReport(
             @Param("startDate") LocalDate startDate, 
             @Param("endDate") LocalDate endDate
     );
+
+    // Calls the Stored Procedure for the Refund Management Dynamic Export
+    @Query(value = "CALL SP_GetRefundSummaryReport(:startDate, :endDate, :search, :status)", nativeQuery = true)
+    List<com.ojt.ecommerce.backofficeinventory.dto.RefundExportDTO> getRefundExportReport(
+            @Param("startDate") LocalDate startDate, 
+            @Param("endDate") LocalDate endDate,
+            @Param("search") String search,
+            @Param("status") String status
+    );
     // Calls the Stored Procedure for the Low Stock Alert Report
     @Query(value = "CALL SP_GetLowStockAlertReport()", nativeQuery = true)
     List<com.ojt.ecommerce.backofficeinventory.dto.LowStockAlertDTO> getLowStockAlertReport();
+
+    // Calls the Stored Procedure for the Order Fulfillment Status Report
+    @Query(value = "CALL SP_GetOrderFulfillmentReport(:startDate, :endDate, :statusFilter)", nativeQuery = true)
+    List<com.ojt.ecommerce.backofficeinventory.dto.OrderFulfillmentReportDTO> getOrderFulfillmentReport(
+            @Param("startDate") LocalDate startDate,
+            @Param("endDate") LocalDate endDate,
+            @Param("statusFilter") String statusFilter
+    );
+
+    // Calls the Stored Procedure for the Product Catalog Dynamic Export
+    @Query(value = "CALL SP_GetProductCatalogExport(:search, :categoryId, :brandId, :status)", nativeQuery = true)
+    List<com.ojt.ecommerce.backofficeinventory.dto.ProductCatalogExportDTO> getProductCatalogExport(
+            @Param("search") String search,
+            @Param("categoryId") Long categoryId,
+            @Param("brandId") Long brandId,
+            @Param("status") String status
+    );
+
+    // Calls the Stored Procedure for the Brand Management Dynamic Export
+    @Query(value = "CALL SP_GetBrandExportReport(:search, :status)", nativeQuery = true)
+    List<com.ojt.ecommerce.backofficeinventory.dto.BrandExportDTO> getBrandExportReport(
+            @Param("search") String search,
+            @Param("status") String status
+    );
+
+    // Calls the Stored Procedure for the Stock Management Dynamic Export (PDF & Excel)
+    @Query(value = "CALL SP_GetInventoryExportReport(:tabFilter, :search, :status)", nativeQuery = true)
+    List<com.ojt.ecommerce.backofficeinventory.dto.InventoryExportDTO> getInventoryExportReport(
+            @Param("tabFilter") String tabFilter,
+            @Param("search") String search,
+            @Param("status") String status
+    );
+// Calls the Stored Procedure for the All Orders Page Dynamic Export (PDF & Excel)
+    @Query(value = "CALL SP_GetOrdersPageExportReport(:tabStatus, :search)", nativeQuery = true)
+    List<com.ojt.ecommerce.backofficeinventory.dto.OrderPageExportDTO> getOrdersPageExportReport(
+            @Param("tabStatus") String tabStatus,
+            @Param("search") String search
+    );
 }

@@ -1,3 +1,4 @@
+
 package com.ojt.ecommerce.backofficeinventory.controller;
 
 import java.util.List;
@@ -26,60 +27,78 @@ import lombok.RequiredArgsConstructor;
 
 @RestController
 @RequestMapping("/api/backoffice/categories")
-
 @RequiredArgsConstructor
 public class CategoryController {
 
     private final CategoryService categoryService;
 
-    // Create Category
+    // Create a new category
     @PostMapping
-    public ResponseEntity<CategoryResponseDto> createCategory(@Valid @RequestBody CategoryRequestDto request) {
-        return new ResponseEntity<>(categoryService.createCategory(request), HttpStatus.CREATED);
+    public ResponseEntity<CategoryResponseDto> createCategory(
+            @Valid @RequestBody CategoryRequestDto request) {
+
+        CategoryResponseDto response =
+                categoryService.createCategory(request);
+
+        return ResponseEntity.status(HttpStatus.CREATED).body(response);
     }
 
-    // Get Flat List
+    // Get all categories with pagination and sorting
     @GetMapping
     public ResponseEntity<Page<CategoryResponseDto>> getAllCategories(
-            @PageableDefault(size = 20, sort = "categoryName") Pageable pageable) {
+            @PageableDefault(size = 20, sort = "categoryName")
+            Pageable pageable) {
 
-        return ResponseEntity.ok(categoryService.getAllCategories(pageable));
+        return ResponseEntity.ok(
+                categoryService.getAllCategories(pageable));
     }
 
-    // Get Nested Tree Hierarchy
+    // Get the hierarchical category tree
     @GetMapping("/tree")
     public ResponseEntity<List<CategoryResponseDto>> getCategoryTree() {
-        return ResponseEntity.ok(categoryService.getCategoryTree());
+
+        return ResponseEntity.ok(
+                categoryService.getCategoryTree());
     }
 
-    // Get Single Category by ID
+    // Get a category by ID
     @GetMapping("/{id}")
-    public ResponseEntity<CategoryResponseDto> getCategoryById(@PathVariable Long id) {
-        return ResponseEntity.ok(categoryService.getCategoryById(id));
+    public ResponseEntity<CategoryResponseDto> getCategoryById(
+            @PathVariable Long id) {
+
+        return ResponseEntity.ok(
+                categoryService.getCategoryById(id));
     }
 
-    // Update Category
+    // Update an existing category
     @PutMapping("/{id}")
     public ResponseEntity<CategoryResponseDto> updateCategory(
             @PathVariable Long id,
             @Valid @RequestBody CategoryRequestDto request) {
-        return ResponseEntity.ok(categoryService.updateCategory(id, request));
+
+        return ResponseEntity.ok(
+                categoryService.updateCategory(id, request));
     }
 
-    // Delete Category
+    // Delete a category
     @DeleteMapping("/{id}")
-    public ResponseEntity<Void> deleteCategory(@PathVariable Long id) {
+    public ResponseEntity<Void> deleteCategory(
+            @PathVariable Long id) {
+
         categoryService.deleteCategory(id);
+
         return ResponseEntity.noContent().build();
     }
-    
-    // Search
+
+    // Search categories by keyword with pagination
     @GetMapping("/search")
     public ResponseEntity<Page<CategoryResponseDto>> searchCategories(
             @RequestParam(required = false) String keyword,
             Pageable pageable) {
-        
-        Page<CategoryResponseDto> response = categoryService.searchCategories(keyword, pageable);
+
+        Page<CategoryResponseDto> response =
+                categoryService.searchCategories(keyword, pageable);
+
         return ResponseEntity.ok(response);
     }
 }

@@ -53,7 +53,7 @@ public class SecurityConfig {
 		return http.build();
 	}
 
-    // Main Branch မှ အသစ်ပါလာသော Public Locations API
+	// Main Branch မှ အသစ်ပါလာသော Public Locations API
 	@Bean
 	@Order(1)
 	public SecurityFilterChain publicLocationsSecurityFilterChain(HttpSecurity http) throws Exception {
@@ -71,7 +71,7 @@ public class SecurityConfig {
 			CustomUserDetailsService userDetailsService) throws Exception {
 		JwtAuthenticationFilter backofficeFilter = new JwtAuthenticationFilter(jwtUtil, userDetailsService);
 		
-        http.securityMatcher("/api/backoffice/**").cors(cors -> cors.configurationSource(corsConfigurationSource()))
+        http.securityMatcher("/api/backoffice/**", "/api/v1/reports/**", "/api/v1/admin/**", "/api/admin/**").cors(cors -> cors.configurationSource(corsConfigurationSource()))
 				.csrf(AbstractHttpConfigurer::disable)
 				.authorizeHttpRequests(auth -> auth
                         .requestMatchers("/api/backoffice/auth/**").permitAll()
@@ -80,6 +80,12 @@ public class SecurityConfig {
                         .requestMatchers("/api/backoffice/staff", "/api/backoffice/staff/**")
                         .hasAnyAuthority("ADMIN", "ROLE_ADMIN")
                         
+                        // Inventory ကြည့်ရှုခြင်း (GET) ကို SALES_STAFF ပါ စစ်ဆေးခွင့်ပြုသည်
+                        .requestMatchers(
+                            HttpMethod.GET,
+                            "/api/backoffice/inventory", "/api/backoffice/inventory/**"
+                        ).hasAnyAuthority("ADMIN", "ROLE_ADMIN", "INVENTORY_STAFF", "ROLE_INVENTORY_STAFF", "SALES_STAFF", "ROLE_SALES_STAFF")
+
                         // Products များကို ADMIN နှင့် INVENTORY_STAFF ကိုင်တွယ်နိုင်သည်
                         .requestMatchers(
                             "/api/backoffice/categories", "/api/backoffice/categories/**",
@@ -97,15 +103,42 @@ public class SecurityConfig {
                         ).hasAnyAuthority("ADMIN", "ROLE_ADMIN", "INVENTORY_STAFF", "ROLE_INVENTORY_STAFF")
                         
                         // Orders များကို ADMIN နှင့် SALES_STAFF ကိုင်တွယ်နိုင်သည်
-                        .requestMatchers("/api/backoffice/orders", "/api/backoffice/orders/**")
-                        .hasAnyAuthority("ADMIN", "ROLE_ADMIN", "SALES_STAFF", "ROLE_SALES_STAFF")
-                        
-                        // Main မှ အသစ်ပါလာသော Reports များကို ADMIN သာ ကြည့်ခွင့်ပေးမည်
-                        .requestMatchers("/api/backoffice/reports", "/api/backoffice/reports/**")
-                        .hasAnyAuthority("ADMIN", "ROLE_ADMIN")
+                        .requestMatchers("/api/backoffice/orders", "/api/backoffice/orders/**", "/api/backoffice/shipping", "/api/backoffice/shipping/**")
+                        .hasAnyAuthority("ADMIN", "ROLE_ADMIN", "SALES_STAFF", "ROLE_SALES_STAFF", "ORDER_STAFF", "ROLE_ORDER_STAFF")
 
-						.anyRequest().authenticated()
-                )
+                        // Refunds များကို ADMIN နှင့် SALES_STAFF ကိုင်တွယ်နိုင်သည်
+                        .requestMatchers(
+                            "/api/v1/admin/notifications", "/api/v1/admin/notifications/**",
+                            "/api/v1/admin/refunds", "/api/v1/admin/refunds/**",
+                            "/api/backoffice/refunds", "/api/backoffice/refunds/**"
+                        ).hasAnyAuthority("ADMIN", "ROLE_ADMIN", "SALES_STAFF", "ROLE_SALES_STAFF", "ORDER_STAFF", "ROLE_ORDER_STAFF")
+                        
+                        // Reports များကို ADMIN နှင့် INVENTORY_STAFF (စတော့အစီရင်ခံစာများအတွက်) ကြည့်ခွင့်ပေးမည်
+                        .requestMatchers("/api/backoffice/reports", "/api/backoffice/reports/**", "/api/v1/reports/**")
+                        .hasAnyAuthority("ADMIN", "ROLE_ADMIN", "INVENTORY_STAFF", "ROLE_INVENTORY_STAFF", "SALES_STAFF", "ROLE_SALES_STAFF")
+
+						// Products များကို ADMIN နှင့် INVENTORY_STAFF ကိုင်တွယ်နိုင်သည်
+						.requestMatchers("/api/backoffice/categories", "/api/backoffice/categories/**",
+								"/api/backoffice/brands", "/api/backoffice/brands/**", "/api/backoffice/products",
+								"/api/backoffice/products/**", "/api/backoffice/product-images/**",
+								"/api/backoffice/variations", "/api/backoffice/variations/**",
+								"/api/backoffice/variation-options/**", "/api/backoffice/product-variants/**",
+								"/api/backoffice/variant-option-values/**", "/api/backoffice/tags",
+								"/api/backoffice/tags/**", "/api/backoffice/product-tags/**",
+								"/api/backoffice/product-variant-images/**", "/api/backoffice/inventory",
+								"/api/backoffice/inventory/**")
+						.hasAnyAuthority("ADMIN", "ROLE_ADMIN", "INVENTORY_STAFF", "ROLE_INVENTORY_STAFF")
+
+						// Orders များကို ADMIN နှင့် SALES_STAFF ကိုင်တွယ်နိုင်သည်
+						.requestMatchers("/api/backoffice/orders", "/api/backoffice/orders/**")
+						.hasAnyAuthority("ADMIN", "ROLE_ADMIN", "SALES_STAFF", "ROLE_SALES_STAFF")
+
+						// Main မှ အသစ်ပါလာသော Reports များကို ADMIN သာ ကြည့်ခွင့်ပေးမည်
+						.requestMatchers("/api/backoffice/reports", "/api/backoffice/reports/**")
+						.hasAnyAuthority("ADMIN", "ROLE_ADMIN")
+
+						.anyRequest().authenticated())
+
 				.sessionManagement(sess -> sess.sessionCreationPolicy(SessionCreationPolicy.STATELESS))
 				.addFilterBefore(backofficeFilter, UsernamePasswordAuthenticationFilter.class);
 
@@ -131,6 +164,8 @@ public class SecurityConfig {
 						.permitAll().requestMatchers(HttpMethod.GET, "/api/storefront/v1/search-history/popular")
 						.permitAll()
 //                .requestMatchers("/api/storefront/v1/delivery-zones/**", "/api/storefront/v1/shipping/quote/**", "/api/storefront/v1/payment-callbacks/g3").permitAll()
+						.requestMatchers("/api/storefront/v1/payment-callbacks/g3").permitAll()
+
 						.anyRequest().authenticated())
 				.sessionManagement(sess -> sess.sessionCreationPolicy(SessionCreationPolicy.STATELESS))
 				.addFilterBefore(storefrontFilter, UsernamePasswordAuthenticationFilter.class);
@@ -141,7 +176,8 @@ public class SecurityConfig {
 	@Bean
 	public CorsConfigurationSource corsConfigurationSource() {
 		CorsConfiguration configuration = new CorsConfiguration();
-		configuration.setAllowedOrigins(List.of("http://localhost:5173", "http://localhost:3000"));
+		configuration.setAllowedOriginPatterns(List.of("http://localhost:*", "http://127.0.0.1:*"));
+		configuration.setAllowedOrigins(List.of("http://localhost:5173", "http://localhost:5174", "http://localhost:5175", "http://localhost:3000"));
 		configuration.setAllowedMethods(List.of("GET", "POST", "PUT", "DELETE", "PATCH", "OPTIONS"));
 		configuration.setAllowedHeaders(
 				List.of("Authorization", "Content-Type", "Cache-Control", "Accept", "X-Requested-With"));

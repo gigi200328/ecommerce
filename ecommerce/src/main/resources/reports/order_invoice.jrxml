@@ -1,0 +1,493 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!-- ============================================================
+     Single Report : order_invoice.jrxml
+     Design        : 6SYNC Customer Receipt (Self-contained, NO subreport)
+     Summary       : Subtotal / Shipping Fee / FINAL TOTAL
+     DataSource    : JRBeanCollectionDataSource(dto.getItems())
+     Parameters    : Order Header, Shipping Details, Payment Details
+     ============================================================ -->
+<jasperReport
+        xmlns="http://jasperreports.sourceforge.net/jasperreports"
+        xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"
+        xsi:schemaLocation="http://jasperreports.sourceforge.net/jasperreports
+            http://jasperreports.sourceforge.net/xsd/jasperreport.xsd"
+        name="order_invoice"
+        pageWidth="595"
+        pageHeight="842"
+        columnWidth="535"
+        leftMargin="30"
+        rightMargin="30"
+        topMargin="20"
+        bottomMargin="20"
+        uuid="aa22bb44-2222-4ddd-bbbb-000000000002">
+
+    <!-- ================================================================
+         Parameters (Header, Shipping, Payment, Financials)
+         ================================================================ -->
+    <parameter name="LOGO_IMAGE"         class="java.lang.Object" isForPrompting="false"/>
+    <parameter name="ORDER_NO"         class="java.lang.String"/>
+    <parameter name="ORDER_DATE_STR"    class="java.lang.String"/>
+    <parameter name="CUSTOMER_NAME"     class="java.lang.String"/>
+    <parameter name="RECIPIENT_NAME"    class="java.lang.String"/>
+    <parameter name="RECIPIENT_PHONE"   class="java.lang.String"/>
+    <parameter name="ADDRESS_LINE1"     class="java.lang.String"/>
+    <parameter name="TOWNSHIP_CITY"     class="java.lang.String"/>
+    <parameter name="REGION_STATE"      class="java.lang.String"/>
+    <parameter name="PAYMENT_METHOD"    class="java.lang.String"/>
+    <parameter name="PAYMENT_STATUS"    class="java.lang.String"/>
+    <parameter name="TRANSACTION_REF"   class="java.lang.String"/>
+    <parameter name="PAID_AT_STR"       class="java.lang.String"/>
+    <parameter name="SUBTOTAL_AMOUNT"   class="java.math.BigDecimal"/>
+    <parameter name="SHIPPING_FEE"      class="java.math.BigDecimal"/>
+    <parameter name="TOTAL_AMOUNT"      class="java.math.BigDecimal"/>
+
+    <!-- ================================================================
+         Fields (Order Line Items — maps to OrderItemDetailDTO)
+         ================================================================ -->
+    <field name="orderItemId"       class="java.lang.Long"/>
+    <field name="productName"       class="java.lang.String"/>
+    <field name="sku"               class="java.lang.String"/>
+    <field name="unitPrice"         class="java.math.BigDecimal"/>
+    <field name="qty"               class="java.lang.Integer"/>
+    <field name="discountAmount"    class="java.math.BigDecimal"/>
+    <field name="subtotal"          class="java.math.BigDecimal"/>
+
+    <!-- ================================================================
+         TITLE BAND  (Logo, Store Name, Order #, Date)
+         ================================================================ -->
+    <title>
+        <band height="90" splitType="Stretch">
+
+            <!-- Store Brand Logo -->
+            <image scaleImage="RetainShape" vAlign="Middle" onErrorType="Blank">
+                <reportElement x="0" y="2" width="175" height="58" uuid="3b241101-0000-4000-8000-000000000001"/>
+                <imageExpression><![CDATA[$P{LOGO_IMAGE}]]></imageExpression>
+            </image>
+
+            <!-- "Customer Receipt" below oval -->
+            <staticText>
+                <reportElement x="0" y="66" width="200" height="12"
+                               forecolor="#888888" uuid="3b241101-0000-4000-8000-000000000007"/>
+                <textElement>
+                    <font size="8" isItalic="false"/>
+                </textElement>
+                <text><![CDATA[Customer Receipt]]></text>
+            </staticText>
+
+            <!-- Order # -->
+            <textField isBlankWhenNull="true">
+                <reportElement x="200" y="10" width="335" height="20" uuid="3b241101-0000-4000-8000-000000000008"/>
+                <textElement textAlignment="Right" verticalAlignment="Middle">
+                    <font size="11" isBold="true"/>
+                </textElement>
+                <textFieldExpression><![CDATA["Order #" + ($P{ORDER_NO} != null ? $P{ORDER_NO} : "")]]></textFieldExpression>
+            </textField>
+
+            <!-- Date -->
+            <textField isBlankWhenNull="true">
+                <reportElement x="200" y="34" width="335" height="14"
+                               forecolor="#888888" uuid="3b241101-0000-4000-8000-000000000009"/>
+                <textElement textAlignment="Right" verticalAlignment="Middle">
+                    <font size="9"/>
+                </textElement>
+                <textFieldExpression><![CDATA[$P{ORDER_DATE_STR} != null ? $P{ORDER_DATE_STR} : ""]]></textFieldExpression>
+            </textField>
+
+            <!-- Divider line -->
+            <line>
+                <reportElement x="0" y="82" width="535" height="1"
+                               forecolor="#E2E8F0" uuid="3b241101-0000-4000-8000-000000000010"/>
+            </line>
+
+        </band>
+    </title>
+
+    <!-- ================================================================
+         PAGE HEADER  (Shipping Details, Payment Details, Table Headers)
+         ================================================================ -->
+    <pageHeader>
+        <band height="185" splitType="Stretch">
+
+            <!-- ═══ LEFT: SHIPPING DETAILS ════════════ -->
+            <staticText>
+                <reportElement x="0" y="10" width="255" height="12"
+                               forecolor="#64748B" uuid="3b241101-0000-4000-8000-000000000011"/>
+                <textElement>
+                    <font size="8" isBold="true"/>
+                </textElement>
+                <text><![CDATA[SHIPPING DETAILS]]></text>
+            </staticText>
+            <line>
+                <reportElement x="0" y="24" width="255" height="1"
+                               forecolor="#E2E8F0" uuid="3b241101-0000-4000-8000-000000000012"/>
+            </line>
+
+            <!-- Recipient name -->
+            <textField isBlankWhenNull="true">
+                <reportElement x="0" y="30" width="255" height="16" uuid="3b241101-0000-4000-8000-000000000013"/>
+                <textElement verticalAlignment="Middle">
+                    <font size="10" isBold="true"/>
+                </textElement>
+                <textFieldExpression><![CDATA[$P{RECIPIENT_NAME}]]></textFieldExpression>
+            </textField>
+
+            <!-- Address Line 1 -->
+            <textField isBlankWhenNull="true">
+                <reportElement x="0" y="47" width="255" height="14" uuid="3b241101-0000-4000-8000-000000000014"/>
+                <textElement verticalAlignment="Middle">
+                    <font size="9"/>
+                </textElement>
+                <textFieldExpression><![CDATA[$P{ADDRESS_LINE1}]]></textFieldExpression>
+            </textField>
+
+            <!-- Township, City -->
+            <textField isBlankWhenNull="true">
+                <reportElement x="0" y="62" width="255" height="14" uuid="3b241101-0000-4000-8000-000000000015"/>
+                <textElement verticalAlignment="Middle">
+                    <font size="9"/>
+                </textElement>
+                <textFieldExpression><![CDATA[$P{TOWNSHIP_CITY}]]></textFieldExpression>
+            </textField>
+
+            <!-- Region / State -->
+            <textField isBlankWhenNull="true">
+                <reportElement x="0" y="77" width="255" height="14" uuid="3b241101-0000-4000-8000-000000000016"/>
+                <textElement verticalAlignment="Middle">
+                    <font size="9"/>
+                </textElement>
+                <textFieldExpression><![CDATA[$P{REGION_STATE}]]></textFieldExpression>
+            </textField>
+
+            <!-- Phone -->
+            <textField isBlankWhenNull="true">
+                <reportElement x="0" y="92" width="255" height="14" uuid="3b241101-0000-4000-8000-000000000017"/>
+                <textElement verticalAlignment="Middle">
+                    <font size="9"/>
+                </textElement>
+                <textFieldExpression><![CDATA["Phone: " + ($P{RECIPIENT_PHONE} != null ? $P{RECIPIENT_PHONE} : "")]]></textFieldExpression>
+            </textField>
+
+            <!-- ═══ RIGHT: PAYMENT DETAILS ══════════ -->
+            <staticText>
+                <reportElement x="275" y="10" width="260" height="12"
+                               forecolor="#64748B" uuid="3b241101-0000-4000-8000-000000000018"/>
+                <textElement>
+                    <font size="8" isBold="true"/>
+                </textElement>
+                <text><![CDATA[PAYMENT DETAILS]]></text>
+            </staticText>
+            <line>
+                <reportElement x="275" y="24" width="260" height="1"
+                               forecolor="#E2E8F0" uuid="3b241101-0000-4000-8000-000000000019"/>
+            </line>
+
+            <!-- Method label -->
+            <staticText>
+                <reportElement x="275" y="30" width="90" height="14"
+                               forecolor="#94A3B8" uuid="3b241101-0000-4000-8000-000000000020"/>
+                <textElement verticalAlignment="Middle">
+                    <font size="9"/>
+                </textElement>
+                <text><![CDATA[Method:]]></text>
+            </staticText>
+            <!-- Method value -->
+            <textField isBlankWhenNull="true">
+                <reportElement x="365" y="30" width="170" height="14" uuid="3b241101-0000-4000-8000-000000000021"/>
+                <textElement textAlignment="Right" verticalAlignment="Middle">
+                    <font size="9" isBold="true"/>
+                </textElement>
+                <textFieldExpression><![CDATA[$P{PAYMENT_METHOD}]]></textFieldExpression>
+            </textField>
+
+            <!-- Status label -->
+            <staticText>
+                <reportElement x="275" y="47" width="90" height="16"
+                               forecolor="#94A3B8" uuid="3b241101-0000-4000-8000-000000000022"/>
+                <textElement verticalAlignment="Middle">
+                    <font size="9"/>
+                </textElement>
+                <text><![CDATA[Status:]]></text>
+            </staticText>
+            <!-- Status badge background -->
+            <rectangle radius="8">
+                <reportElement x="380" y="47" width="70" height="16"
+                               backcolor="#DCFCE7" forecolor="#DCFCE7" uuid="3b241101-0000-4000-8000-000000000023"/>
+                <graphicElement><pen lineWidth="0"/></graphicElement>
+            </rectangle>
+            <!-- Status text -->
+            <textField isBlankWhenNull="true">
+                <reportElement x="380" y="47" width="70" height="16"
+                               forecolor="#16A34A" uuid="3b241101-0000-4000-8000-000000000024"/>
+                <textElement textAlignment="Center" verticalAlignment="Middle">
+                    <font size="8" isBold="true"/>
+                </textElement>
+                <textFieldExpression><![CDATA[$P{PAYMENT_STATUS}]]></textFieldExpression>
+            </textField>
+
+            <!-- Reference label -->
+            <staticText>
+                <reportElement x="275" y="67" width="90" height="14"
+                               forecolor="#94A3B8" uuid="3b241101-0000-4000-8000-000000000025"/>
+                <textElement verticalAlignment="Middle">
+                    <font size="9"/>
+                </textElement>
+                <text><![CDATA[Reference:]]></text>
+            </staticText>
+            <!-- Reference value -->
+            <textField isBlankWhenNull="true">
+                <reportElement x="275" y="67" width="260" height="14"
+                               uuid="3b241101-0000-4000-8000-000000000026"/>
+                <textElement textAlignment="Right" verticalAlignment="Middle">
+                    <font size="8"/>
+                </textElement>
+                <textFieldExpression><![CDATA[$P{TRANSACTION_REF}]]></textFieldExpression>
+            </textField>
+
+            <!-- Date Paid label -->
+            <staticText>
+                <reportElement x="275" y="84" width="90" height="14"
+                               forecolor="#94A3B8" uuid="3b241101-0000-4000-8000-000000000027"/>
+                <textElement verticalAlignment="Middle">
+                    <font size="9"/>
+                </textElement>
+                <text><![CDATA[Date Paid:]]></text>
+            </staticText>
+            <!-- Date Paid value -->
+            <textField isBlankWhenNull="true">
+                <reportElement x="275" y="84" width="260" height="14" uuid="3b241101-0000-4000-8000-000000000028"/>
+                <textElement textAlignment="Right" verticalAlignment="Middle">
+                    <font size="9" isBold="true"/>
+                </textElement>
+                <textFieldExpression><![CDATA[$P{PAID_AT_STR}]]></textFieldExpression>
+            </textField>
+
+            <!-- ── Section divider ───────────────────────────────── -->
+            <line>
+                <reportElement x="0" y="115" width="535" height="1"
+                               forecolor="#E2E8F0" uuid="3b241101-0000-4000-8000-000000000029"/>
+            </line>
+
+            <!-- ── PURCHASED ITEMS label ─────────────────────────── -->
+            <staticText>
+                <reportElement x="0" y="125" width="535" height="14"
+                               forecolor="#64748B" uuid="3b241101-0000-4000-8000-000000000030"/>
+                <textElement verticalAlignment="Middle">
+                    <font size="8" isBold="true"/>
+                </textElement>
+                <text><![CDATA[PURCHASED ITEMS]]></text>
+            </staticText>
+
+            <!-- ── Table Column headers ──────────────────────────── -->
+            <staticText>
+                <reportElement x="0" y="145" width="380" height="14"
+                               forecolor="#94A3B8" uuid="3b241101-0000-4000-8000-000000000031"/>
+                <textElement verticalAlignment="Middle">
+                    <font size="9"/>
+                </textElement>
+                <text><![CDATA[Item]]></text>
+            </staticText>
+            <staticText>
+                <reportElement x="380" y="145" width="40" height="14"
+                               forecolor="#94A3B8" uuid="3b241101-0000-4000-8000-000000000032"/>
+                <textElement textAlignment="Center" verticalAlignment="Middle">
+                    <font size="9"/>
+                </textElement>
+                <text><![CDATA[Qty]]></text>
+            </staticText>
+            <staticText>
+                <reportElement x="420" y="145" width="55" height="14"
+                               forecolor="#94A3B8" uuid="3b241101-0000-4000-8000-000000000033"/>
+                <textElement textAlignment="Right" verticalAlignment="Middle">
+                    <font size="9"/>
+                </textElement>
+                <text><![CDATA[Price]]></text>
+            </staticText>
+            <staticText>
+                <reportElement x="475" y="145" width="60" height="14"
+                               forecolor="#94A3B8" uuid="3b241101-0000-4000-8000-000000000034"/>
+                <textElement textAlignment="Right" verticalAlignment="Middle">
+                    <font size="9"/>
+                </textElement>
+                <text><![CDATA[Total]]></text>
+            </staticText>
+
+            <line>
+                <reportElement x="0" y="162" width="535" height="1"
+                               forecolor="#E2E8F0" uuid="3b241101-0000-4000-8000-000000000035"/>
+            </line>
+
+        </band>
+    </pageHeader>
+
+    <!-- ================================================================
+         DETAIL BAND  (Repeats for each purchased line item)
+         ================================================================ -->
+    <detail>
+        <band height="30" splitType="Stretch">
+
+            <!-- Item Name -->
+            <textField isBlankWhenNull="true" textAdjust="StretchHeight">
+                <reportElement x="0" y="6" width="380" height="14" uuid="3b241101-0000-4000-8000-000000000036"/>
+                <textElement verticalAlignment="Middle">
+                    <font size="9" isBold="true"/>
+                </textElement>
+                <textFieldExpression><![CDATA[$F{productName} != null ? $F{productName} : ""]]></textFieldExpression>
+            </textField>
+
+            <!-- Qty -->
+            <textField isBlankWhenNull="true">
+                <reportElement x="380" y="6" width="40" height="14" uuid="3b241101-0000-4000-8000-000000000037"/>
+                <textElement textAlignment="Center" verticalAlignment="Middle">
+                    <font size="9"/>
+                </textElement>
+                <textFieldExpression><![CDATA[$F{qty} != null ? String.valueOf($F{qty}) : "0"]]></textFieldExpression>
+            </textField>
+
+            <!-- Price -->
+            <textField isBlankWhenNull="true">
+                <reportElement x="420" y="6" width="55" height="14" uuid="3b241101-0000-4000-8000-000000000038"/>
+                <textElement textAlignment="Right" verticalAlignment="Middle">
+                    <font size="9"/>
+                </textElement>
+                <textFieldExpression>
+                    <![CDATA[new java.text.DecimalFormat("#,##0").format(
+                        $F{unitPrice} != null ? $F{unitPrice} : java.math.BigDecimal.ZERO) + " MMK"]]>
+                </textFieldExpression>
+            </textField>
+
+            <!-- Total -->
+            <textField isBlankWhenNull="true">
+                <reportElement x="475" y="6" width="60" height="14" uuid="3b241101-0000-4000-8000-000000000039"/>
+                <textElement textAlignment="Right" verticalAlignment="Middle">
+                    <font size="9" isBold="true"/>
+                </textElement>
+                <textFieldExpression>
+                    <![CDATA[new java.text.DecimalFormat("#,##0").format(
+                        $F{subtotal} != null ? $F{subtotal} : java.math.BigDecimal.ZERO) + " MMK"]]>
+                </textFieldExpression>
+            </textField>
+
+            <!-- Row divider line -->
+            <line>
+                <reportElement x="0" y="26" width="535" height="1"
+                               forecolor="#F1F5F9" uuid="3b241101-0000-4000-8000-000000000040"/>
+            </line>
+
+        </band>
+    </detail>
+
+    <!-- ================================================================
+         PAGE FOOTER  (Page number)
+         ================================================================ -->
+    <pageFooter>
+        <band height="15">
+            <textField evaluationTime="Report">
+                <reportElement x="0" y="2" width="535" height="10"
+                               forecolor="#CBD5E1" uuid="3b241101-0000-4000-8000-000000000047"/>
+                <textElement textAlignment="Right">
+                    <font size="7"/>
+                </textElement>
+                <textFieldExpression><![CDATA["Page " + $V{PAGE_NUMBER}]]></textFieldExpression>
+            </textField>
+        </band>
+    </pageFooter>
+
+    <!-- ================================================================
+         SUMMARY BAND  (Subtotal, Shipping Fee, FINAL TOTAL, Footer Note)
+         ================================================================ -->
+    <summary>
+        <band height="140" splitType="Stretch">
+
+            <!-- Top separator -->
+            <line>
+                <reportElement x="280" y="5" width="255" height="1"
+                               forecolor="#E2E8F0" uuid="3b241101-0000-4000-8000-000000000041"/>
+            </line>
+
+            <!-- Subtotal -->
+            <staticText>
+                <reportElement x="280" y="12" width="155" height="14"
+                               forecolor="#7B9CC4" uuid="3b241101-0000-4000-8000-000000000042"/>
+                <textElement textAlignment="Right" verticalAlignment="Middle">
+                    <font size="9"/>
+                </textElement>
+                <text><![CDATA[Subtotal]]></text>
+            </staticText>
+            <textField isBlankWhenNull="true">
+                <reportElement x="435" y="12" width="100" height="14" uuid="3b241101-0000-4000-8000-000000000043"/>
+                <textElement textAlignment="Right" verticalAlignment="Middle">
+                    <font size="9" isBold="true"/>
+                </textElement>
+                <textFieldExpression>
+                    <![CDATA[new java.text.DecimalFormat("#,##0").format(
+                        $P{SUBTOTAL_AMOUNT} != null ? $P{SUBTOTAL_AMOUNT} : java.math.BigDecimal.ZERO) + " MMK"]]>
+                </textFieldExpression>
+            </textField>
+
+            <!-- Shipping Fee -->
+            <staticText>
+                <reportElement x="280" y="30" width="155" height="14"
+                               forecolor="#7B9CC4" uuid="3b241101-0000-4000-8000-000000000044"/>
+                <textElement textAlignment="Right" verticalAlignment="Middle">
+                    <font size="9"/>
+                </textElement>
+                <text><![CDATA[Shipping Fee]]></text>
+            </staticText>
+            <textField isBlankWhenNull="true">
+                <reportElement x="435" y="30" width="100" height="14" uuid="3b241101-0000-4000-8000-000000000045"/>
+                <textElement textAlignment="Right" verticalAlignment="Middle">
+                    <font size="9" isBold="true"/>
+                </textElement>
+                <textFieldExpression>
+                    <![CDATA[new java.text.DecimalFormat("#,##0").format(
+                        $P{SHIPPING_FEE} != null ? $P{SHIPPING_FEE} : java.math.BigDecimal.ZERO) + " MMK"]]>
+                </textFieldExpression>
+            </textField>
+
+            <!-- Divider before FINAL TOTAL -->
+            <line>
+                <reportElement x="280" y="48" width="255" height="1"
+                               forecolor="#334155" uuid="3b241101-0000-4000-8000-000000000046"/>
+            </line>
+
+            <!-- FINAL TOTAL -->
+            <staticText>
+                <reportElement x="280" y="55" width="155" height="18" uuid="3b241101-0000-4000-8000-000000000048"/>
+                <textElement textAlignment="Right" verticalAlignment="Middle">
+                    <font size="11" isBold="true"/>
+                </textElement>
+                <text><![CDATA[FINAL TOTAL]]></text>
+            </staticText>
+            <textField isBlankWhenNull="true">
+                <reportElement x="435" y="55" width="100" height="18" uuid="3b241101-0000-4000-8000-000000000049"/>
+                <textElement textAlignment="Right" verticalAlignment="Middle">
+                    <font size="11" isBold="true"/>
+                </textElement>
+                <textFieldExpression>
+                    <![CDATA[new java.text.DecimalFormat("#,##0").format(
+                        $P{TOTAL_AMOUNT} != null ? $P{TOTAL_AMOUNT} : java.math.BigDecimal.ZERO) + " MMK"]]>
+                </textFieldExpression>
+            </textField>
+
+            <!-- Footer text -->
+            <staticText>
+                <reportElement x="0" y="95" width="535" height="14"
+                               forecolor="#5B8DB8" uuid="3b241101-0000-4000-8000-000000000050"/>
+                <textElement textAlignment="Center">
+                    <font size="8" isItalic="true"/>
+                </textElement>
+                <text><![CDATA[Thank you for shopping at 6Sync.]]></text>
+            </staticText>
+            <staticText>
+                <reportElement x="0" y="110" width="535" height="14"
+                               forecolor="#5B8DB8" uuid="3b241101-0000-4000-8000-000000000051"/>
+                <textElement textAlignment="Center">
+                    <font size="8" isItalic="true"/>
+                </textElement>
+                <text><![CDATA[If you have any questions, please contact our support.]]></text>
+            </staticText>
+
+        </band>
+    </summary>
+
+</jasperReport>

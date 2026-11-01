@@ -19,6 +19,9 @@ public interface VariantOptionValueRepository extends JpaRepository<VariantOptio
     // Find all options assigned to a specific variant
     List<VariantOptionValue> findByVariant_VariantId(Long variantId);
 
+    // Find all options assigned to multiple variants
+    List<VariantOptionValue> findByVariant_VariantIdIn(List<Long> variantIds);
+
     // Find all variants that use a specific option
     List<VariantOptionValue> findByOption_OptionId(Long optionId);
 }

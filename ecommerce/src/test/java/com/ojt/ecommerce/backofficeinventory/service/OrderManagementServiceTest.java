@@ -30,6 +30,8 @@ import com.ojt.ecommerce.backofficeinventory.dto.OrderStatusUpdateRequestDto;
 import com.ojt.ecommerce.backofficeinventory.dto.PaginatedResponseDto;
 import com.ojt.ecommerce.backofficeinventory.mapper.OrderMapper;
 import com.ojt.ecommerce.backofficeinventory.repository.OrderRepository;
+import com.ojt.ecommerce.backofficeinventory.service.InventoryService;
+import com.ojt.ecommerce.backofficeinventory.service.InventoryService;
 import com.ojt.ecommerce.backofficeinventory.repository.OrderStatusHistoryRepository;
 import com.ojt.ecommerce.backofficeinventory.security.CustomUserDetails;
 import com.ojt.ecommerce.entity.Order;
@@ -46,6 +48,8 @@ public class OrderManagementServiceTest {
 	private OrderStatusHistoryRepository orderStatusHistoryRepository;
 	@Mock
 	private OrderMapper orderMapper;
+	@Mock
+	private InventoryService inventoryService;
 	@InjectMocks
 	private OrderManagementService orderManagementService;
 

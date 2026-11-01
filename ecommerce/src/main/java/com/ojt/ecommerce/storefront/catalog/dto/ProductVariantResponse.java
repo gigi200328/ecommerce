@@ -2,6 +2,7 @@ package com.ojt.ecommerce.storefront.catalog.dto;
 import lombok.Builder;
 import lombok.Data;
 import java.math.BigDecimal;
+import java.time.LocalDate;
 import java.util.List;
 @Data @Builder public class ProductVariantResponse {
     private Long variantId;
@@ -12,4 +13,6 @@ import java.util.List;
     private Integer availableQuantity;
     private String stockStatus;
     private List<VariantOptionResponse> options;
+    private LocalDate expiryDate;
+    private List<ProductVariantImageResponse> images;
 }

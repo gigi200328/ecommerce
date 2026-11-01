@@ -5,6 +5,7 @@ import com.ojt.ecommerce.enums.BrandStatus;
 import com.ojt.ecommerce.storefront.exception.ResourceNotFoundException;
 import com.ojt.ecommerce.storefront.catalog.dto.*;
 import com.ojt.ecommerce.storefront.catalog.repository.*;
+import com.ojt.ecommerce.storefront.catalog.repository.G5ProductVariantImageRepository;
 import lombok.RequiredArgsConstructor;
 import org.springframework.data.domain.Page;
 import org.springframework.data.domain.PageRequest;
@@ -13,9 +14,11 @@ import org.springframework.data.domain.Sort;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
+
 import java.math.BigDecimal;
 import java.util.*;
 import java.util.stream.Collectors;
+import java.time.LocalDate;
 
 @Service
 @RequiredArgsConstructor
@@ -27,11 +30,13 @@ public class CatalogServiceImpl implements CatalogService {
     private final G5ProductRepository productRepository;
     private final G5ProductVariantRepository variantRepository;
     private final G5ProductImageRepository imageRepository;
+    private final G5ProductVariantImageRepository variantImageRepository;
     private final G5InventoryRepository inventoryRepository;
     private final G5VariantOptionValueRepository variantOptionValueRepository;
     private final G5ProductTagRepository productTagRepository;
     private final com.ojt.ecommerce.storefront.searchhistory.service.SearchHistoryService searchHistoryService;
     private final com.ojt.ecommerce.storefront.searchhistory.repository.SearchKeywordStatsRepository searchKeywordStatsRepository;
+ 
 
     @Override
     @Transactional(readOnly = true)
@@ -343,95 +348,333 @@ public class CatalogServiceImpl implements CatalogService {
                 .build();
     }
 
-    @Override
-    @Transactional(readOnly = true)
-    public ProductDetailResponse getProductDetail(Long productId) {
-        Product product = productRepository.findById(productId)
-                .orElseThrow(() -> new ResourceNotFoundException("Product not found"));
 
-        if (!"ACTIVE".equals(product.getStatus().name())) {
-            throw new ResourceNotFoundException("Product not active");
-        }
+@Override
+@Transactional(readOnly = true)
+public ProductDetailResponse getProductDetail(Long productId) {
 
-        BrandResponse brandResp = null;
-        if (product.getBrand() != null) {
-            brandResp = BrandResponse.builder()
-                    .brandId(product.getBrand().getBrandId())
-                    .brandName(product.getBrand().getBrandName())
-                    .brandLogoUrl(product.getBrand().getBrandLogoUrl())
-                    .build();
-        }
+    // =========================
+    // 1. GET PRODUCT
+    // =========================
 
-        List<ProductImage> images = imageRepository.findByProductProductId(productId);
-        List<ProductImageResponse> imageResponses = images.stream().map(img -> 
-            ProductImageResponse.builder()
-                .imageId(img.getImageId())
-                .imageUrl(img.getImageUrl())
-                .isPrimary(Boolean.TRUE.equals(img.getIsPrimary()))
-                .build()
-        ).collect(Collectors.toList());
+    Product product = productRepository.findById(productId)
+            .orElseThrow(() ->
+                    new ResourceNotFoundException("Product not found")
+            );
 
-        List<ProductVariant> variants = variantRepository.findByProductProductId(productId);
-        List<Long> variantIds = variants.stream().map(ProductVariant::getVariantId).collect(Collectors.toList());
+    if (!"ACTIVE".equals(product.getStatus().name())) {
+        throw new ResourceNotFoundException("Product not active");
+    }
 
-        Map<Long, Integer> inventoryMap = new HashMap<>();
-        if (!variantIds.isEmpty()) {
-            List<Inventory> inventories = inventoryRepository.findByVariantVariantIdIn(variantIds);
-            for (Inventory inv : inventories) {
-                inventoryMap.put(inv.getVariant().getVariantId(), inv.getQuantity());
-            }
-        }
+    // =========================
+    // 2. BRAND
+    // =========================
 
-        Map<Long, List<VariantOptionValue>> optionsMap = new HashMap<>();
-        if (!variantIds.isEmpty()) {
-            List<VariantOptionValue> options = variantOptionValueRepository.findByVariantVariantIdIn(variantIds);
-            for (VariantOptionValue opt : options) {
-                optionsMap.computeIfAbsent(opt.getVariant().getVariantId(), k -> new ArrayList<>()).add(opt);
-            }
-        }
+    BrandResponse brandResp = null;
 
-        List<ProductVariantResponse> variantResponses = variants.stream()
-                .filter(v -> "ACTIVE".equals(v.getStatus().name()))
-                .map(v -> {
-            int qty = inventoryMap.getOrDefault(v.getVariantId(), 0);
-            String stockStatus = qty > 0 ? "IN_STOCK" : "OUT_OF_STOCK";
+    if (product.getBrand() != null) {
 
-            List<VariantOptionValue> vOpts = optionsMap.getOrDefault(v.getVariantId(), Collections.emptyList());
-            List<VariantOptionResponse> optResponses = vOpts.stream().map(opt -> 
-                VariantOptionResponse.builder()
-                    .variationId(opt.getOption().getVariation().getVariationId())
-                    .variationName(opt.getOption().getVariation().getName())
-                    .optionId(opt.getOption().getOptionId())
-                    .value(opt.getOption().getValue())
-                    .build()
-            ).collect(Collectors.toList());
-
-            return ProductVariantResponse.builder()
-                    .variantId(v.getVariantId())
-                    .sku(v.getSku())
-                    .sellingPrice(v.getSellingPrice())
-                   // .discountPrice(v.getDiscountPrice())
-                    .status(v.getStatus().name())
-                    .availableQuantity(qty)
-                    .stockStatus(stockStatus)
-                    .options(optResponses)
-                    .build();
-        }).collect(Collectors.toList());
-        
-        List<ProductTag> productTags = productTagRepository.findByProductProductId(productId);
-        List<String> tags = productTags.stream().map(pt -> pt.getTag().getTagName()).collect(Collectors.toList());
-
-        return ProductDetailResponse.builder()
-                .productId(product.getProductId())
-                .productName(product.getProductName())
-                .description(product.getDescription())
-                .categoryId(product.getCategory() != null ? product.getCategory().getCategoryId() : null)
-                .categoryName(product.getCategory() != null ? product.getCategory().getCategoryName() : null)
-                .brand(brandResp)
-                .status(product.getStatus().name())
-                .images(imageResponses)
-                .variants(variantResponses)
-                .tags(tags)
+        brandResp = BrandResponse.builder()
+                .brandId(product.getBrand().getBrandId())
+                .brandName(product.getBrand().getBrandName())
+                .brandLogoUrl(product.getBrand().getBrandLogoUrl())
                 .build();
     }
+
+    // =========================
+    // 3. PRODUCT IMAGES
+    // =========================
+
+    List<ProductImage> images =
+            imageRepository.findByProductProductId(productId);
+
+    List<ProductImageResponse> imageResponses = new ArrayList<>();
+
+    for (ProductImage img : images) {
+
+        ProductImageResponse imageResponse =
+                ProductImageResponse.builder()
+                        .imageId(img.getImageId())
+                        .imageUrl(img.getImageUrl())
+                        .isPrimary(
+                                Boolean.TRUE.equals(img.getIsPrimary())
+                        )
+                        .build();
+
+        imageResponses.add(imageResponse);
+    }
+
+    // =========================
+    // 4. PRODUCT VARIANTS
+    // =========================
+
+    List<ProductVariant> variants =
+            variantRepository.findByProductProductId(productId);
+
+    List<Long> variantIds = new ArrayList<>();
+
+    for (ProductVariant variant : variants) {
+        variantIds.add(variant.getVariantId());
+    }
+    
+
+/* =========================
+   VARIANT IMAGES
+========================= */
+
+Map<Long, List<ProductVariantImage>> variantImagesMap =
+        new HashMap<>();
+
+if (!variantIds.isEmpty()) {
+
+    List<ProductVariantImage> variantImages =
+            variantImageRepository
+                    .findByProductVariantVariantIdIn(variantIds);
+
+    for (ProductVariantImage img : variantImages) {
+
+        Long variantId =
+                img.getProductVariant().getVariantId();
+
+        variantImagesMap
+                .computeIfAbsent(
+                        variantId,
+                        id -> new ArrayList<>()
+                )
+                .add(img);
+    }
+}
+
+
+    // =========================
+    // 5. INVENTORY + EXPIRY DATE
+    // =========================
+
+    Map<Long, Integer> inventoryMap = new HashMap<>();
+
+    Map<Long, LocalDate> expiryDateMap = new HashMap<>();
+
+    if (!variantIds.isEmpty()) {
+
+        List<Inventory> inventories =
+                inventoryRepository.findByVariantVariantIdIn(variantIds);
+
+        for (Inventory inv : inventories) {
+
+            Long variantId = inv.getVariant().getVariantId();
+
+            // Keep stock quantity for each variant
+            inventoryMap.merge(
+                    variantId,
+                    inv.getQuantity(),
+                    Integer::sum
+            );
+
+            // Expiry Date only for perishable products
+            if (Boolean.TRUE.equals(product.getIsPerishable())
+                    && Boolean.TRUE.equals(inv.getIsPerishable())
+                    && inv.getExpiryDate() != null
+                    && !inv.getExpiryDate().isBefore(LocalDate.now())
+                    && inv.getQuantity() > inv.getReservedQuantity()) {
+
+                // If multiple batches exist,
+                // select the earliest non-expired date
+                expiryDateMap.merge(
+                        variantId,
+                        inv.getExpiryDate(),
+                        (oldDate, newDate) ->
+                                oldDate.isBefore(newDate)
+                                        ? oldDate
+                                        : newDate
+                );
+            }
+        }
+    }
+
+    // =========================
+    // 6. VARIANT OPTIONS
+    // =========================
+
+    Map<Long, List<VariantOptionValue>> optionsMap =
+            new HashMap<>();
+
+    if (!variantIds.isEmpty()) {
+
+        List<VariantOptionValue> options =
+                variantOptionValueRepository
+                        .findByVariantVariantIdIn(variantIds);
+
+        for (VariantOptionValue opt : options) {
+
+            Long variantId = opt.getVariant().getVariantId();
+
+            optionsMap
+                    .computeIfAbsent(
+                            variantId,
+                            k -> new ArrayList<>()
+                    )
+                    .add(opt);
+        }
+    }
+
+    // =========================
+    // 7. BUILD VARIANT RESPONSES
+    // =========================
+
+    List<ProductVariantResponse> variantResponses =
+            new ArrayList<>();
+
+    for (ProductVariant v : variants) {
+
+        if (!"ACTIVE".equals(v.getStatus().name())) {
+            continue;
+        }
+
+        Long variantId = v.getVariantId();
+
+        int qty = inventoryMap.getOrDefault(variantId, 0);
+
+        String stockStatus = qty > 0
+                ? "IN_STOCK"
+                : "OUT_OF_STOCK";
+
+        List<VariantOptionValue> vOpts =
+                optionsMap.getOrDefault(
+                        variantId,
+                        Collections.emptyList()
+                );
+
+        List<VariantOptionResponse> optResponses =
+                new ArrayList<>();
+
+        for (VariantOptionValue opt : vOpts) {
+
+            VariantOptionResponse optionResponse =
+                    VariantOptionResponse.builder()
+                            .variationId(
+                                    opt.getOption()
+                                            .getVariation()
+                                            .getVariationId()
+                            )
+                            .variationName(
+                                    opt.getOption()
+                                            .getVariation()
+                                            .getName()
+                            )
+                            .optionId(
+                                    opt.getOption().getOptionId()
+                            )
+                            .value(
+                                    opt.getOption().getValue()
+                            )
+                            .build();
+
+            optResponses.add(optionResponse);
+        }
+
+        // Get expiry date for selected variant
+        LocalDate expiryDate = expiryDateMap.get(variantId);
+        
+
+List<ProductVariantImageResponse> variantImageResponses =
+        new ArrayList<>();
+
+List<ProductVariantImage> currentImages =
+        variantImagesMap.getOrDefault(
+                variantId,
+                Collections.emptyList()
+        );
+
+for (ProductVariantImage img : currentImages) {
+
+    ProductVariantImageResponse response =
+            ProductVariantImageResponse.builder()
+                    .imageId(img.getProductVariantImageId())
+                    .imageUrl(img.getImageUrl())
+                    .isPrimary(
+                            Boolean.TRUE.equals(img.getIsPrimary())
+                    )
+                    .build();
+
+    variantImageResponses.add(response);
+}
+
+variantImageResponses.sort(
+        Comparator.comparing(
+                ProductVariantImageResponse::getIsPrimary,
+                Comparator.nullsLast(
+                        Comparator.reverseOrder()
+                )
+        )
+);
+
+
+        ProductVariantResponse variantResponse =
+                ProductVariantResponse.builder()
+                        .variantId(variantId)
+                        .sku(v.getSku())
+                        .sellingPrice(v.getSellingPrice())
+
+                        // Keep your existing discount logic
+                        // .discountPrice(v.getDiscountPrice())
+
+                        .status(v.getStatus().name())
+                        .availableQuantity(qty)
+                        .stockStatus(stockStatus)
+                        .options(optResponses)
+
+                        // Expiry Date
+                        .expiryDate(expiryDate)
+
+                        // Variant-specific images
+                        .images(variantImageResponses)
+
+                        .build();
+
+        variantResponses.add(variantResponse);
+    }
+
+    // =========================
+    // 8. PRODUCT TAGS
+    // =========================
+
+    List<ProductTag> productTags =
+            productTagRepository.findByProductProductId(productId);
+
+    List<String> tags = new ArrayList<>();
+
+    for (ProductTag pt : productTags) {
+        tags.add(pt.getTag().getTagName());
+    }
+
+    // =========================
+    // 9. PRODUCT DETAIL RESPONSE
+    // =========================
+
+    return ProductDetailResponse.builder()
+            .productId(product.getProductId())
+            .productName(product.getProductName())
+            .description(product.getDescription())
+            .categoryId(
+                    product.getCategory() != null
+                            ? product.getCategory().getCategoryId()
+                            : null
+            )
+            .categoryName(
+                    product.getCategory() != null
+                            ? product.getCategory().getCategoryName()
+                            : null
+            )
+            .brand(brandResp)
+            .status(product.getStatus().name())
+            .images(imageResponses)
+            .variants(variantResponses)
+            .tags(tags)
+
+            // NEW: Perishable Status
+            .isPerishable(product.getIsPerishable())
+
+            .build();
+}
+
 }

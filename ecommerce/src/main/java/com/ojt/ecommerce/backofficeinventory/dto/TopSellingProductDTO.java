@@ -11,6 +11,8 @@ public interface TopSellingProductDTO {
     
     String getCategoryName();       // Maps to category_name
     
+    BigDecimal getUnitPrice();      // Maps to unit_price
+    
     Long getTotalQuantitySold();    // Maps to total_quantity_sold
     
     BigDecimal getTotalRevenue();   // Maps to total_revenue
