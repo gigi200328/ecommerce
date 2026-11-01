@@ -3,10 +3,12 @@ package com.ojt.ecommerce.backofficeinventory.controller;
 import com.ojt.ecommerce.backofficeinventory.dto.AuthRequestDto;
 import com.ojt.ecommerce.backofficeinventory.dto.AuthResponseDto;
 import com.ojt.ecommerce.backofficeinventory.dto.ChangePasswordRequest;
+import com.ojt.ecommerce.backofficeinventory.repository.UserRepository; // <--- Import အသစ်
 import com.ojt.ecommerce.backofficeinventory.security.CustomUserDetails;
 import com.ojt.ecommerce.backofficeinventory.security.JwtUtil;
 import com.ojt.ecommerce.backofficeinventory.service.StaffService;
-import jakarta.validation.Valid; // <--- @Valid ကို Import လုပ်ရန်
+import com.ojt.ecommerce.entity.User; // <--- Import အသစ်
+import jakarta.validation.Valid;
 import lombok.RequiredArgsConstructor;
 import org.springframework.http.ResponseEntity;
 import org.springframework.security.authentication.AuthenticationManager;
@@ -25,23 +27,28 @@ public class AuthController {
     private final AuthenticationManager authenticationManager;
     private final JwtUtil jwtUtil;
     private final StaffService staffService; 
+    private final UserRepository userRepository; // <--- အသစ်ထည့်ထားသည်
 
     @PostMapping("/login")
-    // အောက်ပါစာကြောင်းတွင် @RequestBody ရှေ့၌ @Valid ကို ထည့်ပေးထားပါသည်
     public ResponseEntity<AuthResponseDto> login(@Valid @RequestBody AuthRequestDto request) {
         Authentication authentication = authenticationManager.authenticate(
                 new UsernamePasswordAuthenticationToken(request.getEmail(), request.getPassword())
         );
 
         CustomUserDetails userDetails = (CustomUserDetails) authentication.getPrincipal();
+        User user = userDetails.getUser();
+
+        // --- Login ဝင်လိုက်တိုင်း Token Version ကို ၁ တိုးမည် ---
+        user.setTokenVersion((user.getTokenVersion() == null ? 1 : user.getTokenVersion()) + 1);
+        userRepository.save(user); // Database သို့ ပြန်သိမ်းမည်
 
         String token = jwtUtil.generateToken(userDetails);
 
         AuthResponseDto response = AuthResponseDto.builder()
                 .token(token)
-                .username(userDetails.getUser().getUserName())
-                .email(userDetails.getUser().getEmail()) 
-                .role(userDetails.getUser().getUserRole().getRoleName())
+                .username(user.getUserName())
+                .email(user.getEmail()) 
+                .role(user.getUserRole().getRoleName())
                 .build();
 
         return ResponseEntity.ok(response);

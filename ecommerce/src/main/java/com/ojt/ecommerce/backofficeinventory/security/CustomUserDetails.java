@@ -20,9 +20,13 @@ public class CustomUserDetails implements UserDetails {
         return user;
     }
 
+    // --- အသစ်ထပ်ထည့်ထားသော Method ---
+    public Integer getTokenVersion() {
+        return user.getTokenVersion() != null ? user.getTokenVersion() : 1;
+    }
+
     @Override
     public Collection<? extends GrantedAuthority> getAuthorities() {
-        // "ADMIN" သို့မဟုတ် "STAFF" ဆိုသည့် Role ကို Spring Security နားလည်အောင် "ROLE_ADMIN" ပုံစံဖြင့် ပြောင်းပေးခြင်း
         return Collections.singleton(new SimpleGrantedAuthority("ROLE_" + user.getUserRole().getRoleName()));
     }
 
@@ -33,7 +37,7 @@ public class CustomUserDetails implements UserDetails {
 
     @Override
     public String getUsername() {
-        return user.getEmail(); // Login ဝင်ရာတွင် Email ကို Username အဖြစ် အသုံးပြုမည်
+        return user.getEmail();
     }
 
     @Override
@@ -53,6 +57,6 @@ public class CustomUserDetails implements UserDetails {
 
     @Override
     public boolean isEnabled() {
-        return "ACTIVE".equalsIgnoreCase(user.getStatus()); // Status ACTIVE ဖြစ်မှသာ Login ပေးဝင်မည်
+        return "ACTIVE".equalsIgnoreCase(user.getStatus());
     }
 }
