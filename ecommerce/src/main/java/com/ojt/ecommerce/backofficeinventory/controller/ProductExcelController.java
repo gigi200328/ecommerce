@@ -30,7 +30,7 @@ public class ProductExcelController {
     private final ProductExcelService productExcelService;
 
     @Operation(summary = "Download Product Import Excel Template (.xlsx) with pre-filled category/brand dropdowns")
-    @GetMapping("/excel-template")
+    @GetMapping({"/excel-template", "/excel-template.xlsx"})
     public ResponseEntity<byte[]> downloadTemplate() throws IOException {
         byte[] excelBytes = productExcelService.generateExcelTemplate();
 
