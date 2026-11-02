@@ -38,6 +38,6 @@ build/
 # === Local Configuration Files (Added to protect passwords) 
 application-dev.properties
 src/main/resources/application-dev.properties
-
 uploads/
+
 
