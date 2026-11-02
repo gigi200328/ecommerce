@@ -1,10 +1,15 @@
 package com.ojt.ecommerce.backofficeinventory.repository;
 
 import com.ojt.ecommerce.entity.AuditLog;
+import org.springframework.data.domain.Page;
+import org.springframework.data.domain.Pageable;
 import org.springframework.data.jpa.repository.JpaRepository;
 import org.springframework.stereotype.Repository;
 
+import java.util.List;
+
 @Repository
 public interface AuditLogRepository extends JpaRepository<AuditLog, Long> {
-    // လိုအပ်ပါက အချိန်အလိုက်၊ User အလိုက် ရှာဖွေနိုင်သော query များ ဤနေရာတွင် ထပ်ရေးနိုင်ပါသည်
+    List<AuditLog> findAllByOrderByCreatedAtDesc();
+    Page<AuditLog> findAllByOrderByCreatedAtDesc(Pageable pageable);
 }

@@ -22,6 +22,9 @@ import com.ojt.ecommerce.backofficeinventory.dto.BrandResponseDto;
 import com.ojt.ecommerce.backofficeinventory.service.BrandService;
 import com.ojt.ecommerce.enums.BrandStatus;
 
+import com.ojt.ecommerce.annotation.Auditable;
+import com.ojt.ecommerce.entity.AuditAction;
+
 import jakarta.validation.Valid;
 import lombok.RequiredArgsConstructor;
 
@@ -34,6 +37,7 @@ public class BrandController {
 	private final BrandService brandService;
 
 	// 1. CREATE - JSON + Optional Logo
+	@Auditable(action = AuditAction.CREATE, moduleName = "Brand Management")
 	@PostMapping(consumes = MediaType.MULTIPART_FORM_DATA_VALUE)
 	public ResponseEntity<BrandResponseDto> createBrand(@Valid @RequestPart("request") BrandRequestDto request,
 
@@ -70,6 +74,7 @@ public class BrandController {
 	}
 
 	// 5. UPDATE - JSON + Optional New Logo
+	@Auditable(action = AuditAction.UPDATE, moduleName = "Brand Management")
 	@PutMapping(value = "/{id}", consumes = MediaType.MULTIPART_FORM_DATA_VALUE)
 	public ResponseEntity<BrandResponseDto> updateBrand(@PathVariable Long id,
 
@@ -81,6 +86,7 @@ public class BrandController {
 	}
 
 	// 6. DELETE
+	@Auditable(action = AuditAction.DELETE, moduleName = "Brand Management")
 	@DeleteMapping("/{id}")
 	public ResponseEntity<Void> deleteBrand(@PathVariable Long id) {
 

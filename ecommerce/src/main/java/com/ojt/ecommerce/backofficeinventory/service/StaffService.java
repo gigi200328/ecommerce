@@ -141,4 +141,19 @@ public class StaffService {
         
         userRepository.save(existingStaff);
     }
+ // Staff ID ဖြင့် တစ်ယောက်တည်းရှာရန် Method (အသစ်ထည့်ထားသည်)
+    @Transactional(readOnly = true)
+    public StaffResponseDTO getStaffById(Long id) {
+        User staff = userRepository.findById(id)
+                .orElseThrow(() -> new RuntimeException("Staff မတွေ့ရှိပါ။ ID: " + id));
+
+        return StaffResponseDTO.builder()
+                .userId(staff.getUserId())
+                .userName(staff.getUserName())
+                .email(staff.getEmail())
+                .roleName(staff.getUserRole() != null ? staff.getUserRole().getRoleName() : "N/A")
+                .status(staff.getStatus())
+                .createdAt(staff.getCreatedAt())
+                .build();
+    }
 }
