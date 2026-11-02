@@ -15,6 +15,7 @@ import org.springframework.web.bind.annotation.RequestMapping;
 import org.springframework.web.bind.annotation.RequestParam;
 import org.springframework.web.bind.annotation.RestController;
 
+import com.ojt.ecommerce.annotation.Auditable;
 import com.ojt.ecommerce.backofficeinventory.dto.OrderResponseDto;
 import com.ojt.ecommerce.backofficeinventory.dto.OrderStatusHistoryDto;
 import com.ojt.ecommerce.backofficeinventory.dto.OrderStatusUpdateRequestDto;
@@ -22,6 +23,7 @@ import com.ojt.ecommerce.backofficeinventory.dto.PaginatedResponseDto;
 import com.ojt.ecommerce.backofficeinventory.dto.PaymentVerificationDto;
 import com.ojt.ecommerce.backofficeinventory.dto.ShipmentRequestDto;
 import com.ojt.ecommerce.backofficeinventory.service.OrderManagementService;
+import com.ojt.ecommerce.entity.AuditAction;
 import com.ojt.ecommerce.enums.CourierName;
 
 // Audit Log အတွက် အသစ်ထည့်ထားသော Import များ
@@ -40,9 +42,16 @@ public class OrderManagementController {
 
 	@GetMapping
 	public ResponseEntity<PaginatedResponseDto<OrderResponseDto>> getOrders(
-			@RequestParam(value = "status", required = false) String status, @RequestParam(defaultValue = "0") int page,
-			@RequestParam(defaultValue = "10") int pageSize) {
-		PaginatedResponseDto<OrderResponseDto> orders = orderManagementService.getOrders(status, page, pageSize);
+			@RequestParam(value = "status", required = false) String status,
+			@RequestParam(value = "search", required = false) String search, // ⬅️ အသစ်
+			@RequestParam(value = "startDate", required = false) String startDate, // ⬅️ အသစ်
+			@RequestParam(value = "endDate", required = false) String endDate, // ⬅️ အသစ်
+			@RequestParam(defaultValue = "0") int page, @RequestParam(defaultValue = "10") int pageSize) {
+
+		// Service သို့ Parameter အားလုံး လွှဲပြောင်းပေးမည်
+		PaginatedResponseDto<OrderResponseDto> orders = orderManagementService.getOrders(status, search, startDate,
+				endDate, page, pageSize);
+
 		return ResponseEntity.ok(orders);
 	}
 
@@ -51,6 +60,7 @@ public class OrderManagementController {
 		OrderResponseDto orderDetail = orderManagementService.getOrderByOrderNo(orderNo);
 		return ResponseEntity.ok(orderDetail);
 	}
+
 
 	@Auditable(action = AuditAction.UPDATE, moduleName = "Order Management")
 	@PatchMapping("/{orderNo}/status")
