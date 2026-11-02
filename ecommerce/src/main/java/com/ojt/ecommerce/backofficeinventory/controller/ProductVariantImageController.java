@@ -51,8 +51,11 @@ public class ProductVariantImageController {
         ProductVariant variant = productVariantRepository.findById(variantId)
                 .orElseThrow(() -> new RuntimeException("Variant not found: " + variantId));
 
-        User user = userRepository.findById(userId)
-                .orElseThrow(() -> new RuntimeException("User not found: " + userId));
+        User user = (userId != null) ? userRepository.findById(userId).orElse(null) : null;
+        if (user == null) {
+            user = userRepository.findAll().stream().findFirst()
+                    .orElseThrow(() -> new RuntimeException("No user found in system"));
+        }
 
         String imageUrl = fileStorageService.store(file, UploadType.PRODUCT_IMAGE);
         LocalDateTime now = LocalDateTime.now();
@@ -60,7 +63,7 @@ public class ProductVariantImageController {
         ProductVariantImage pvi = ProductVariantImage.builder()
                 .productVariant(variant)
                 .imageUrl(imageUrl)
-                .isPrimary(isPrimary)
+                .isPrimary(Boolean.TRUE.equals(isPrimary))
                 .createdBy(user)
                 .createdAt(now)
                 .modifiedBy(user)
@@ -69,13 +72,12 @@ public class ProductVariantImageController {
 
         ProductVariantImage saved = productVariantImageRepository.save(pvi);
 
-        Map<String, Object> response = Map.of(
-                "productVariantImageId", saved.getProductVariantImageId(),
-                "variantId", variant.getVariantId(),
-                "imageUrl", saved.getImageUrl(),
-                "isPrimary", saved.getIsPrimary(),
-                "createdAt", saved.getCreatedAt().toString()
-        );
+        Map<String, Object> response = new java.util.HashMap<>();
+        response.put("productVariantImageId", saved.getProductVariantImageId());
+        response.put("variantId", variant.getVariantId());
+        response.put("imageUrl", saved.getImageUrl());
+        response.put("isPrimary", Boolean.TRUE.equals(saved.getIsPrimary()));
+        response.put("createdAt", saved.getCreatedAt() != null ? saved.getCreatedAt().toString() : "");
 
         return new ResponseEntity<>(response, HttpStatus.CREATED);
     }
@@ -85,11 +87,13 @@ public class ProductVariantImageController {
     public ResponseEntity<List<Map<String, Object>>> getImagesByVariantId(@PathVariable Long variantId) {
         List<ProductVariantImage> images = productVariantImageRepository.findByProductVariantVariantId(variantId);
         List<Map<String, Object>> result = images.stream()
-                .map(img -> Map.<String, Object>of(
-                        "productVariantImageId", img.getProductVariantImageId(),
-                        "imageUrl", img.getImageUrl(),
-                        "isPrimary", img.getIsPrimary()
-                ))
+                .map(img -> {
+                    Map<String, Object> map = new java.util.HashMap<>();
+                    map.put("productVariantImageId", img.getProductVariantImageId());
+                    map.put("imageUrl", img.getImageUrl());
+                    map.put("isPrimary", Boolean.TRUE.equals(img.getIsPrimary()));
+                    return map;
+                })
                 .toList();
         return ResponseEntity.ok(result);
     }
