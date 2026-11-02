@@ -20,6 +20,10 @@ import com.ojt.ecommerce.backofficeinventory.dto.StockAdjustmentRequestDto;
 import com.ojt.ecommerce.backofficeinventory.dto.WriteOffRequestDto;
 import com.ojt.ecommerce.backofficeinventory.service.InventoryService;
 
+// Audit Log အတွက် အသစ်ထည့်ထားသော Import များ
+import com.ojt.ecommerce.annotation.Auditable;
+import com.ojt.ecommerce.entity.AuditAction;
+
 import io.swagger.v3.oas.annotations.Operation;
 import io.swagger.v3.oas.annotations.media.Content;
 import io.swagger.v3.oas.annotations.media.ExampleObject;
@@ -77,6 +81,7 @@ public class InventoryController {
     }
 
     // INITIALIZE INVENTORY
+    @Auditable(action = AuditAction.CREATE, moduleName = "Inventory Management")
     @Operation(summary = "Initialize inventory tracking for a variant", description = "Sets initial stock level and reorder threshold for a product variant.")
     @ApiResponses({
         @ApiResponse(responseCode = "201", description = "Inventory tracking initialized successfully"),
@@ -90,6 +95,7 @@ public class InventoryController {
     }
 
     // RESTOCK
+    @Auditable(action = AuditAction.UPDATE, moduleName = "Inventory Management")
     @Operation(summary = "Restock inventory", description = "Adds new units to inventory, updates stock status, and logs a RESTOCK transaction in audit history.")
     @ApiResponses({
         @ApiResponse(responseCode = "200", description = "Inventory restocked successfully",
@@ -117,6 +123,7 @@ public class InventoryController {
     }
 
     // WRITE-OFF
+    @Auditable(action = AuditAction.UPDATE, moduleName = "Inventory Management")
     @Operation(summary = "Write off damaged or expired stock", description = "Deducts stock units due to damage, expiration, or loss, updates status, and logs a WRITE_OFF transaction.")
     @ApiResponses({
         @ApiResponse(responseCode = "200", description = "Write-off processed successfully"),
@@ -130,6 +137,7 @@ public class InventoryController {
     }
 
     // STOCK ADJUSTMENT
+    @Auditable(action = AuditAction.UPDATE, moduleName = "Inventory Management")
     @Operation(summary = "Adjust stock quantity", description = "Updates stock to match physical inventory count after audit and logs an ADJUSTMENT transaction.")
     @ApiResponses({
         @ApiResponse(responseCode = "200", description = "Stock adjusted successfully"),

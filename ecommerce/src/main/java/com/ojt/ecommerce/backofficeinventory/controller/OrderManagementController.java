@@ -24,6 +24,10 @@ import com.ojt.ecommerce.backofficeinventory.dto.ShipmentRequestDto;
 import com.ojt.ecommerce.backofficeinventory.service.OrderManagementService;
 import com.ojt.ecommerce.enums.CourierName;
 
+// Audit Log အတွက် အသစ်ထည့်ထားသော Import များ
+import com.ojt.ecommerce.annotation.Auditable;
+import com.ojt.ecommerce.entity.AuditAction;
+
 import jakarta.validation.Valid;
 import lombok.RequiredArgsConstructor;
 
@@ -48,6 +52,7 @@ public class OrderManagementController {
 		return ResponseEntity.ok(orderDetail);
 	}
 
+	@Auditable(action = AuditAction.UPDATE, moduleName = "Order Management")
 	@PatchMapping("/{orderNo}/status")
 	public ResponseEntity<OrderResponseDto> updateOrderStatus(@PathVariable String orderNo,
 			@Valid @RequestBody OrderStatusUpdateRequestDto requestDto) {
@@ -71,6 +76,7 @@ public class OrderManagementController {
 		return ResponseEntity.ok(courierList);
 	}
 
+	@Auditable(action = AuditAction.CREATE, moduleName = "Order Management")
 	@PostMapping("/{orderNo}/shipments")
 	public ResponseEntity<?> createShipment(@PathVariable String orderNo, @RequestBody ShipmentRequestDto requestDto) {
 		// Service ကို လှမ်းခေါ်မည်

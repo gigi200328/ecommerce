@@ -14,6 +14,10 @@ import org.springframework.web.bind.annotation.RestController;
 import com.ojt.ecommerce.backofficeinventory.service.VariantOptionValueService;
 import com.ojt.ecommerce.entity.VariantOptionValue;
 
+// Audit Log အတွက် အသစ်ထည့်ထားသော Import များ
+import com.ojt.ecommerce.annotation.Auditable;
+import com.ojt.ecommerce.entity.AuditAction;
+
 import io.swagger.v3.oas.annotations.Operation;
 import io.swagger.v3.oas.annotations.media.Content;
 import io.swagger.v3.oas.annotations.media.ExampleObject;
@@ -32,6 +36,7 @@ public class VariantOptionValueController {
     private final VariantOptionValueService variantOptionValueService;
 
     // CREATE
+    @Auditable(action = AuditAction.CREATE, moduleName = "Variant Management")
     @Operation(
         summary = "Assign a variation option to a product variant",
         description = "Creates a mapping between a Product Variant and a Variation Option. Duplicate combinations are prevented."
@@ -288,6 +293,7 @@ public class VariantOptionValueController {
     }
 
     // UPDATE
+    @Auditable(action = AuditAction.UPDATE, moduleName = "Variant Management")
     @Operation(
         summary = "Update an existing mapping",
         description = "Updates an existing variant-option mapping record while checking against duplicate combinations."
@@ -352,6 +358,7 @@ public class VariantOptionValueController {
     }
 
     // DELETE
+    @Auditable(action = AuditAction.DELETE, moduleName = "Variant Management")
     @Operation(
         summary = "Delete mapping by ID",
         description = "Deletes a variant-option mapping record by its primary key ID."

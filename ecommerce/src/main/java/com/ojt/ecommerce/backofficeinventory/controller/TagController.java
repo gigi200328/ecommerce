@@ -4,6 +4,10 @@ import com.ojt.ecommerce.backofficeinventory.dto.TagRequestDto;
 import com.ojt.ecommerce.backofficeinventory.dto.TagResponseDto;
 import com.ojt.ecommerce.backofficeinventory.service.TagService;
 
+// Audit Log အတွက် အသစ်ထည့်ထားသော Import များ
+import com.ojt.ecommerce.annotation.Auditable;
+import com.ojt.ecommerce.entity.AuditAction;
+
 import jakarta.validation.Valid;
 
 import lombok.RequiredArgsConstructor;
@@ -27,6 +31,7 @@ public class TagController {
     /**
      * Create tag.
      */
+    @Auditable(action = AuditAction.CREATE, moduleName = "Tag Management")
     @PostMapping
     public ResponseEntity<TagResponseDto> createTag(
             @Valid @RequestBody TagRequestDto request
@@ -82,6 +87,7 @@ public class TagController {
     /**
      * Update tag.
      */
+    @Auditable(action = AuditAction.UPDATE, moduleName = "Tag Management")
     @PutMapping("/{id}")
     public ResponseEntity<TagResponseDto> updateTag(
             @PathVariable Long id,
@@ -99,6 +105,7 @@ public class TagController {
     /**
      * Delete tag.
      */
+    @Auditable(action = AuditAction.DELETE, moduleName = "Tag Management")
     @DeleteMapping("/{id}")
     public ResponseEntity<Void> deleteTag(
             @PathVariable Long id
