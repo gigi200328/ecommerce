@@ -53,7 +53,7 @@ public class OrderMapper {
 		if (item == null)
 			return null;
 		return OrderItemDto.builder().orderItemId(item.getOrderItemId()).productName(item.getProductName())
-				.qty(item.getQty()).unitPrice(item.getUnitPrice()).discountAmount(item.getDiscountAmount())
+				.qty(item.getQty()).unitPrice(item.getUnitPrice()).costPrice(item.getCostPrice())
 				.subtotal(item.getSubtotal())
 				.variantId(item.getVariant() != null ? item.getVariant().getVariantId() : null)
 				.variantAttributes(item.getVariantAttributes()).build();
