@@ -19,4 +19,9 @@ public interface VariationOptionRepository
             Long variationId,
             String value
     );
+
+    java.util.Optional<VariationOption> findByVariation_VariationIdAndValueIgnoreCase(
+            Long variationId,
+            String value
+    );
 }

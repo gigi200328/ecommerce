@@ -45,4 +45,9 @@ public class User {
     @ManyToOne(fetch = FetchType.LAZY, optional = false)
     @JoinColumn(name = "user_role", referencedColumnName = "role_id", nullable = false, foreignKey = @ForeignKey(name = "fk_users_user_role1"))
     private Role userRole;
+
+    // --- အသစ်ထပ်ထည့်ထားသော Token Version ကော်လံ ---
+    @Column(name = "token_version")
+    @Builder.Default
+    private Integer tokenVersion = 1;
 }

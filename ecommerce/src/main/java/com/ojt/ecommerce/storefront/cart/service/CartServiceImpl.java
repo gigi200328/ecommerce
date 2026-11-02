@@ -26,6 +26,7 @@ public class CartServiceImpl implements CartService {
     private final CustomerRepository customerRepository;
     private final G5ProductVariantRepository variantRepository;
     private final G5ProductImageRepository imageRepository;
+    private final G5ProductVariantImageRepository variantImageRepository;
     private final G5InventoryRepository inventoryRepository;
     private final G5VariantOptionValueRepository optionValueRepository;
 
@@ -129,9 +130,21 @@ public class CartServiceImpl implements CartService {
         Map<Long, Integer> inventoryMap = inventoryRepository.findByVariantVariantIdIn(variantIds).stream()
                 .collect(Collectors.toMap(i -> i.getVariant().getVariantId(), Inventory::getQuantity, (a, b) -> a));
         
-        Map<Long, String> primaryImageMap = imageRepository.findByProductProductIdIn(productIds).stream()
-                .filter(img -> Boolean.TRUE.equals(img.getIsPrimary()))
-                .collect(Collectors.toMap(img -> img.getProduct().getProductId(), ProductImage::getImageUrl, (a, b) -> a));
+        List<ProductVariantImage> variantImages = (variantImageRepository != null && !variantIds.isEmpty())
+                ? variantImageRepository.findByProductVariantVariantIdIn(variantIds)
+                : Collections.emptyList();
+        Map<Long, List<ProductVariantImage>> variantImagesMap = variantImages.stream()
+                .filter(img -> img.getProductVariant() != null && img.getProductVariant().getVariantId() != null)
+                .sorted(Comparator.comparing(ProductVariantImage::getProductVariantImageId, Comparator.nullsLast(Comparator.naturalOrder())))
+                .collect(Collectors.groupingBy(img -> img.getProductVariant().getVariantId()));
+
+        List<ProductImage> productImages = (imageRepository != null && !productIds.isEmpty())
+                ? imageRepository.findByProductProductIdIn(productIds)
+                : Collections.emptyList();
+        Map<Long, List<ProductImage>> productImagesMap = productImages.stream()
+                .filter(img -> img.getProduct() != null && img.getProduct().getProductId() != null)
+                .sorted(Comparator.comparing(ProductImage::getImageId, Comparator.nullsLast(Comparator.naturalOrder())))
+                .collect(Collectors.groupingBy(img -> img.getProduct().getProductId()));
                 
         Map<Long, List<VariantOptionValue>> optionsMap = optionValueRepository.findByVariantVariantIdIn(variantIds).stream()
                 .collect(Collectors.groupingBy(opt -> opt.getVariant().getVariantId()));
@@ -158,7 +171,7 @@ public class CartServiceImpl implements CartService {
                     .variantId(v.getVariantId())
                     .productId(p.getProductId())
                     .productName(p.getProductName())
-                    .imageUrl(primaryImageMap.get(p.getProductId()))
+                    .imageUrl(resolveVariantImageUrl(v.getVariantId(), p.getProductId(), variantImagesMap, productImagesMap))
                     .sku(v.getSku())
                     .options(opts)
                     .quantity(ci.getQuantity())
@@ -242,9 +255,21 @@ public class CartServiceImpl implements CartService {
         Map<Long, Integer> inventoryMap = inventoryRepository.findByVariantVariantIdIn(variantIds).stream()
                 .collect(Collectors.toMap(i -> i.getVariant().getVariantId(), Inventory::getQuantity, (a, b) -> a));
                 
-        Map<Long, String> primaryImageMap = imageRepository.findByProductProductIdIn(productIds).stream()
-                .filter(img -> Boolean.TRUE.equals(img.getIsPrimary()))
-                .collect(Collectors.toMap(img -> img.getProduct().getProductId(), ProductImage::getImageUrl, (a, b) -> a));
+        List<ProductVariantImage> variantImages = (variantImageRepository != null && !variantIds.isEmpty())
+                ? variantImageRepository.findByProductVariantVariantIdIn(variantIds)
+                : Collections.emptyList();
+        Map<Long, List<ProductVariantImage>> variantImagesMap = variantImages.stream()
+                .filter(img -> img.getProductVariant() != null && img.getProductVariant().getVariantId() != null)
+                .sorted(Comparator.comparing(ProductVariantImage::getProductVariantImageId, Comparator.nullsLast(Comparator.naturalOrder())))
+                .collect(Collectors.groupingBy(img -> img.getProductVariant().getVariantId()));
+
+        List<ProductImage> productImages = (imageRepository != null && !productIds.isEmpty())
+                ? imageRepository.findByProductProductIdIn(productIds)
+                : Collections.emptyList();
+        Map<Long, List<ProductImage>> productImagesMap = productImages.stream()
+                .filter(img -> img.getProduct() != null && img.getProduct().getProductId() != null)
+                .sorted(Comparator.comparing(ProductImage::getImageId, Comparator.nullsLast(Comparator.naturalOrder())))
+                .collect(Collectors.groupingBy(img -> img.getProduct().getProductId()));
                 
         Map<Long, List<VariantOptionValue>> optionsMap = optionValueRepository.findByVariantVariantIdIn(variantIds).stream()
                 .collect(Collectors.groupingBy(opt -> opt.getVariant().getVariantId()));
@@ -279,7 +304,7 @@ public class CartServiceImpl implements CartService {
                     .variantId(v.getVariantId())
                     .productId(p.getProductId())
                     .productName(p.getProductName())
-                    .imageUrl(primaryImageMap.get(p.getProductId()))
+                    .imageUrl(resolveVariantImageUrl(v.getVariantId(), p.getProductId(), variantImagesMap, productImagesMap))
                     .sku(v.getSku())
                     .options(opts)
                     .quantity(reqItem.getQuantity())
@@ -377,5 +402,51 @@ public class CartServiceImpl implements CartService {
                 .mergedVariantIds(mergedIds)
                 .rejectedItems(rejectedItems)
                 .build();
+    }
+
+    private String resolveVariantImageUrl(
+            Long variantId,
+            Long productId,
+            Map<Long, List<ProductVariantImage>> variantImagesMap,
+            Map<Long, List<ProductImage>> productImagesMap) {
+
+        if (variantId != null) {
+            List<ProductVariantImage> varImgs = variantImagesMap.getOrDefault(variantId, Collections.emptyList());
+
+            // 1. Selected variant primary image
+            for (ProductVariantImage img : varImgs) {
+                if (Boolean.TRUE.equals(img.getIsPrimary()) && img.getImageUrl() != null && !img.getImageUrl().trim().isEmpty()) {
+                    return img.getImageUrl().trim();
+                }
+            }
+
+            // 2. Selected variant first available image
+            for (ProductVariantImage img : varImgs) {
+                if (img.getImageUrl() != null && !img.getImageUrl().trim().isEmpty()) {
+                    return img.getImageUrl().trim();
+                }
+            }
+        }
+
+        if (productId != null) {
+            List<ProductImage> prodImgs = productImagesMap.getOrDefault(productId, Collections.emptyList());
+
+            // 3. Product primary image
+            for (ProductImage img : prodImgs) {
+                if (Boolean.TRUE.equals(img.getIsPrimary()) && img.getImageUrl() != null && !img.getImageUrl().trim().isEmpty()) {
+                    return img.getImageUrl().trim();
+                }
+            }
+
+            // 4. Product first available image
+            for (ProductImage img : prodImgs) {
+                if (img.getImageUrl() != null && !img.getImageUrl().trim().isEmpty()) {
+                    return img.getImageUrl().trim();
+                }
+            }
+        }
+
+        // 5. Null if no images exist
+        return null;
     }
 }
