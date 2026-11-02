@@ -14,4 +14,5 @@ import java.math.BigDecimal;
     private BigDecimal refundAmount;
     private String status;
     private String requestedAt;
+    private String remark;
 }

@@ -1,8 +1,16 @@
 package com.ojt.ecommerce.storefront.checkout.dto;
+
+import lombok.AllArgsConstructor;
 import lombok.Builder;
 import lombok.Data;
+import lombok.NoArgsConstructor;
 import java.math.BigDecimal;
-@Data @Builder public class OrderResponse {
+
+@Data
+@Builder
+@NoArgsConstructor
+@AllArgsConstructor
+public class OrderResponse {
     private Long orderId;
     private String orderNo;
     private BigDecimal subtotalAmount;
@@ -13,4 +21,5 @@ import java.math.BigDecimal;
     private String orderStatus;
     private String paymentStatus;
     private String createdAt;
+    private String checkoutType;
 }

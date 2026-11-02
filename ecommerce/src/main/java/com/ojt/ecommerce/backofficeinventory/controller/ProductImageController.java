@@ -1,4 +1,3 @@
-
 package com.ojt.ecommerce.backofficeinventory.controller;
 
 import com.ojt.ecommerce.backofficeinventory.dto.ProductImageRequestDto;
@@ -48,7 +47,7 @@ public class ProductImageController {
 	 */
 	@PatchMapping("/{imageId}/primary")
 	public ResponseEntity<ProductImageResponseDto> setPrimaryImage(@PathVariable Long imageId,
-			@RequestParam Long userId) {
+			@RequestParam(value = "userId", required = false, defaultValue = "1") Long userId) {
 
 		ProductImageResponseDto response = productImageService.setPrimaryImage(imageId, userId);
 

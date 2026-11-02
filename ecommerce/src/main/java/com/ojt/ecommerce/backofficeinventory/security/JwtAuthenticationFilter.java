@@ -17,47 +17,49 @@ import jakarta.servlet.http.HttpServletResponse;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 
-@Slf4j
 @RequiredArgsConstructor
 public class JwtAuthenticationFilter extends OncePerRequestFilter {
 
-	private final JwtUtil jwtUtil;
-	private final CustomUserDetailsService customUserDetailsService;
+    private final JwtUtil jwtUtil;
+    private final CustomUserDetailsService customUserDetailsService;
 
-	@Override
-	protected void doFilterInternal(HttpServletRequest request, HttpServletResponse response, FilterChain filterChain)
-			throws ServletException, IOException {
+    @Override
+    protected void doFilterInternal(HttpServletRequest request, HttpServletResponse response, FilterChain filterChain)
+            throws ServletException, IOException {
 
-		final String authHeader = request.getHeader("Authorization");
-		final String jwt;
-		String userEmail = null;
+        final String authHeader = request.getHeader("Authorization");
+        final String jwt;
+        final String userEmail;
 
-		if (authHeader == null || !authHeader.startsWith("Bearer ")) {
-			filterChain.doFilter(request, response);
-			return;
-		}
+        if (authHeader == null || !authHeader.startsWith("Bearer ")) {
+            filterChain.doFilter(request, response);
+            return;
+        }
 
-		jwt = authHeader.substring(7);
-		try {
-			userEmail = jwtUtil.extractUsername(jwt);
-			if (userEmail != null && SecurityContextHolder.getContext().getAuthentication() == null) {
-				UserDetails userDetails = this.customUserDetailsService.loadUserByUsername(userEmail);
+        jwt = authHeader.substring(7);
+        userEmail = jwtUtil.extractUsername(jwt);
+        if (userEmail != null && SecurityContextHolder.getContext().getAuthentication() == null) {
+            UserDetails userDetails = this.customUserDetailsService.loadUserByUsername(userEmail);
 
-				if (jwtUtil.validateToken(jwt, userDetails)) {
-					UsernamePasswordAuthenticationToken authToken = new UsernamePasswordAuthenticationToken(userDetails,
-							null, userDetails.getAuthorities());
-					authToken.setDetails(new WebAuthenticationDetailsSource().buildDetails(request));
-					SecurityContextHolder.getContext().setAuthentication(authToken);
-				}
-			}
-		} catch (ExpiredJwtException e) {
-			log.warn("JWT token has expired: {}", e.getMessage());
-		} catch (JwtException | IllegalArgumentException e) {
-			log.warn("Invalid JWT token: {}", e.getMessage());
-		} catch (Exception e) {
-			log.error("Authentication error: {}", e.getMessage());
-		}
+            if (jwtUtil.validateToken(jwt, userDetails)) {
+                
+                // --- Token Version တိုက်စစ်မည့် အပိုင်းသစ် ---
+                CustomUserDetails customDetails = (CustomUserDetails) userDetails;
+                Integer tokenVersionInToken = jwtUtil.extractTokenVersion(jwt);
+                
+                // Version ကိုက်ညီမှုမရှိပါက (အဟောင်းဖြစ်နေပါက) ဝင်ခွင့်မပြုဘဲ Unauthorized Error ပြန်ပေးမည်
+                if (tokenVersionInToken == null || !tokenVersionInToken.equals(customDetails.getTokenVersion())) {
+                    response.sendError(HttpServletResponse.SC_UNAUTHORIZED, "Session expired. You logged in from another device.");
+                    return;
+                }
+                // ----------------------------------------
 
-		filterChain.doFilter(request, response);
-	}
+                UsernamePasswordAuthenticationToken authToken = new UsernamePasswordAuthenticationToken(userDetails,
+                        null, userDetails.getAuthorities());
+                authToken.setDetails(new WebAuthenticationDetailsSource().buildDetails(request));
+                SecurityContextHolder.getContext().setAuthentication(authToken);
+            }
+        }
+        filterChain.doFilter(request, response);
+    }
 }

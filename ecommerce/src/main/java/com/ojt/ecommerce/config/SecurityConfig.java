@@ -74,7 +74,11 @@ public class SecurityConfig {
         http.securityMatcher("/api/backoffice/**", "/api/v1/reports/**", "/api/v1/admin/**", "/api/admin/**").cors(cors -> cors.configurationSource(corsConfigurationSource()))
 				.csrf(AbstractHttpConfigurer::disable)
 				.authorizeHttpRequests(auth -> auth
-                        .requestMatchers("/api/backoffice/auth/**").permitAll()
+                        .requestMatchers(
+                            "/api/backoffice/auth/**",
+                            "/api/backoffice/products/excel-template",
+                            "/api/backoffice/products/excel-template.xlsx"
+                        ).permitAll()
 						
                         // Staff များကို ADMIN သာ စီမံနိုင်သည်
                         .requestMatchers("/api/backoffice/staff", "/api/backoffice/staff/**")
