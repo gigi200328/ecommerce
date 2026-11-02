@@ -65,15 +65,12 @@ public class AuthController {
         // Login အောင်မြင်ကြောင်း Audit Log သို့ Manual မှတ်တမ်းတင်ခြင်း
         // -------------------------------------------------------------
         try {
-            auditLogService.logAction(
-                AuditAction.LOGIN,                        // 1. AuditAction 
-                "Authentication",                         // 2. Module Name 
-                "Staff/Admin logged into the system",     // 3. Action/Description 
-                null,                                     // 4. Entity ID (မလိုအပ်ပါ)
-                null,                                     // 5. Old Value (မလိုအပ်ပါ)
-                null,                                     // 6. New Value (မလိုအပ်ပါ)
-                user.getUserName(),                       // 7. Performed By 
-                null                                      // 8. IP Address (မလိုအပ်ပါ)
+            auditLogService.logAuthAction(
+                AuditAction.LOGIN,
+                "Staff/Admin logged into the system: " + user.getUserName(),
+                user.getUserId(),
+                user.getUserName(),
+                "SUCCESS"
             );
         } catch (Exception e) {
             System.err.println("Audit Log Failed for Login: " + e.getMessage());
@@ -105,15 +102,12 @@ public class AuthController {
     public ResponseEntity<?> logout(Principal principal) {
         try {
             if (principal != null) {
-                auditLogService.logAction(
-                    AuditAction.LOGOUT,                       // 1. AuditAction 
-                    "Authentication",                         // 2. Module Name
-                    "Staff/Admin logged out of the system",   // 3. Action/Description
-                    null,                                     // 4. Entity ID
-                    null,                                     // 5. Old Value
-                    null,                                     // 6. New Value
-                    principal.getName(),                      // 7. Performed By 
-                    null                                      // 8. IP Address
+                auditLogService.logAuthAction(
+                    AuditAction.LOGOUT,
+                    "Staff/Admin logged out of the system: " + principal.getName(),
+                    null,
+                    principal.getName(),
+                    "SUCCESS"
                 );
             }
         } catch (Exception e) {

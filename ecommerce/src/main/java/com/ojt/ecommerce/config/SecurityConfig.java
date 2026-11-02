@@ -8,6 +8,7 @@ import org.springframework.core.annotation.Order;
 import org.springframework.http.HttpMethod;
 import org.springframework.security.authentication.AuthenticationManager;
 import org.springframework.security.config.annotation.authentication.configuration.AuthenticationConfiguration;
+import org.springframework.security.config.annotation.method.configuration.EnableMethodSecurity;
 import org.springframework.security.config.annotation.web.builders.HttpSecurity;
 import org.springframework.security.config.annotation.web.configuration.EnableWebSecurity;
 import org.springframework.security.config.annotation.web.configurers.AbstractHttpConfigurer;
@@ -30,6 +31,7 @@ import lombok.RequiredArgsConstructor;
 
 @Configuration
 @EnableWebSecurity
+@EnableMethodSecurity
 @RequiredArgsConstructor
 public class SecurityConfig {
 
@@ -79,6 +81,10 @@ public class SecurityConfig {
                         // Staff များကို ADMIN သာ စီမံနိုင်သည်
                         .requestMatchers("/api/backoffice/staff", "/api/backoffice/staff/**")
                         .hasAnyAuthority("ADMIN", "ROLE_ADMIN")
+
+                        // Audit Logs များကို ADMIN သာ စီမံ/ကြည့်ရှုနိုင်သည်
+                        .requestMatchers("/api/backoffice/audit-logs", "/api/backoffice/audit-logs/**")
+                        .hasAnyAuthority("ADMIN", "ROLE_ADMIN")
                         
                         // Inventory ကြည့်ရှုခြင်း (GET) ကို SALES_STAFF ပါ စစ်ဆေးခွင့်ပြုသည်
                         .requestMatchers(
@@ -116,22 +122,6 @@ public class SecurityConfig {
                         // Reports များကို ADMIN နှင့် INVENTORY_STAFF (စတော့အစီရင်ခံစာများအတွက်) ကြည့်ခွင့်ပေးမည်
                         .requestMatchers("/api/backoffice/reports", "/api/backoffice/reports/**", "/api/v1/reports/**")
                         .hasAnyAuthority("ADMIN", "ROLE_ADMIN", "INVENTORY_STAFF", "ROLE_INVENTORY_STAFF", "SALES_STAFF", "ROLE_SALES_STAFF")
-
-						// Products များကို ADMIN နှင့် INVENTORY_STAFF ကိုင်တွယ်နိုင်သည်
-						.requestMatchers("/api/backoffice/categories", "/api/backoffice/categories/**",
-								"/api/backoffice/brands", "/api/backoffice/brands/**", "/api/backoffice/products",
-								"/api/backoffice/products/**", "/api/backoffice/product-images/**",
-								"/api/backoffice/variations", "/api/backoffice/variations/**",
-								"/api/backoffice/variation-options/**", "/api/backoffice/product-variants/**",
-								"/api/backoffice/variant-option-values/**", "/api/backoffice/tags",
-								"/api/backoffice/tags/**", "/api/backoffice/product-tags/**",
-								"/api/backoffice/product-variant-images/**", "/api/backoffice/inventory",
-								"/api/backoffice/inventory/**")
-						.hasAnyAuthority("ADMIN", "ROLE_ADMIN", "INVENTORY_STAFF", "ROLE_INVENTORY_STAFF")
-
-						// Orders များကို ADMIN နှင့် SALES_STAFF ကိုင်တွယ်နိုင်သည်
-						.requestMatchers("/api/backoffice/orders", "/api/backoffice/orders/**")
-						.hasAnyAuthority("ADMIN", "ROLE_ADMIN", "SALES_STAFF", "ROLE_SALES_STAFF")
 
 						// Main မှ အသစ်ပါလာသော Reports များကို ADMIN သာ ကြည့်ခွင့်ပေးမည်
 						.requestMatchers("/api/backoffice/reports", "/api/backoffice/reports/**")
