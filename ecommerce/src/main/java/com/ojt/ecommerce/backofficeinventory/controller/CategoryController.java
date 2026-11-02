@@ -1,4 +1,3 @@
-
 package com.ojt.ecommerce.backofficeinventory.controller;
 
 import java.util.List;
@@ -22,83 +21,72 @@ import com.ojt.ecommerce.backofficeinventory.dto.CategoryRequestDto;
 import com.ojt.ecommerce.backofficeinventory.dto.CategoryResponseDto;
 import com.ojt.ecommerce.backofficeinventory.service.CategoryService;
 
+// Audit Log အတွက် အသစ်ထည့်ထားသော Import များ
+import com.ojt.ecommerce.annotation.Auditable;
+import com.ojt.ecommerce.entity.AuditAction;
+
 import jakarta.validation.Valid;
 import lombok.RequiredArgsConstructor;
 
 @RestController
 @RequestMapping("/api/backoffice/categories")
+
 @RequiredArgsConstructor
 public class CategoryController {
 
     private final CategoryService categoryService;
 
-    // Create a new category
+    // Create Category
+    @Auditable(action = AuditAction.CREATE, moduleName = "Category Management")
     @PostMapping
-    public ResponseEntity<CategoryResponseDto> createCategory(
-            @Valid @RequestBody CategoryRequestDto request) {
-
-        CategoryResponseDto response =
-                categoryService.createCategory(request);
-
-        return ResponseEntity.status(HttpStatus.CREATED).body(response);
+    public ResponseEntity<CategoryResponseDto> createCategory(@Valid @RequestBody CategoryRequestDto request) {
+        return new ResponseEntity<>(categoryService.createCategory(request), HttpStatus.CREATED);
     }
 
-    // Get all categories with pagination and sorting
+    // Get Flat List
     @GetMapping
     public ResponseEntity<Page<CategoryResponseDto>> getAllCategories(
-            @PageableDefault(size = 20, sort = "categoryName")
-            Pageable pageable) {
+            @PageableDefault(size = 20, sort = "categoryName") Pageable pageable) {
 
-        return ResponseEntity.ok(
-                categoryService.getAllCategories(pageable));
+        return ResponseEntity.ok(categoryService.getAllCategories(pageable));
     }
 
-    // Get the hierarchical category tree
+    // Get Nested Tree Hierarchy
     @GetMapping("/tree")
     public ResponseEntity<List<CategoryResponseDto>> getCategoryTree() {
-
-        return ResponseEntity.ok(
-                categoryService.getCategoryTree());
+        return ResponseEntity.ok(categoryService.getCategoryTree());
     }
 
-    // Get a category by ID
+    // Get Single Category by ID
     @GetMapping("/{id}")
-    public ResponseEntity<CategoryResponseDto> getCategoryById(
-            @PathVariable Long id) {
-
-        return ResponseEntity.ok(
-                categoryService.getCategoryById(id));
+    public ResponseEntity<CategoryResponseDto> getCategoryById(@PathVariable Long id) {
+        return ResponseEntity.ok(categoryService.getCategoryById(id));
     }
 
-    // Update an existing category
+    // Update Category
+    @Auditable(action = AuditAction.UPDATE, moduleName = "Category Management")
     @PutMapping("/{id}")
     public ResponseEntity<CategoryResponseDto> updateCategory(
             @PathVariable Long id,
             @Valid @RequestBody CategoryRequestDto request) {
-
-        return ResponseEntity.ok(
-                categoryService.updateCategory(id, request));
+        return ResponseEntity.ok(categoryService.updateCategory(id, request));
     }
 
-    // Delete a category
+    // Delete Category
+    @Auditable(action = AuditAction.DELETE, moduleName = "Category Management")
     @DeleteMapping("/{id}")
-    public ResponseEntity<Void> deleteCategory(
-            @PathVariable Long id) {
-
+    public ResponseEntity<Void> deleteCategory(@PathVariable Long id) {
         categoryService.deleteCategory(id);
-
         return ResponseEntity.noContent().build();
     }
-
-    // Search categories by keyword with pagination
+    
+    // Search
     @GetMapping("/search")
     public ResponseEntity<Page<CategoryResponseDto>> searchCategories(
             @RequestParam(required = false) String keyword,
             Pageable pageable) {
-
-        Page<CategoryResponseDto> response =
-                categoryService.searchCategories(keyword, pageable);
-
+        
+        Page<CategoryResponseDto> response = categoryService.searchCategories(keyword, pageable);
         return ResponseEntity.ok(response);
     }
 }

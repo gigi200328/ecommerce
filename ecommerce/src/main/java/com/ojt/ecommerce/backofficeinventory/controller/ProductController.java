@@ -15,6 +15,10 @@ import com.ojt.ecommerce.backofficeinventory.dto.ProductResponseDto;
 import com.ojt.ecommerce.backofficeinventory.service.ProductService;
 import com.ojt.ecommerce.enums.ProductStatus;
 
+// Audit Log အတွက် အသစ်ထည့်ထားသော Import များ
+import com.ojt.ecommerce.annotation.Auditable;
+import com.ojt.ecommerce.entity.AuditAction;
+
 import jakarta.validation.Valid;
 import lombok.RequiredArgsConstructor;
 
@@ -28,6 +32,7 @@ public class ProductController {
 	// =========================================================
 	// 1. CREATE
 	// =========================================================
+	@Auditable(action = AuditAction.CREATE, moduleName = "Product Management")
 	@PostMapping
 	public ResponseEntity<ProductResponseDto> createProduct(@Valid @RequestBody ProductRequestDto request) {
 
@@ -110,6 +115,7 @@ public class ProductController {
 	// =========================================================
 	// 8. UPDATE
 	// =========================================================
+	@Auditable(action = AuditAction.UPDATE, moduleName = "Product Management")
 	@PutMapping("/{id}")
 	public ResponseEntity<ProductResponseDto> updateProduct(@PathVariable Long id,
 			@Valid @RequestBody ProductRequestDto request) {
@@ -120,6 +126,7 @@ public class ProductController {
 	// =========================================================
 	// 9. DELETE
 	// =========================================================
+	@Auditable(action = AuditAction.DELETE, moduleName = "Product Management")
 	@DeleteMapping("/{id}")
 	public ResponseEntity<Void> deleteProduct(@PathVariable Long id) {
 
