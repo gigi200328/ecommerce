@@ -32,7 +32,12 @@ build/
 ### VS Code ###
 .vscode/
 
-# === Local Configuration Files (Added to protect passwords) ===
+# OS files
+.DS_Store
+
+# === Local Configuration Files (Added to protect passwords) 
 application-dev.properties
+src/main/resources/application-dev.properties
 
 uploads/
+

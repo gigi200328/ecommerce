@@ -2,6 +2,8 @@ package com.ojt.ecommerce.backofficeinventory.service;
 
 import java.time.LocalDateTime;
 import java.util.List;
+import java.util.Map;
+import java.util.stream.Collectors;
 import org.springframework.data.domain.Sort;
 import org.springframework.security.core.Authentication;
 import org.springframework.security.core.context.SecurityContextHolder;
@@ -172,13 +174,17 @@ public class ProductVariantServiceImpl implements ProductVariantService {
 
     @Override
     public List<ProductVariant> getAllProductVariants() {
-        return productVariantRepository.findAll(Sort.by(Sort.Direction.DESC, "variantId"));
+        List<ProductVariant> list = productVariantRepository.findAll(Sort.by(Sort.Direction.DESC, "variantId"));
+        populateAttributeSummary(list);
+        return list;
     }
 
     @Override
     public ProductVariant getProductVariantById(Long id) {
-        return productVariantRepository.findById(id)
+        ProductVariant variant = productVariantRepository.findById(id)
                 .orElseThrow(() -> new RuntimeException("Product variant not found with id: " + id));
+        populateAttributeSummary(List.of(variant));
+        return variant;
     }
 
     @Override
@@ -188,7 +194,36 @@ public class ProductVariantServiceImpl implements ProductVariantService {
             throw new RuntimeException("Product not found with id: " + productId);
         }
 
-        return productVariantRepository.findByProduct_ProductId(productId);
+        List<ProductVariant> list = productVariantRepository.findByProduct_ProductId(productId);
+        populateAttributeSummary(list);
+        return list;
+    }
+
+    private void populateAttributeSummary(List<ProductVariant> variants) {
+        if (variants == null || variants.isEmpty()) return;
+        List<Long> variantIds = variants.stream().map(ProductVariant::getVariantId).toList();
+        List<VariantOptionValue> allOptionValues = variantOptionValueRepository.findByVariant_VariantIdIn(variantIds);
+        if (allOptionValues == null || allOptionValues.isEmpty()) return;
+
+        Map<Long, List<VariantOptionValue>> optionsByVariant = allOptionValues.stream()
+                .filter(vov -> vov.getVariant() != null && vov.getVariant().getVariantId() != null)
+                .collect(Collectors.groupingBy(vov -> vov.getVariant().getVariantId()));
+
+        for (ProductVariant v : variants) {
+            List<VariantOptionValue> vovs = optionsByVariant.get(v.getVariantId());
+            if (vovs != null && !vovs.isEmpty()) {
+                String summary = vovs.stream()
+                        .filter(vov -> vov.getOption() != null)
+                        .map(vov -> {
+                            String attrName = (vov.getOption().getVariation() != null && vov.getOption().getVariation().getName() != null)
+                                    ? vov.getOption().getVariation().getName() : "";
+                            String val = vov.getOption().getValue() != null ? vov.getOption().getValue() : "";
+                            return !attrName.isEmpty() ? attrName + ": " + val : val;
+                        })
+                        .collect(Collectors.joining(" | "));
+                v.setAttributeSummary(summary);
+            }
+        }
     }
 
     @Override
@@ -227,7 +262,9 @@ public class ProductVariantServiceImpl implements ProductVariantService {
     @Override
     public void deleteProductVariant(Long id) {
         ProductVariant variant = getProductVariantById(id);
-        productVariantRepository.delete(variant);
+        // Soft delete: Deactivate variant to preserve foreign key integrity with orders and inventory transactions
+        variant.setStatus(ProductVariantStatus.INACTIVE);
+        productVariantRepository.save(variant);
     }
 
     @Override

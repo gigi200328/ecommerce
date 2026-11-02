@@ -2,7 +2,9 @@ package com.ojt.ecommerce.backofficeinventory.service;
 
 import java.time.LocalDateTime;
 import java.util.Arrays;
+import java.util.Collections;
 import java.util.List;
+import java.util.Map;
 import java.util.stream.Collectors;
 
 import org.springframework.data.domain.Page;
@@ -48,6 +50,7 @@ public class OrderManagementService {
 	private final ShipmentRepository shipmentRepository;
 	private final PaymentMapper paymentMapper;
 	private final ShipmentMapper shipmentMapper;
+	private final InventoryService inventoryService;
 
 	@Transactional(readOnly = true)
 	public PaginatedResponseDto<OrderResponseDto> getOrders(String status, int pageNo, int pageSize) {
@@ -69,7 +72,6 @@ public class OrderManagementService {
 			orders = orderRepository.findAll(pageable);
 		}
 		// Mapper ကို အသုံးပြု၍ Entity မှ DTO သို့ ပြောင်းလဲခြင်း
-//		return orders.stream().map(orderMapper::toDto).collect(Collectors.toList());
 		return orderMapper.toPaginatedDto(orders);
 	}
 
@@ -79,6 +81,11 @@ public class OrderManagementService {
 				.orElseThrow(() -> new EntityNotFoundException("Order not found with order number: " + orderNo));
 		return orderMapper.toDto(order);
 	}
+
+	private static final Map<String, List<String>> VALID_TRANSITIONS = Map.of("PENDING", List.of("PAID"), "PAID",
+			List.of("PROCESSING"), "PROCESSING", List.of("SHIPPED"), "SHIPPED", List.of("DELIVERED"), "DELIVERED",
+			List.of("REFUNDED") // ⬅️ DELIVERED ရောက်လျှင် အခြားသို့ နောက်ပြန်ဆုတ်ခွင့် မရှိပါ
+	);
 
 	@Transactional(readOnly = false)
 	public OrderResponseDto updateOrderStatus(String orderNo, OrderStatusUpdateRequestDto requestDto) {
@@ -97,6 +104,12 @@ public class OrderManagementService {
 			throw new IllegalArgumentException("Order is already in " + newStatus + " status.");
 		}
 
+		List<String> allowedNextStatuses = VALID_TRANSITIONS.getOrDefault(oldStatus, Collections.emptyList());
+		if (!allowedNextStatuses.contains(newStatus)) {
+			throw new IllegalArgumentException(
+					"Invalid transition: Cannot change status from " + oldStatus + " to " + newStatus);
+		}
+
 		OrderStatusHistory history = OrderStatusHistory.builder().order(order).oldStatus(oldStatus).newStatus(newStatus)
 				.remark(requestDto.getRemark()).changedAt(LocalDateTime.now()).changedBy(currentUser).build();
 
@@ -108,7 +121,13 @@ public class OrderManagementService {
 
 		Order updatedOrder = orderRepository.save(order);
 
-		// ၆။ ပြောင်းလဲသွားတဲ့ အော်ဒါအချက်အလက်ကို DTO ပြောင်းပြီး ပြန်ပေးမည်
+		// 🔴 FR-8: Deduct inventory stock if moving to PAID, PROCESSING, or SHIPPED
+		if ("PAID".equalsIgnoreCase(newStatus) || "PROCESSING".equalsIgnoreCase(newStatus)
+				|| "SHIPPED".equalsIgnoreCase(newStatus)) {
+			inventoryService.deductStockForOrder(updatedOrder.getOrderId());
+		}
+
+		// ပြောင်းလဲသွားတဲ့ အော်ဒါအချက်အလက်ကို DTO ပြောင်းပြီး ပြန်ပေးမည်
 		return orderMapper.toDto(updatedOrder);
 	}
 
@@ -155,6 +174,8 @@ public class OrderManagementService {
 
 		orderRepository.save(order);
 
+		// 🔴 FR-8: Ensure stock is deducted before shipment dispatch
+		inventoryService.deductStockForOrder(order.getOrderId());
 	}
 
 	@Transactional(readOnly = true)

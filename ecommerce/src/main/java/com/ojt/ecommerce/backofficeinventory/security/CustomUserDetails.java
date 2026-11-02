@@ -6,7 +6,8 @@ import org.springframework.security.core.authority.SimpleGrantedAuthority;
 import org.springframework.security.core.userdetails.UserDetails;
 
 import java.util.Collection;
-import java.util.Collections;
+import java.util.HashSet;
+import java.util.Set;
 
 public class CustomUserDetails implements UserDetails {
 
@@ -20,10 +21,27 @@ public class CustomUserDetails implements UserDetails {
         return user;
     }
 
+    // --- အသစ်ထပ်ထည့်ထားသော Method ---
+    public Integer getTokenVersion() {
+        return user.getTokenVersion() != null ? user.getTokenVersion() : 1;
+    }
+
     @Override
     public Collection<? extends GrantedAuthority> getAuthorities() {
-        // "ADMIN" သို့မဟုတ် "STAFF" ဆိုသည့် Role ကို Spring Security နားလည်အောင် "ROLE_ADMIN" ပုံစံဖြင့် ပြောင်းပေးခြင်း
-        return Collections.singleton(new SimpleGrantedAuthority("ROLE_" + user.getUserRole().getRoleName()));
+        Set<GrantedAuthority> authorities = new HashSet<>();
+        if (user != null && user.getUserRole() != null) {
+            String roleName = user.getUserRole().getRoleName();
+            authorities.add(new SimpleGrantedAuthority(roleName));
+            authorities.add(new SimpleGrantedAuthority("ROLE_" + roleName));
+            if (user.getUserRole().getPermissions() != null) {
+                user.getUserRole().getPermissions().forEach(permission -> {
+                    if (permission != null && permission.getPermissionName() != null) {
+                        authorities.add(new SimpleGrantedAuthority(permission.getPermissionName()));
+                    }
+                });
+            }
+        }
+        return authorities;
     }
 
     @Override
@@ -33,7 +51,7 @@ public class CustomUserDetails implements UserDetails {
 
     @Override
     public String getUsername() {
-        return user.getEmail(); // Login ဝင်ရာတွင် Email ကို Username အဖြစ် အသုံးပြုမည်
+        return user.getEmail();
     }
 
     @Override
@@ -53,6 +71,6 @@ public class CustomUserDetails implements UserDetails {
 
     @Override
     public boolean isEnabled() {
-        return "ACTIVE".equalsIgnoreCase(user.getStatus()); // Status ACTIVE ဖြစ်မှသာ Login ပေးဝင်မည်
+        return "ACTIVE".equalsIgnoreCase(user.getStatus());
     }
 }

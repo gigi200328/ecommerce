@@ -1,4 +1,4 @@
-package com.ojt.ecommerce.storefront;
+package com.ojt.ecommerce.storefront.cart.service;
 
 import static org.junit.jupiter.api.Assertions.*;
 import static org.mockito.ArgumentMatchers.any;

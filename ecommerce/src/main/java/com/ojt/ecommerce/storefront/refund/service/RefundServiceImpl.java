@@ -11,12 +11,14 @@ import com.ojt.ecommerce.storefront.shipping.repository.G5ShipmentRepository;
 import lombok.RequiredArgsConstructor;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
+import com.ojt.ecommerce.backofficeinventory.service.AdminNotificationService;
 
 import java.math.BigDecimal;
 import java.time.Duration;
 import java.time.LocalDateTime;
 import java.util.Arrays;
 import java.util.List;
+import java.util.Optional;
 import java.util.stream.Collectors;
 
 @Service
@@ -27,6 +29,7 @@ public class RefundServiceImpl implements RefundService {
     private final G5OrderItemRepository orderItemRepository;
     private final G5ShipmentRepository shipmentRepository;
     private final G5OrderStatusHistoryRepository orderStatusHistoryRepository;
+    private final AdminNotificationService adminNotificationService;
 
     private static final int REFUND_WINDOW_DAYS = 7;
 
@@ -53,7 +56,8 @@ public class RefundServiceImpl implements RefundService {
             throw new ResourceNotFoundException("OrderItem not found"); // Prevents IDOR
         }
 
-        if (!"SUCCESS".equals(order.getPaymentStatus())) {
+        List<String> eligiblePaidStatuses = List.of("SUCCESS", "PARTIALLY_REFUNDED");
+        if (!eligiblePaidStatuses.contains(order.getPaymentStatus())) {
             throw new InvalidRequestException("Order is not eligible for refund (must be PAID)");
         }
 
@@ -70,10 +74,20 @@ public class RefundServiceImpl implements RefundService {
                     + REFUND_WINDOW_DAYS + " days of delivery.");
         }
 
+        // Rule 3: Check if refund was already rejected by inventory/admin
+        if (refundRequestRepository.existsByOrderItemOrderItemIdAndStatus(orderItem.getOrderItemId(), "REJECTED")) {
+            throw new InvalidRequestException("Refund request for this item has been rejected and cannot be requested again.");
+        }
+
+        // Rule 4: Check if there is already a pending refund request
+        if (refundRequestRepository.existsByOrderItemOrderItemIdAndStatus(orderItem.getOrderItemId(), "PENDING")) {
+            throw new InvalidRequestException("A refund request is already pending review for this item.");
+        }
+
         int reservedQty = refundRequestRepository.getReservedQuantity(orderItem.getOrderItemId());
         int remainingQty = orderItem.getQty() - reservedQty;
 
-        if (dto.getRefundQuantity() > remainingQty) {
+        if (dto.getRefundQuantity() > remainingQty || remainingQty <= 0) {
             throw new InvalidRequestException("Requested quantity exceeds remaining refundable quantity");
         }
 
@@ -88,6 +102,12 @@ public class RefundServiceImpl implements RefundService {
         req.setRequestedAt(LocalDateTime.now());
         
         req = refundRequestRepository.save(req);
+
+        try {
+            adminNotificationService.sendRefundRequestNotification(req);
+        } catch (Exception ex) {
+            // non-blocking notification failure
+        }
 
         return buildResponse(req, remainingQty - req.getRefundQuantity());
     }
@@ -133,34 +153,59 @@ public class RefundServiceImpl implements RefundService {
         int reservedQty = refundRequestRepository.getReservedQuantity(orderItemId);
         int remainingQty = orderItem.getQty() - reservedQty;
 
+        Optional<RefundRequest> latestRefund = refundRequestRepository.findFirstByOrderItemOrderItemIdOrderByRequestedAtDesc(orderItemId);
+        String refundStatus = latestRefund.map(RefundRequest::getStatus).orElse(null);
+        String remark = latestRefund.map(RefundRequest::getRemark).orElse(null);
+
+        boolean hasRejected = "REJECTED".equalsIgnoreCase(refundStatus)
+                || refundRequestRepository.existsByOrderItemOrderItemIdAndStatus(orderItemId, "REJECTED");
+
         boolean canRequestRefund = true;
         String ineligibleReason = null;
         Integer daysRemaining = null;
 
-        if (!"SUCCESS".equals(order.getPaymentStatus())) {
+        if (hasRejected) {
             canRequestRefund = false;
-            ineligibleReason = "Order is not paid.";
+            remainingQty = 0;
+            refundStatus = "REJECTED";
+            ineligibleReason = "Refund request has been rejected and cannot be requested again.";
         } else {
-            // Rule 1: Check if delivered
-            LocalDateTime deliveredAt = getDeliveryTimestampIfDelivered(order);
-            if (deliveredAt == null) {
+            List<String> paidStatuses = List.of("SUCCESS", "PARTIALLY_REFUNDED", "REFUNDED");
+            if (!paidStatuses.contains(order.getPaymentStatus())) {
                 canRequestRefund = false;
-                ineligibleReason = "Refund can only be requested after the order has been delivered.";
+                ineligibleReason = "Order is not paid.";
             } else {
-                // Rule 2: Check 7 days limit from delivery
-                LocalDateTime expiry = deliveredAt.plusDays(REFUND_WINDOW_DAYS);
-                if (LocalDateTime.now().isAfter(expiry)) {
+                // Rule 1: Check if delivered
+                LocalDateTime deliveredAt = getDeliveryTimestampIfDelivered(order);
+                boolean hasExistingRefund = refundStatus != null;
+                if (deliveredAt == null && !hasExistingRefund) {
                     canRequestRefund = false;
-                    ineligibleReason = "Refund window expired (refunds must be requested within " 
-                            + REFUND_WINDOW_DAYS + " days of delivery).";
-                    daysRemaining = 0;
+                    ineligibleReason = "Refund can only be requested after the order has been delivered.";
                 } else {
-                    long hours = Duration.between(LocalDateTime.now(), expiry).toHours();
-                    daysRemaining = (int) Math.max(1, Math.ceil(hours / 24.0));
-
-                    if (remainingQty <= 0) {
+                    // Rule 2: Check 7 days limit from delivery
+                    LocalDateTime expiry = (deliveredAt != null) ? deliveredAt.plusDays(REFUND_WINDOW_DAYS) : null;
+                    if (expiry != null && LocalDateTime.now().isAfter(expiry) && !hasExistingRefund) {
                         canRequestRefund = false;
-                        ineligibleReason = "All items have already been refunded or have pending refund requests.";
+                        ineligibleReason = "Refund window expired (refunds must be requested within " 
+                                + REFUND_WINDOW_DAYS + " days of delivery).";
+                        daysRemaining = 0;
+                    } else {
+                        if (expiry != null) {
+                            long hours = Duration.between(LocalDateTime.now(), expiry).toHours();
+                            daysRemaining = (int) Math.max(1, Math.ceil(hours / 24.0));
+                        }
+
+                        if ("PENDING".equalsIgnoreCase(refundStatus)) {
+                            canRequestRefund = false;
+                            ineligibleReason = "Refund request is pending review.";
+                        } else if (remainingQty <= 0) {
+                            canRequestRefund = false;
+                            if ("APPROVED".equalsIgnoreCase(refundStatus)) {
+                                ineligibleReason = "Refund has already been approved.";
+                            } else {
+                                ineligibleReason = "All items have already been refunded or have pending refund requests.";
+                            }
+                        }
                     }
                 }
             }
@@ -174,7 +219,16 @@ public class RefundServiceImpl implements RefundService {
                 .canRequestRefund(canRequestRefund)
                 .ineligibleReason(ineligibleReason)
                 .daysRemaining(daysRemaining)
+                .refundStatus(refundStatus)
+                .remark(remark)
                 .build();
+    }
+
+    @Override
+    @Transactional(readOnly = true)
+    public boolean isCanRequestRefund(Long customerId, Long orderItemId) {
+        RefundEligibilityDto dto = getRefundEligibility(customerId, orderItemId);
+        return dto != null && Boolean.TRUE.equals(dto.getCanRequestRefund());
     }
 
     /**
@@ -182,7 +236,8 @@ public class RefundServiceImpl implements RefundService {
      * Returns the delivery LocalDateTime if delivered; returns null if not yet delivered.
      */
     private LocalDateTime getDeliveryTimestampIfDelivered(Order order) {
-        boolean orderIsDelivered = "DELIVERED".equalsIgnoreCase(order.getOrderStatus());
+        boolean orderIsDelivered = "DELIVERED".equalsIgnoreCase(order.getOrderStatus())
+                || "REFUNDED".equalsIgnoreCase(order.getOrderStatus());
 
         List<Shipment> shipments = shipmentRepository.findByOrderOrderId(order.getOrderId());
         LocalDateTime shipmentDeliveredAt = null;
@@ -201,7 +256,19 @@ public class RefundServiceImpl implements RefundService {
             }
         }
 
-        if (!orderIsDelivered && !hasDeliveredShipment) {
+        List<OrderStatusHistory> history = orderStatusHistoryRepository.findByOrderOrderIdOrderByChangedAtAsc(order.getOrderId());
+        LocalDateTime historyDeliveredAt = null;
+        boolean hasDeliveredHistory = false;
+        if (history != null) {
+            for (OrderStatusHistory h : history) {
+                if ("DELIVERED".equalsIgnoreCase(h.getNewStatus()) && h.getChangedAt() != null) {
+                    hasDeliveredHistory = true;
+                    historyDeliveredAt = h.getChangedAt();
+                }
+            }
+        }
+
+        if (!orderIsDelivered && !hasDeliveredShipment && !hasDeliveredHistory) {
             return null; // Not delivered yet
         }
 
@@ -209,13 +276,8 @@ public class RefundServiceImpl implements RefundService {
             return shipmentDeliveredAt;
         }
 
-        List<OrderStatusHistory> history = orderStatusHistoryRepository.findByOrderOrderIdOrderByChangedAtAsc(order.getOrderId());
-        if (history != null) {
-            for (OrderStatusHistory h : history) {
-                if ("DELIVERED".equalsIgnoreCase(h.getNewStatus()) && h.getChangedAt() != null) {
-                    return h.getChangedAt();
-                }
-            }
+        if (historyDeliveredAt != null) {
+            return historyDeliveredAt;
         }
 
         if (order.getModifiedAt() != null) {
@@ -237,6 +299,7 @@ public class RefundServiceImpl implements RefundService {
                 .refundAmount(req.getRefundAmount())
                 .status(req.getStatus())
                 .requestedAt(req.getRequestedAt().toString())
+                .remark(req.getRemark())
                 .build();
     }
 }

@@ -5,6 +5,7 @@ import java.io.ByteArrayOutputStream;
 import java.io.InputStream;
 import java.math.BigDecimal;
 import java.time.LocalDate;
+import java.util.Date;
 import java.util.ArrayList;
 import java.util.HashMap;
 import java.util.LinkedHashMap;
@@ -13,6 +14,8 @@ import java.util.Map;
 
 import org.springframework.stereotype.Service;
 
+import com.ojt.ecommerce.backofficeinventory.dto.InventoryExportDTO;
+import net.sf.jasperreports.export.SimpleXlsxReportConfiguration;
 import com.ojt.ecommerce.backofficeinventory.dto.BrandExportDTO;
 import com.ojt.ecommerce.backofficeinventory.dto.CategorySummaryDTO;
 import com.ojt.ecommerce.backofficeinventory.dto.DailyProductSalesDTO;
@@ -62,6 +65,14 @@ public class JasperReportService {
             JRXlsxExporter exporter = new JRXlsxExporter();
             exporter.setExporterInput(new SimpleExporterInput(jasperPrint));
             exporter.setExporterOutput(new SimpleOutputStreamExporterOutput(outputStream));
+
+            SimpleXlsxReportConfiguration reportConfig = new SimpleXlsxReportConfiguration();
+            reportConfig.setOnePagePerSheet(false);
+            reportConfig.setRemoveEmptySpaceBetweenRows(true);
+            reportConfig.setDetectCellType(true);
+            reportConfig.setWhitePageBackground(false);
+            exporter.setConfiguration(reportConfig);
+
             exporter.exportReport();
             return outputStream.toByteArray();
         } else {
@@ -224,13 +235,19 @@ public class JasperReportService {
         final Class<?> valueClass;
         final HorizontalTextAlignEnum detailAlign;
         final String pattern;
+        final int weight;
 
         ColumnDef(String key, String header, Class<?> valueClass, HorizontalTextAlignEnum detailAlign, String pattern) {
+            this(key, header, valueClass, detailAlign, pattern, 100);
+        }
+
+        ColumnDef(String key, String header, Class<?> valueClass, HorizontalTextAlignEnum detailAlign, String pattern, int weight) {
             this.key = key;
             this.header = header;
             this.valueClass = valueClass;
             this.detailAlign = detailAlign;
             this.pattern = pattern;
+            this.weight = weight;
         }
     }
 
@@ -1000,6 +1017,7 @@ public class JasperReportService {
         // 2. Initialize JasperDesign with standard A4 Portrait dimensions
         JasperDesign jasperDesign = new JasperDesign();
         jasperDesign.setName("DynamicRefundExportReport");
+        jasperDesign.setWhenNoDataType(WhenNoDataTypeEnum.ALL_SECTIONS_NO_DETAIL);
         jasperDesign.setPageWidth(595);
         jasperDesign.setPageHeight(842);
         jasperDesign.setColumnWidth(555);
@@ -1239,6 +1257,775 @@ public class JasperReportService {
 
         JRDesignTextField pageField = new JRDesignTextField();
         pageField.setX(400);
+        pageField.setY(5);
+        pageField.setWidth(155);
+        pageField.setHeight(15);
+        pageField.setFontName("SansSerif");
+        pageField.setFontSize(8f);
+        pageField.setForecolor(Color.decode("#64748B"));
+        pageField.setHorizontalTextAlign(HorizontalTextAlignEnum.RIGHT);
+        pageField.setVerticalTextAlign(VerticalTextAlignEnum.MIDDLE);
+        JRDesignExpression pageExpr = new JRDesignExpression();
+        pageExpr.setText("\"Page \" + $V{PAGE_NUMBER}");
+        pageField.setExpression(pageExpr);
+        footerBand.addElement(pageField);
+
+        jasperDesign.setPageFooter(footerBand);
+
+        return jasperDesign;
+    }
+
+    // =========================================================================
+    // DYNAMIC COLUMN STOCK MANAGEMENT (INVENTORY) EXPORT (PDF & EXCEL)
+    // =========================================================================
+
+    private static final Map<String, ColumnDef> INVENTORY_AVAILABLE_COLUMNS = new LinkedHashMap<>();
+    static {
+        INVENTORY_AVAILABLE_COLUMNS.put("variantAndSku", new ColumnDef("variantAndSku", "VARIANT & SKU", String.class, HorizontalTextAlignEnum.LEFT, null, 120));
+        INVENTORY_AVAILABLE_COLUMNS.put("product", new ColumnDef("product", "PRODUCT", String.class, HorizontalTextAlignEnum.LEFT, null, 120));
+        INVENTORY_AVAILABLE_COLUMNS.put("sellingPrice", new ColumnDef("sellingPrice", "SELLING PRICE", BigDecimal.class, HorizontalTextAlignEnum.RIGHT, "#,##0.00", 80));
+        INVENTORY_AVAILABLE_COLUMNS.put("physicalStock", new ColumnDef("physicalStock", "PHYSICAL STOCK", Integer.class, HorizontalTextAlignEnum.CENTER, null, 70));
+        INVENTORY_AVAILABLE_COLUMNS.put("reservedStock", new ColumnDef("reservedStock", "RESERVED", Integer.class, HorizontalTextAlignEnum.CENTER, null, 60));
+        INVENTORY_AVAILABLE_COLUMNS.put("availableStock", new ColumnDef("availableStock", "AVAILABLE", Integer.class, HorizontalTextAlignEnum.CENTER, null, 65));
+        INVENTORY_AVAILABLE_COLUMNS.put("reorderLevel", new ColumnDef("reorderLevel", "REORDER LEVEL", Integer.class, HorizontalTextAlignEnum.CENTER, null, 75));
+        INVENTORY_AVAILABLE_COLUMNS.put("expiryAndBatch", new ColumnDef("expiryAndBatch", "EXPIRY & BATCH", String.class, HorizontalTextAlignEnum.CENTER, null, 100));
+        INVENTORY_AVAILABLE_COLUMNS.put("status", new ColumnDef("status", "STATUS", String.class, HorizontalTextAlignEnum.CENTER, null, 80));
+    }
+
+    public static class InventoryExportItem {
+        private String variantAndSku;
+        private String product;
+        private BigDecimal sellingPrice;
+        private Integer physicalStock;
+        private Integer reservedStock;
+        private Integer availableStock;
+        private Integer reorderLevel;
+        private String expiryAndBatch;
+        private String status;
+
+        public InventoryExportItem(String variantAndSku, String product, BigDecimal sellingPrice,
+                                   Integer physicalStock, Integer reservedStock, Integer availableStock,
+                                   Integer reorderLevel, String expiryAndBatch, String status) {
+            this.variantAndSku = variantAndSku != null ? variantAndSku : "-";
+            this.product = product != null ? product : "Unknown";
+            this.sellingPrice = sellingPrice != null ? sellingPrice : BigDecimal.ZERO;
+            this.physicalStock = physicalStock != null ? physicalStock : 0;
+            this.reservedStock = reservedStock != null ? reservedStock : 0;
+            this.availableStock = availableStock != null ? availableStock : 0;
+            this.reorderLevel = reorderLevel != null ? reorderLevel : 0;
+            this.expiryAndBatch = expiryAndBatch != null ? expiryAndBatch : "-";
+            this.status = status != null ? status : "NORMAL";
+        }
+
+        public String getVariantAndSku() { return variantAndSku; }
+        public String getProduct() { return product; }
+        public BigDecimal getSellingPrice() { return sellingPrice; }
+        public Integer getPhysicalStock() { return physicalStock; }
+        public Integer getReservedStock() { return reservedStock; }
+        public Integer getAvailableStock() { return availableStock; }
+        public Integer getReorderLevel() { return reorderLevel; }
+        public String getExpiryAndBatch() { return expiryAndBatch; }
+        public String getStatus() { return status; }
+    }
+
+    public byte[] generateDynamicInventoryPdf(String tabFilter, String search, String status, List<String> selectedColumns) throws Exception {
+        return generateDynamicInventoryReport(tabFilter, search, status, selectedColumns, "pdf");
+    }
+
+    public byte[] generateDynamicInventoryExcel(String tabFilter, String search, String status, List<String> selectedColumns) throws Exception {
+        return generateDynamicInventoryReport(tabFilter, search, status, selectedColumns, "excel");
+    }
+
+    public byte[] generateDynamicInventoryReport(String tabFilter, String search, String status, List<String> selectedColumns, String format) throws Exception {
+        String activeTab = (tabFilter != null && !tabFilter.isBlank()) ? tabFilter.trim() : "ALL";
+        String activeStatus = (status != null && !status.isBlank()) ? status.trim() : "ALL";
+        String activeSearch = (search != null) ? search.trim() : "";
+
+        List<InventoryExportDTO> rawData = reportRepository.getInventoryExportReport(activeTab, activeSearch, activeStatus);
+        List<InventoryExportItem> data = new ArrayList<>();
+        if (rawData != null) {
+            for (InventoryExportDTO dto : rawData) {
+                if (dto != null) {
+                    data.add(new InventoryExportItem(
+                            dto.getVariantAndSku(),
+                            dto.getProduct(),
+                            dto.getSellingPrice(),
+                            dto.getPhysicalStock(),
+                            dto.getReservedStock(),
+                            dto.getAvailableStock(),
+                            dto.getReorderLevel(),
+                            dto.getExpiryAndBatch(),
+                            dto.getStatus()
+                    ));
+                }
+            }
+        }
+
+        JasperDesign jasperDesign = buildInventoryJasperDesign(selectedColumns, activeTab, activeStatus, activeSearch);
+        JasperReport jasperReport = JasperCompileManager.compileReport(jasperDesign);
+        JasperPrint jasperPrint = JasperFillManager.fillReport(jasperReport, new HashMap<>(), new JRBeanCollectionDataSource(data));
+        return exportReport(jasperPrint, format);
+    }
+
+    private JasperDesign buildInventoryJasperDesign(List<String> selectedColumns, String tabFilter, String statusFilter, String searchKeyword) throws Exception {
+        // 1. Resolve and filter requested columns against whitelisted available columns in exact order
+        List<ColumnDef> activeColumns = new ArrayList<>();
+        if (selectedColumns != null && !selectedColumns.isEmpty()) {
+            for (String col : selectedColumns) {
+                if (col == null) continue;
+                String trimmed = col.trim();
+                for (Map.Entry<String, ColumnDef> entry : INVENTORY_AVAILABLE_COLUMNS.entrySet()) {
+                    if (entry.getKey().equalsIgnoreCase(trimmed) || entry.getKey().equalsIgnoreCase(trimmed.replace("_", ""))) {
+                        if (!activeColumns.contains(entry.getValue())) {
+                            activeColumns.add(entry.getValue());
+                        }
+                        break;
+                    }
+                }
+            }
+        }
+        if (activeColumns.isEmpty()) {
+            activeColumns.addAll(INVENTORY_AVAILABLE_COLUMNS.values());
+        }
+
+        // 2. Initialize JasperDesign with standard A4 Landscape dimensions
+        JasperDesign jasperDesign = new JasperDesign();
+        jasperDesign.setName("DynamicInventoryExportReport");
+        jasperDesign.setWhenNoDataType(WhenNoDataTypeEnum.ALL_SECTIONS_NO_DETAIL);
+        jasperDesign.setPageWidth(842);
+        jasperDesign.setPageHeight(595);
+        jasperDesign.setColumnWidth(802);
+        jasperDesign.setLeftMargin(20);
+        jasperDesign.setRightMargin(20);
+        jasperDesign.setTopMargin(20);
+        jasperDesign.setBottomMargin(20);
+
+        // 3. Register all available fields on the report
+        for (ColumnDef def : INVENTORY_AVAILABLE_COLUMNS.values()) {
+            JRDesignField field = new JRDesignField();
+            field.setName(def.key);
+            field.setValueClass(def.valueClass);
+            jasperDesign.addField(field);
+        }
+
+        // 4. Corporate Title Band (height = 65)
+        JRDesignBand titleBand = new JRDesignBand();
+        titleBand.setHeight(65);
+
+        JRDesignStaticText systemText = new JRDesignStaticText();
+        systemText.setX(0);
+        systemText.setY(0);
+        systemText.setWidth(500);
+        systemText.setHeight(20);
+        systemText.setText("E-COMMERCE BACK-OFFICE SYSTEM");
+        systemText.setFontName("SansSerif");
+        systemText.setFontSize(14f);
+        systemText.setBold(true);
+        systemText.setForecolor(Color.decode("#1E293B"));
+        systemText.setVerticalTextAlign(VerticalTextAlignEnum.MIDDLE);
+        titleBand.addElement(systemText);
+
+        // Dynamic Report Title based on tabFilter
+        String reportTitle;
+        if ("LOW_STOCK".equalsIgnoreCase(tabFilter)) {
+            reportTitle = "LOW STOCK ALERTS REPORT";
+        } else if ("EXPIRING_SOON".equalsIgnoreCase(tabFilter)) {
+            reportTitle = "EXPIRING SOON INVENTORY REPORT";
+        } else {
+            reportTitle = "STOCK MANAGEMENT REPORT (ALL INVENTORY)";
+        }
+
+        JRDesignStaticText reportTitleText = new JRDesignStaticText();
+        reportTitleText.setX(0);
+        reportTitleText.setY(22);
+        reportTitleText.setWidth(500);
+        reportTitleText.setHeight(18);
+        reportTitleText.setText(reportTitle);
+        reportTitleText.setFontName("SansSerif");
+        reportTitleText.setFontSize(12f);
+        reportTitleText.setBold(true);
+        reportTitleText.setForecolor(Color.decode("#475569"));
+        reportTitleText.setVerticalTextAlign(VerticalTextAlignEnum.MIDDLE);
+        titleBand.addElement(reportTitleText);
+
+        StringBuilder subtitleBuilder = new StringBuilder();
+        subtitleBuilder.append("Filter Tab: ").append(tabFilter != null && !tabFilter.isBlank() ? tabFilter.toUpperCase() : "ALL");
+        if (statusFilter != null && !statusFilter.isBlank() && !"ALL".equalsIgnoreCase(statusFilter)) {
+            subtitleBuilder.append(" | Status: ").append(statusFilter.toUpperCase());
+        }
+        if (searchKeyword != null && !searchKeyword.isBlank()) {
+            subtitleBuilder.append(" | Search: \"").append(searchKeyword.trim()).append("\"");
+        }
+
+        JRDesignStaticText filterSubtitle = new JRDesignStaticText();
+        filterSubtitle.setX(0);
+        filterSubtitle.setY(42);
+        filterSubtitle.setWidth(500);
+        filterSubtitle.setHeight(14);
+        filterSubtitle.setText(subtitleBuilder.toString());
+        filterSubtitle.setFontName("SansSerif");
+        filterSubtitle.setFontSize(9f);
+        filterSubtitle.setBold(true);
+        filterSubtitle.setForecolor(Color.decode("#64748B"));
+        filterSubtitle.setVerticalTextAlign(VerticalTextAlignEnum.MIDDLE);
+        titleBand.addElement(filterSubtitle);
+
+        JRDesignTextField dateField = new JRDesignTextField();
+        dateField.setX(550);
+        dateField.setY(10);
+        dateField.setWidth(252);
+        dateField.setHeight(20);
+        dateField.setFontName("SansSerif");
+        dateField.setFontSize(9f);
+        dateField.setForecolor(Color.decode("#64748B"));
+        dateField.setHorizontalTextAlign(HorizontalTextAlignEnum.RIGHT);
+        dateField.setVerticalTextAlign(VerticalTextAlignEnum.MIDDLE);
+        JRDesignExpression dateExpr = new JRDesignExpression();
+        dateExpr.setText("\"Generated on: \" + new java.text.SimpleDateFormat(\"yyyy-MM-dd HH:mm\").format(new java.util.Date())");
+        dateField.setExpression(dateExpr);
+        titleBand.addElement(dateField);
+
+        JRDesignLine headerLine = new JRDesignLine();
+        headerLine.setX(0);
+        headerLine.setY(60);
+        headerLine.setWidth(802);
+        headerLine.setHeight(1);
+        headerLine.setForecolor(Color.decode("#CBD5E1"));
+        titleBand.addElement(headerLine);
+
+        jasperDesign.setTitle(titleBand);
+
+        // 5. Column Header Band (height = 28) & Detail Band (height = 24)
+        JRDesignBand columnHeaderBand = new JRDesignBand();
+        columnHeaderBand.setHeight(28);
+
+        JRDesignBand detailBand = new JRDesignBand();
+        detailBand.setHeight(24);
+
+        // First Column: "No." ($V{REPORT_COUNT}, width = 32px) at x = 0
+        int noWidth = 32;
+
+        JRDesignStaticText noHeader = new JRDesignStaticText();
+        noHeader.setX(0);
+        noHeader.setY(0);
+        noHeader.setWidth(noWidth);
+        noHeader.setHeight(28);
+        noHeader.setText("No.");
+        noHeader.setMode(ModeEnum.OPAQUE);
+        noHeader.setBackcolor(Color.decode("#1E293B"));
+        noHeader.setForecolor(Color.WHITE);
+        noHeader.setFontName("SansSerif");
+        noHeader.setFontSize(10f);
+        noHeader.setBold(true);
+        noHeader.setHorizontalTextAlign(HorizontalTextAlignEnum.CENTER);
+        noHeader.setVerticalTextAlign(VerticalTextAlignEnum.MIDDLE);
+        noHeader.getLineBox().getPen().setLineWidth(0.5f);
+        noHeader.getLineBox().getPen().setLineColor(Color.decode("#CBD5E1"));
+        columnHeaderBand.addElement(noHeader);
+
+        JRDesignTextField noDetail = new JRDesignTextField();
+        noDetail.setX(0);
+        noDetail.setY(0);
+        noDetail.setWidth(noWidth);
+        noDetail.setHeight(24);
+        noDetail.setFontName("SansSerif");
+        noDetail.setFontSize(9f);
+        noDetail.setHorizontalTextAlign(HorizontalTextAlignEnum.CENTER);
+        noDetail.setVerticalTextAlign(VerticalTextAlignEnum.MIDDLE);
+        noDetail.setBlankWhenNull(true);
+        noDetail.getLineBox().getPen().setLineWidth(0.5f);
+        noDetail.getLineBox().getPen().setLineColor(Color.decode("#CBD5E1"));
+        noDetail.getLineBox().setLeftPadding(4);
+        noDetail.getLineBox().setRightPadding(4);
+        noDetail.getLineBox().setTopPadding(4);
+        noDetail.getLineBox().setBottomPadding(4);
+        JRDesignExpression noExpr = new JRDesignExpression();
+        noExpr.setText("$V{REPORT_COUNT}");
+        noDetail.setExpression(noExpr);
+        detailBand.addElement(noDetail);
+
+        // Remaining 770px dynamically distributed across active columns
+        int remainingWidth = 802 - noWidth; // 770px
+        int totalWeight = activeColumns.stream().mapToInt(c -> c.weight).sum();
+        int numCols = activeColumns.size();
+
+        int currentX = noWidth;
+        int accumulatedWidth = 0;
+        for (int i = 0; i < numCols; i++) {
+            ColumnDef colDef = activeColumns.get(i);
+            int colWidth;
+            if (i == numCols - 1) {
+                // Ensure exact 770px total width without 1px rounding discrepancies
+                colWidth = remainingWidth - accumulatedWidth;
+            } else {
+                colWidth = (int) Math.round(((double) colDef.weight / totalWeight) * remainingWidth);
+                accumulatedWidth += colWidth;
+            }
+
+            // Column Header
+            JRDesignStaticText colHeader = new JRDesignStaticText();
+            colHeader.setX(currentX);
+            colHeader.setY(0);
+            colHeader.setWidth(colWidth);
+            colHeader.setHeight(28);
+            colHeader.setText(colDef.header);
+            colHeader.setMode(ModeEnum.OPAQUE);
+            colHeader.setBackcolor(Color.decode("#1E293B"));
+            colHeader.setForecolor(Color.WHITE);
+            colHeader.setFontName("SansSerif");
+            colHeader.setFontSize(10f);
+            colHeader.setBold(true);
+            colHeader.setHorizontalTextAlign(HorizontalTextAlignEnum.CENTER);
+            colHeader.setVerticalTextAlign(VerticalTextAlignEnum.MIDDLE);
+            colHeader.getLineBox().getPen().setLineWidth(0.5f);
+            colHeader.getLineBox().getPen().setLineColor(Color.decode("#CBD5E1"));
+            colHeader.getLineBox().setLeftPadding(4);
+            colHeader.getLineBox().setRightPadding(4);
+            colHeader.getLineBox().setTopPadding(4);
+            colHeader.getLineBox().setBottomPadding(4);
+            columnHeaderBand.addElement(colHeader);
+
+            // Detail Cell
+            JRDesignTextField colDetail = new JRDesignTextField();
+            colDetail.setX(currentX);
+            colDetail.setY(0);
+            colDetail.setWidth(colWidth);
+            colDetail.setHeight(24);
+            colDetail.setFontName("SansSerif");
+            colDetail.setFontSize(9f);
+            colDetail.setHorizontalTextAlign(colDef.detailAlign);
+            colDetail.setVerticalTextAlign(VerticalTextAlignEnum.MIDDLE);
+            colDetail.setBlankWhenNull(true);
+            if (colDef.pattern != null) {
+                colDetail.setPattern(colDef.pattern);
+            }
+            colDetail.getLineBox().getPen().setLineWidth(0.5f);
+            colDetail.getLineBox().getPen().setLineColor(Color.decode("#CBD5E1"));
+            colDetail.getLineBox().setLeftPadding(4);
+            colDetail.getLineBox().setRightPadding(4);
+            colDetail.getLineBox().setTopPadding(4);
+            colDetail.getLineBox().setBottomPadding(4);
+            JRDesignExpression colExpr = new JRDesignExpression();
+            colExpr.setText("$F{" + colDef.key + "}");
+            colDetail.setExpression(colExpr);
+            detailBand.addElement(colDetail);
+
+            currentX += colWidth;
+        }
+
+        jasperDesign.setColumnHeader(columnHeaderBand);
+        ((JRDesignSection) jasperDesign.getDetailSection()).addBand(detailBand);
+
+        // 6. Summary Band (displays message if no records match)
+        JRDesignBand summaryBand = new JRDesignBand();
+        summaryBand.setHeight(26);
+
+        JRDesignStaticText noDataText = new JRDesignStaticText();
+        noDataText.setX(0);
+        noDataText.setY(0);
+        noDataText.setWidth(802);
+        noDataText.setHeight(26);
+        noDataText.setText("No inventory records found matching the selected filter criteria.");
+        noDataText.setFontName("SansSerif");
+        noDataText.setFontSize(9f);
+        noDataText.setItalic(true);
+        noDataText.setMode(ModeEnum.OPAQUE);
+        noDataText.setBackcolor(Color.decode("#F8FAFC"));
+        noDataText.setForecolor(Color.decode("#64748B"));
+        noDataText.setHorizontalTextAlign(HorizontalTextAlignEnum.CENTER);
+        noDataText.setVerticalTextAlign(VerticalTextAlignEnum.MIDDLE);
+        noDataText.getLineBox().getPen().setLineWidth(0.5f);
+        noDataText.getLineBox().getPen().setLineColor(Color.decode("#CBD5E1"));
+        summaryBand.addElement(noDataText);
+
+        JRDesignExpression noDataBandExpr = new JRDesignExpression();
+        noDataBandExpr.setText("$V{REPORT_COUNT} == null || $V{REPORT_COUNT} == 0");
+        summaryBand.setPrintWhenExpression(noDataBandExpr);
+
+        jasperDesign.setSummary(summaryBand);
+
+        // 7. Page Footer Band (height = 25)
+        JRDesignBand footerBand = new JRDesignBand();
+        footerBand.setHeight(25);
+
+        JRDesignStaticText confText = new JRDesignStaticText();
+        confText.setX(0);
+        confText.setY(5);
+        confText.setWidth(400);
+        confText.setHeight(15);
+        confText.setText("Confidential - Internal Back-Office Use Only");
+        confText.setFontName("SansSerif");
+        confText.setFontSize(8f);
+        confText.setItalic(true);
+        confText.setForecolor(Color.decode("#64748B"));
+        confText.setVerticalTextAlign(VerticalTextAlignEnum.MIDDLE);
+        footerBand.addElement(confText);
+
+        JRDesignTextField pageField = new JRDesignTextField();
+        pageField.setX(647);
+        pageField.setY(5);
+        pageField.setWidth(155);
+        pageField.setHeight(15);
+        pageField.setFontName("SansSerif");
+        pageField.setFontSize(8f);
+        pageField.setForecolor(Color.decode("#64748B"));
+        pageField.setHorizontalTextAlign(HorizontalTextAlignEnum.RIGHT);
+        pageField.setVerticalTextAlign(VerticalTextAlignEnum.MIDDLE);
+        JRDesignExpression pageExpr = new JRDesignExpression();
+        pageExpr.setText("\"Page \" + $V{PAGE_NUMBER}");
+        pageField.setExpression(pageExpr);
+        footerBand.addElement(pageField);
+
+        jasperDesign.setPageFooter(footerBand);
+
+        return jasperDesign;
+    }
+
+    // =========================================================================
+    // DYNAMIC COLUMN ALL ORDERS PAGE EXPORT (PDF & EXCEL)
+    // =========================================================================
+
+    private static final Map<String, ColumnDef> ORDERS_AVAILABLE_COLUMNS = new LinkedHashMap<>();
+    static {
+        ORDERS_AVAILABLE_COLUMNS.put("orderNo", new ColumnDef("orderNo", "ORDER NO", String.class, HorizontalTextAlignEnum.CENTER, null, 130));
+        ORDERS_AVAILABLE_COLUMNS.put("orderDate", new ColumnDef("orderDate", "DATE", String.class, HorizontalTextAlignEnum.CENTER, null, 90));
+        ORDERS_AVAILABLE_COLUMNS.put("customerName", new ColumnDef("customerName", "CUSTOMER", String.class, HorizontalTextAlignEnum.LEFT, null, 180));
+        ORDERS_AVAILABLE_COLUMNS.put("totalAmount", new ColumnDef("totalAmount", "TOTAL AMOUNT", BigDecimal.class, HorizontalTextAlignEnum.RIGHT, "#,##0.00", 127));
+        ORDERS_AVAILABLE_COLUMNS.put("orderStatus", new ColumnDef("orderStatus", "ORDER STATUS", String.class, HorizontalTextAlignEnum.CENTER, null, 120));
+        ORDERS_AVAILABLE_COLUMNS.put("paymentStatus", new ColumnDef("paymentStatus", "PAYMENT", String.class, HorizontalTextAlignEnum.CENTER, null, 120));
+    }
+
+    public static class OrderPageExportItem {
+        private String orderNo;
+        private String orderDate;
+        private String customerName;
+        private BigDecimal totalAmount;
+        private String orderStatus;
+        private String paymentStatus;
+
+        public OrderPageExportItem(String orderNo, String orderDate, String customerName, BigDecimal totalAmount, String orderStatus, String paymentStatus) {
+            this.orderNo = orderNo;
+            this.orderDate = orderDate;
+            this.customerName = customerName;
+            this.totalAmount = totalAmount;
+            this.orderStatus = orderStatus;
+            this.paymentStatus = paymentStatus;
+        }
+
+        public String getOrderNo() { return orderNo; }
+        public String getOrderDate() { return orderDate; }
+        public String getCustomerName() { return customerName; }
+        public BigDecimal getTotalAmount() { return totalAmount; }
+        public String getOrderStatus() { return orderStatus; }
+        public String getPaymentStatus() { return paymentStatus; }
+    }
+
+    public byte[] generateDynamicOrdersPagePdf(String tabStatus, String search, List<String> selectedColumns) throws Exception {
+        return generateDynamicOrdersPageReport(tabStatus, search, selectedColumns, "pdf");
+    }
+
+    public byte[] generateDynamicOrdersPageExcel(String tabStatus, String search, List<String> selectedColumns) throws Exception {
+        return generateDynamicOrdersPageReport(tabStatus, search, selectedColumns, "excel");
+    }
+
+    public byte[] generateDynamicOrdersPageReport(String tabStatus, String search, List<String> selectedColumns, String format) throws Exception {
+        String activeStatus = (tabStatus != null && !tabStatus.isBlank()) ? tabStatus.trim() : "ALL";
+        String activeSearch = (search != null) ? search.trim() : "";
+
+        List<com.ojt.ecommerce.backofficeinventory.dto.OrderPageExportDTO> rawData = reportRepository.getOrdersPageExportReport(activeStatus, activeSearch);
+        List<OrderPageExportItem> data = new ArrayList<>();
+        if (rawData != null) {
+            for (com.ojt.ecommerce.backofficeinventory.dto.OrderPageExportDTO dto : rawData) {
+                if (dto != null) {
+                    data.add(new OrderPageExportItem(
+                            dto.getOrderNo(),
+                            dto.getOrderDate(),
+                            dto.getCustomerName(),
+                            dto.getTotalAmount(),
+                            dto.getOrderStatus(),
+                            dto.getPaymentStatus()
+                    ));
+                }
+            }
+        }
+
+        JasperDesign jasperDesign = buildOrdersPageJasperDesign(selectedColumns, activeStatus, activeSearch);
+        JasperReport jasperReport = JasperCompileManager.compileReport(jasperDesign);
+        JasperPrint jasperPrint = JasperFillManager.fillReport(jasperReport, new HashMap<>(), new JRBeanCollectionDataSource(data));
+        return exportReport(jasperPrint, format);
+    }
+
+    private JasperDesign buildOrdersPageJasperDesign(List<String> selectedColumns, String tabStatus, String searchKeyword) throws Exception {
+        // 1. Resolve and filter requested columns against whitelisted available columns in exact order
+        List<ColumnDef> activeColumns = new ArrayList<>();
+        if (selectedColumns != null && !selectedColumns.isEmpty()) {
+            for (String col : selectedColumns) {
+                if (col == null) continue;
+                String trimmed = col.trim();
+                for (Map.Entry<String, ColumnDef> entry : ORDERS_AVAILABLE_COLUMNS.entrySet()) {
+                    if (entry.getKey().equalsIgnoreCase(trimmed) || entry.getKey().equalsIgnoreCase(trimmed.replace("_", ""))) {
+                        if (!activeColumns.contains(entry.getValue())) {
+                            activeColumns.add(entry.getValue());
+                        }
+                        break;
+                    }
+                }
+            }
+        }
+        if (activeColumns.isEmpty()) {
+            activeColumns.addAll(ORDERS_AVAILABLE_COLUMNS.values());
+        }
+
+        // 2. Initialize JasperDesign with standard A4 Landscape dimensions
+        JasperDesign jasperDesign = new JasperDesign();
+        jasperDesign.setName("DynamicOrdersPageExportReport");
+        jasperDesign.setWhenNoDataType(WhenNoDataTypeEnum.ALL_SECTIONS_NO_DETAIL);
+        jasperDesign.setPageWidth(842);
+        jasperDesign.setPageHeight(595);
+        jasperDesign.setColumnWidth(802);
+        jasperDesign.setLeftMargin(20);
+        jasperDesign.setRightMargin(20);
+        jasperDesign.setTopMargin(20);
+        jasperDesign.setBottomMargin(20);
+
+        // 3. Register all available fields on the report
+        for (ColumnDef def : ORDERS_AVAILABLE_COLUMNS.values()) {
+            JRDesignField field = new JRDesignField();
+            field.setName(def.key);
+            field.setValueClass(def.valueClass);
+            jasperDesign.addField(field);
+        }
+
+        // 4. Corporate Title Band (height = 65)
+        JRDesignBand titleBand = new JRDesignBand();
+        titleBand.setHeight(65);
+
+        JRDesignStaticText systemText = new JRDesignStaticText();
+        systemText.setX(0);
+        systemText.setY(0);
+        systemText.setWidth(500);
+        systemText.setHeight(20);
+        systemText.setText("E-COMMERCE BACK-OFFICE SYSTEM");
+        systemText.setFontName("SansSerif");
+        systemText.setFontSize(14f);
+        systemText.setBold(true);
+        systemText.setForecolor(Color.decode("#1E293B"));
+        systemText.setVerticalTextAlign(VerticalTextAlignEnum.MIDDLE);
+        titleBand.addElement(systemText);
+
+        // Dynamic Report Title based on tabStatus
+        String reportTitle;
+        if (tabStatus == null || tabStatus.isBlank() || "ALL".equalsIgnoreCase(tabStatus.trim())) {
+            reportTitle = "ALL ORDERS REPORT";
+        } else {
+            reportTitle = "ORDERS REPORT - " + tabStatus.trim().toUpperCase();
+        }
+
+        JRDesignStaticText reportTitleText = new JRDesignStaticText();
+        reportTitleText.setX(0);
+        reportTitleText.setY(22);
+        reportTitleText.setWidth(500);
+        reportTitleText.setHeight(18);
+        reportTitleText.setText(reportTitle);
+        reportTitleText.setFontName("SansSerif");
+        reportTitleText.setFontSize(12f);
+        reportTitleText.setBold(true);
+        reportTitleText.setForecolor(Color.decode("#475569"));
+        reportTitleText.setVerticalTextAlign(VerticalTextAlignEnum.MIDDLE);
+        titleBand.addElement(reportTitleText);
+
+        StringBuilder subtitleBuilder = new StringBuilder();
+        subtitleBuilder.append("Filter Status: ").append(tabStatus != null && !tabStatus.isBlank() ? tabStatus.toUpperCase() : "ALL");
+        if (searchKeyword != null && !searchKeyword.isBlank()) {
+            subtitleBuilder.append(" | Search: \"").append(searchKeyword.trim()).append("\"");
+        }
+
+        JRDesignStaticText filterSubtitle = new JRDesignStaticText();
+        filterSubtitle.setX(0);
+        filterSubtitle.setY(42);
+        filterSubtitle.setWidth(500);
+        filterSubtitle.setHeight(14);
+        filterSubtitle.setText(subtitleBuilder.toString());
+        filterSubtitle.setFontName("SansSerif");
+        filterSubtitle.setFontSize(9f);
+        filterSubtitle.setBold(true);
+        filterSubtitle.setForecolor(Color.decode("#64748B"));
+        filterSubtitle.setVerticalTextAlign(VerticalTextAlignEnum.MIDDLE);
+        titleBand.addElement(filterSubtitle);
+
+        JRDesignTextField dateField = new JRDesignTextField();
+        dateField.setX(550);
+        dateField.setY(10);
+        dateField.setWidth(252);
+        dateField.setHeight(20);
+        dateField.setFontName("SansSerif");
+        dateField.setFontSize(9f);
+        dateField.setForecolor(Color.decode("#64748B"));
+        dateField.setHorizontalTextAlign(HorizontalTextAlignEnum.RIGHT);
+        dateField.setVerticalTextAlign(VerticalTextAlignEnum.MIDDLE);
+        JRDesignExpression dateExpr = new JRDesignExpression();
+        dateExpr.setText("\"Generated on: \" + new java.text.SimpleDateFormat(\"yyyy-MM-dd HH:mm\").format(new java.util.Date())");
+        dateField.setExpression(dateExpr);
+        titleBand.addElement(dateField);
+
+        JRDesignLine headerLine = new JRDesignLine();
+        headerLine.setX(0);
+        headerLine.setY(60);
+        headerLine.setWidth(802);
+        headerLine.setHeight(1);
+        headerLine.setForecolor(Color.decode("#CBD5E1"));
+        titleBand.addElement(headerLine);
+
+        jasperDesign.setTitle(titleBand);
+
+        // 5. Column Header Band (height = 28) & Detail Band (height = 24)
+        JRDesignBand columnHeaderBand = new JRDesignBand();
+        columnHeaderBand.setHeight(28);
+
+        JRDesignBand detailBand = new JRDesignBand();
+        detailBand.setHeight(24);
+
+        // First Column: \"No.\" ($V{REPORT_COUNT}, width = 35px) at x = 0
+        int noWidth = 35;
+
+        JRDesignStaticText noHeader = new JRDesignStaticText();
+        noHeader.setX(0);
+        noHeader.setY(0);
+        noHeader.setWidth(noWidth);
+        noHeader.setHeight(28);
+        noHeader.setText("No.");
+        noHeader.setMode(ModeEnum.OPAQUE);
+        noHeader.setBackcolor(Color.decode("#1E293B"));
+        noHeader.setForecolor(Color.WHITE);
+        noHeader.setFontName("SansSerif");
+        noHeader.setFontSize(10f);
+        noHeader.setBold(true);
+        noHeader.setHorizontalTextAlign(HorizontalTextAlignEnum.CENTER);
+        noHeader.setVerticalTextAlign(VerticalTextAlignEnum.MIDDLE);
+        noHeader.getLineBox().getPen().setLineWidth(0.5f);
+        noHeader.getLineBox().getPen().setLineColor(Color.decode("#CBD5E1"));
+        columnHeaderBand.addElement(noHeader);
+
+        JRDesignTextField noDetail = new JRDesignTextField();
+        noDetail.setX(0);
+        noDetail.setY(0);
+        noDetail.setWidth(noWidth);
+        noDetail.setHeight(24);
+        noDetail.setFontName("SansSerif");
+        noDetail.setFontSize(9f);
+        noDetail.setHorizontalTextAlign(HorizontalTextAlignEnum.CENTER);
+        noDetail.setVerticalTextAlign(VerticalTextAlignEnum.MIDDLE);
+        noDetail.setBlankWhenNull(true);
+        noDetail.getLineBox().getPen().setLineWidth(0.5f);
+        noDetail.getLineBox().getPen().setLineColor(Color.decode("#CBD5E1"));
+        noDetail.getLineBox().setLeftPadding(5);
+        noDetail.getLineBox().setRightPadding(5);
+        noDetail.getLineBox().setTopPadding(5);
+        noDetail.getLineBox().setBottomPadding(5);
+        JRDesignExpression noExpr = new JRDesignExpression();
+        noExpr.setText("$V{REPORT_COUNT}");
+        noDetail.setExpression(noExpr);
+        detailBand.addElement(noDetail);
+
+        // Remaining 767px dynamically distributed across active columns
+        int remainingWidth = 802 - noWidth; // 767px
+        int totalWeight = activeColumns.stream().mapToInt(c -> c.weight).sum();
+        int numCols = activeColumns.size();
+
+        int currentX = noWidth;
+        int accumulatedWidth = 0;
+        for (int i = 0; i < numCols; i++) {
+            ColumnDef colDef = activeColumns.get(i);
+            int colWidth;
+            if (i == numCols - 1) {
+                // Ensure exact total width without rounding discrepancies
+                colWidth = remainingWidth - accumulatedWidth;
+            } else {
+                colWidth = (int) Math.round(((double) colDef.weight / totalWeight) * remainingWidth);
+                accumulatedWidth += colWidth;
+            }
+
+            // Column Header
+            JRDesignStaticText colHeader = new JRDesignStaticText();
+            colHeader.setX(currentX);
+            colHeader.setY(0);
+            colHeader.setWidth(colWidth);
+            colHeader.setHeight(28);
+            colHeader.setText(colDef.header);
+            colHeader.setMode(ModeEnum.OPAQUE);
+            colHeader.setBackcolor(Color.decode("#1E293B"));
+            colHeader.setForecolor(Color.WHITE);
+            colHeader.setFontName("SansSerif");
+            colHeader.setFontSize(10f);
+            colHeader.setBold(true);
+            colHeader.setHorizontalTextAlign(HorizontalTextAlignEnum.CENTER);
+            colHeader.setVerticalTextAlign(VerticalTextAlignEnum.MIDDLE);
+            colHeader.getLineBox().getPen().setLineWidth(0.5f);
+            colHeader.getLineBox().getPen().setLineColor(Color.decode("#CBD5E1"));
+            colHeader.getLineBox().setLeftPadding(5);
+            colHeader.getLineBox().setRightPadding(5);
+            colHeader.getLineBox().setTopPadding(5);
+            colHeader.getLineBox().setBottomPadding(5);
+            columnHeaderBand.addElement(colHeader);
+
+            // Detail Cell
+            JRDesignTextField colDetail = new JRDesignTextField();
+            colDetail.setX(currentX);
+            colDetail.setY(0);
+            colDetail.setWidth(colWidth);
+            colDetail.setHeight(24);
+            colDetail.setFontName("SansSerif");
+            colDetail.setFontSize(9f);
+            colDetail.setHorizontalTextAlign(colDef.detailAlign);
+            colDetail.setVerticalTextAlign(VerticalTextAlignEnum.MIDDLE);
+            colDetail.setBlankWhenNull(true);
+            if (colDef.pattern != null) {
+                colDetail.setPattern(colDef.pattern);
+            }
+            colDetail.getLineBox().getPen().setLineWidth(0.5f);
+            colDetail.getLineBox().getPen().setLineColor(Color.decode("#CBD5E1"));
+            colDetail.getLineBox().setLeftPadding(5);
+            colDetail.getLineBox().setRightPadding(5);
+            colDetail.getLineBox().setTopPadding(5);
+            colDetail.getLineBox().setBottomPadding(5);
+
+            JRDesignExpression detailExpr = new JRDesignExpression();
+            detailExpr.setText("$F{" + colDef.key + "}");
+            colDetail.setExpression(detailExpr);
+            detailBand.addElement(colDetail);
+
+            currentX += colWidth;
+        }
+
+        jasperDesign.setColumnHeader(columnHeaderBand);
+        ((JRDesignSection) jasperDesign.getDetailSection()).addBand(detailBand);
+
+        // 6. Page Footer Band (height = 25)
+        JRDesignBand footerBand = new JRDesignBand();
+        footerBand.setHeight(25);
+
+        JRDesignLine footerLine = new JRDesignLine();
+        footerLine.setX(0);
+        footerLine.setY(0);
+        footerLine.setWidth(802);
+        footerLine.setHeight(1);
+        footerLine.setForecolor(Color.decode("#E2E8F0"));
+        footerBand.addElement(footerLine);
+
+        JRDesignStaticText confidentialityText = new JRDesignStaticText();
+        confidentialityText.setX(0);
+        confidentialityText.setY(5);
+        confidentialityText.setWidth(400);
+        confidentialityText.setHeight(15);
+        confidentialityText.setText("CONFIDENTIAL - FOR INTERNAL USE ONLY");
+        confidentialityText.setFontName("SansSerif");
+        confidentialityText.setFontSize(8f);
+        confidentialityText.setForecolor(Color.decode("#94A3B8"));
+        confidentialityText.setVerticalTextAlign(VerticalTextAlignEnum.MIDDLE);
+        footerBand.addElement(confidentialityText);
+
+        JRDesignTextField pageField = new JRDesignTextField();
+        pageField.setX(647);
         pageField.setY(5);
         pageField.setWidth(155);
         pageField.setHeight(15);

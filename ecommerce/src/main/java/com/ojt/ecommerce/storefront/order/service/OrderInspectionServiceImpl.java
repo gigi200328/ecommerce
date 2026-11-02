@@ -13,6 +13,7 @@ import com.ojt.ecommerce.storefront.order.repository.OrderInspectionRepository;
 import com.ojt.ecommerce.storefront.order.repository.OrderInspectionRepository.InvoiceHeaderRow;
 import com.ojt.ecommerce.storefront.order.repository.OrderInspectionRepository.InvoiceRawResult;
 import com.ojt.ecommerce.storefront.order.repository.OrderInspectionRepository.OrderHistoryResult;
+import jakarta.annotation.PostConstruct;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import net.sf.jasperreports.engine.JasperCompileManager;
@@ -33,6 +34,9 @@ import org.springframework.util.StringUtils;
 import java.io.ByteArrayOutputStream;
 import java.io.InputStream;
 import java.math.BigDecimal;
+import java.nio.file.Files;
+import java.nio.file.Path;
+import java.nio.file.Paths;
 import java.time.LocalDate;
 import java.time.LocalDateTime;
 import java.time.format.DateTimeFormatter;
@@ -306,6 +310,7 @@ public class OrderInspectionServiceImpl implements OrderInspectionService {
 
             // 4. Fill parameters
             Map<String, Object> params = new HashMap<>();
+            params.put("LOGO_IMAGE", loadLogoImage());
             params.put("ORDER_NO", dto.getOrderNo());
             params.put("ORDER_DATE_STR", dto.getOrderPlacedAt() != null ? dto.getOrderPlacedAt().format(DATE_FMT) : "");
             params.put("CUSTOMER_NAME", dto.getCustomerName());
@@ -402,6 +407,7 @@ public class OrderInspectionServiceImpl implements OrderInspectionService {
 
             // 3. Setup parameters
             Map<String, Object> params = new HashMap<>();
+            params.put("LOGO_IMAGE", loadLogoImage());
 
             // Customer info (from first row if available, else fallback)
             String customerName = "Valued Customer";
@@ -507,5 +513,97 @@ public class OrderInspectionServiceImpl implements OrderInspectionService {
 
         throw new IllegalStateException(
                 "Neither reports/" + baseName + ".jasper nor reports/" + baseName + ".jrxml found on classpath.");
+    }
+
+    private static final String UPLOADED_LOGO_PATH =
+            "C:/Users/User/.gemini/antigravity/brain/d5928173-e63b-411d-b3c8-5f4c967aeb95/.user_uploaded/media_1792946063716_87f1dbaa.png";
+
+    private byte[] cachedLogoBytes = null;
+
+    @PostConstruct
+    public void init() {
+        loadLogoImage();
+    }
+
+    /**
+     * Loads the store logo image bytes for JasperReports.
+     * Looks up classpath resource reports/logo.png first, followed by local filesystem paths,
+     * including the user uploaded logo asset. Automatically saves the image to resources
+     * so it persists with the project build.
+     */
+    private synchronized byte[] loadLogoImage() {
+        if (cachedLogoBytes != null) {
+            return cachedLogoBytes;
+        }
+
+        // 1. Try classpath resource
+        try (InputStream is = getClass().getResourceAsStream("/reports/logo.png")) {
+            if (is != null) {
+                cachedLogoBytes = is.readAllBytes();
+                log.debug("Store logo loaded from classpath /reports/logo.png ({} bytes)", cachedLogoBytes.length);
+                return cachedLogoBytes;
+            }
+        } catch (Exception ignored) {
+        }
+
+        try (InputStream is = getClass().getClassLoader().getResourceAsStream("reports/logo.png")) {
+            if (is != null) {
+                cachedLogoBytes = is.readAllBytes();
+                log.debug("Store logo loaded from classloader reports/logo.png ({} bytes)", cachedLogoBytes.length);
+                return cachedLogoBytes;
+            }
+        } catch (Exception ignored) {
+        }
+
+        // 2. Try filesystem candidate paths
+        List<Path> candidates = List.of(
+                Paths.get("c:/Users/User/Downloads/ecommerce/ecommerce/src/main/resources/reports/logo.png"),
+                Paths.get("src/main/resources/reports/logo.png"),
+                Paths.get("ecommerce/src/main/resources/reports/logo.png"),
+                Paths.get(UPLOADED_LOGO_PATH)
+        );
+
+        for (Path p : candidates) {
+            if (Files.exists(p)) {
+                try {
+                    byte[] bytes = Files.readAllBytes(p);
+                    if (bytes.length > 0) {
+                        cachedLogoBytes = bytes;
+                        log.info("Store logo loaded from filesystem: {} ({} bytes)", p.toAbsolutePath(), bytes.length);
+                        saveLogoToResources(bytes);
+                        return cachedLogoBytes;
+                    }
+                } catch (Exception e) {
+                    log.warn("Could not read logo image from {}: {}", p, e.getMessage());
+                }
+            }
+        }
+
+        log.warn("Logo image not found in classpath or filesystem candidates.");
+        return null;
+    }
+
+    /**
+     * Persists the logo bytes into the project's resources directory so subsequent
+     * builds and JAR packagings have the logo bundled directly on the classpath.
+     */
+    private void saveLogoToResources(byte[] bytes) {
+        List<Path> targets = List.of(
+                Paths.get("c:/Users/User/Downloads/ecommerce/ecommerce/src/main/resources/reports/logo.png"),
+                Paths.get("src/main/resources/reports/logo.png"),
+                Paths.get("target/classes/reports/logo.png")
+        );
+        for (Path target : targets) {
+            try {
+                if (!Files.exists(target)) {
+                    if (target.getParent() != null) {
+                        Files.createDirectories(target.getParent());
+                    }
+                    Files.write(target, bytes);
+                    log.info("Persisted logo image to {}", target.toAbsolutePath());
+                }
+            } catch (Exception ignored) {
+            }
+        }
     }
 }

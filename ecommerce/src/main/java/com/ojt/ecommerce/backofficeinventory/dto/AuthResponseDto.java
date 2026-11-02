@@ -4,6 +4,7 @@ import lombok.AllArgsConstructor;
 import lombok.Builder;
 import lombok.Data;
 import lombok.NoArgsConstructor;
+import java.util.List;
 
 @Data
 @Builder
@@ -12,8 +13,7 @@ import lombok.NoArgsConstructor;
 public class AuthResponseDto {
     private String token;
     private String username;
-    
-    private String email; // <--- ဤစာကြောင်းကို အသစ်ထည့်ပေးပါ
-    
+    private String email;
     private String role;
+    private List<String> permissions;
 }

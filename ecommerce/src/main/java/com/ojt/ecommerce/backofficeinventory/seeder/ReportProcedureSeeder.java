@@ -34,7 +34,9 @@ public class ReportProcedureSeeder implements CommandLineRunner {
             initOrderFulfillmentProcedure();
             initProductCatalogExportProcedure();
             initBrandExportProcedure();
-            log.info("Successfully initialized all 8 Back-Office Report Stored Procedures.");
+            initInventoryExportProcedure();
+            initOrdersPageExportProcedure();
+            log.info("Successfully initialized all 10 Back-Office Report Stored Procedures.");
         } catch (Exception e) {
             log.error("Error initializing Back-Office Report Stored Procedures: {}", e.getMessage(), e);
         }
@@ -205,12 +207,12 @@ public class ReportProcedureSeeder implements CommandLineRunner {
             )
             BEGIN
                 SELECT 
-                    o.order_id,
-                    DATE(o.created_at) AS order_date,
-                    COUNT(oi.order_item_id) AS total_items,
-                    o.total_amount,
-                    o.payment_status,
-                    o.order_status
+                    o.order_id AS orderId,
+                    DATE(o.created_at) AS orderDate,
+                    COUNT(oi.order_item_id) AS totalItems,
+                    o.total_amount AS totalAmount,
+                    o.payment_status AS paymentStatus,
+                    o.order_status AS orderStatus
                 FROM orders o
                 LEFT JOIN order_items oi ON o.order_id = oi.order_id
                 WHERE DATE(o.created_at) BETWEEN start_date AND end_date
@@ -298,5 +300,121 @@ public class ReportProcedureSeeder implements CommandLineRunner {
             """;
         jdbcTemplate.execute(sql);
         log.info("Initialized stored procedure: SP_GetBrandExportReport");
+    }
+
+    private void initInventoryExportProcedure() {
+        jdbcTemplate.execute("DROP PROCEDURE IF EXISTS `SP_GetInventoryExportReport`");
+        String sql = """
+            CREATE PROCEDURE `SP_GetInventoryExportReport`(
+                IN tab_filter VARCHAR(50),
+                IN search_keyword VARCHAR(100),
+                IN status_filter VARCHAR(50)
+            )
+            BEGIN
+                SELECT 
+                    CONCAT(
+                        pv.sku,
+                        IFNULL((
+                            SELECT CONCAT(' (', GROUP_CONCAT(vo.value ORDER BY vo.option_id SEPARATOR ' / '), ')')
+                            FROM variant_option_values vov
+                            JOIN variation_options vo ON vov.option_id = vo.option_id
+                            WHERE vov.variant_id = pv.variant_id
+                        ), '')
+                    ) AS variant_and_sku,
+                    CONCAT(
+                        pv.sku,
+                        IFNULL((
+                            SELECT CONCAT(' (', GROUP_CONCAT(vo.value ORDER BY vo.option_id SEPARATOR ' / '), ')')
+                            FROM variant_option_values vov
+                            JOIN variation_options vo ON vov.option_id = vo.option_id
+                            WHERE vov.variant_id = pv.variant_id
+                        ), '')
+                    ) AS variantAndSku,
+                    p.product_name AS product,
+                    pv.selling_price AS selling_price,
+                    pv.selling_price AS sellingPrice,
+                    IFNULL(i.quantity, 0) AS physical_stock,
+                    IFNULL(i.quantity, 0) AS physicalStock,
+                    IFNULL(i.reserved_quantity, 0) AS reserved_stock,
+                    IFNULL(i.reserved_quantity, 0) AS reservedStock,
+                    GREATEST(0, IFNULL(i.quantity, 0) - IFNULL(i.reserved_quantity, 0)) AS available_stock,
+                    GREATEST(0, IFNULL(i.quantity, 0) - IFNULL(i.reserved_quantity, 0)) AS availableStock,
+                    IFNULL(i.reorder_level, 0) AS reorder_level,
+                    IFNULL(i.reorder_level, 0) AS reorderLevel,
+                    CASE 
+                        WHEN i.expiry_date IS NOT NULL AND i.batch_number IS NOT NULL AND TRIM(i.batch_number) != '' 
+                            THEN CONCAT(DATE_FORMAT(i.expiry_date, '%Y-%m-%d'), ' (', i.batch_number, ')')
+                        WHEN i.expiry_date IS NOT NULL 
+                            THEN DATE_FORMAT(i.expiry_date, '%Y-%m-%d')
+                        WHEN i.batch_number IS NOT NULL AND TRIM(i.batch_number) != '' 
+                            THEN i.batch_number
+                        ELSE '-'
+                    END AS expiry_and_batch,
+                    CASE 
+                        WHEN i.expiry_date IS NOT NULL AND i.batch_number IS NOT NULL AND TRIM(i.batch_number) != '' 
+                            THEN CONCAT(DATE_FORMAT(i.expiry_date, '%Y-%m-%d'), ' (', i.batch_number, ')')
+                        WHEN i.expiry_date IS NOT NULL 
+                            THEN DATE_FORMAT(i.expiry_date, '%Y-%m-%d')
+                        WHEN i.batch_number IS NOT NULL AND TRIM(i.batch_number) != '' 
+                            THEN i.batch_number
+                        ELSE '-'
+                    END AS expiryAndBatch,
+                    IFNULL(i.status, 'NORMAL') AS status
+                FROM inventory i
+                INNER JOIN product_variants pv ON i.variant_id = pv.variant_id
+                INNER JOIN products p ON pv.product_id = p.product_id
+                WHERE (search_keyword IS NULL OR search_keyword = '' 
+                       OR pv.sku LIKE CONCAT('%', search_keyword, '%') 
+                       OR p.product_name LIKE CONCAT('%', search_keyword, '%'))
+                  AND (status_filter IS NULL OR status_filter = '' OR UPPER(status_filter) = 'ALL' 
+                       OR UPPER(i.status) = UPPER(status_filter))
+                  AND (
+                       tab_filter IS NULL OR tab_filter = '' OR UPPER(tab_filter) = 'ALL'
+                       OR (UPPER(tab_filter) = 'LOW_STOCK' AND (i.quantity <= i.reorder_level OR UPPER(i.status) IN ('LOW_STOCK', 'OUT_OF_STOCK')))
+                       OR (UPPER(tab_filter) = 'EXPIRING_SOON' AND i.expiry_date IS NOT NULL AND i.expiry_date <= DATE_ADD(CURDATE(), INTERVAL 30 DAY))
+                  )
+                ORDER BY p.product_name ASC, pv.sku ASC;
+            END
+            """;
+        jdbcTemplate.execute(sql);
+        log.info("Initialized stored procedure: SP_GetInventoryExportReport");
+    }
+
+    private void initOrdersPageExportProcedure() {
+        jdbcTemplate.execute("DROP PROCEDURE IF EXISTS `SP_GetOrdersPageExportReport`");
+        String sql = """
+            CREATE PROCEDURE `SP_GetOrdersPageExportReport`(
+                IN tab_status VARCHAR(50),
+                IN search_keyword VARCHAR(100)
+            )
+            BEGIN
+                SELECT 
+                    o.order_no AS order_no,
+                    o.order_no AS orderNo,
+                    DATE_FORMAT(o.created_at, '%Y-%m-%d') AS order_date,
+                    DATE_FORMAT(o.created_at, '%Y-%m-%d') AS orderDate,
+                    IFNULL(c.full_name, 'Guest Customer') AS customer_name,
+                    IFNULL(c.full_name, 'Guest Customer') AS customerName,
+                    o.total_amount AS total_amount,
+                    o.total_amount AS totalAmount,
+                    o.order_status AS order_status,
+                    o.order_status AS orderStatus,
+                    o.payment_status AS payment_status,
+                    o.payment_status AS paymentStatus
+                FROM orders o
+                LEFT JOIN customers c ON o.customer_id = c.customer_id
+                WHERE (search_keyword IS NULL OR TRIM(search_keyword) = ''
+                       OR o.order_no LIKE CONCAT('%', TRIM(search_keyword), '%')
+                       OR c.full_name LIKE CONCAT('%', TRIM(search_keyword), '%'))
+                  AND (
+                       tab_status IS NULL OR TRIM(tab_status) = '' OR UPPER(TRIM(tab_status)) = 'ALL'
+                       OR UPPER(o.order_status) = UPPER(TRIM(tab_status))
+                       OR (UPPER(TRIM(tab_status)) = 'PAID' AND UPPER(o.payment_status) IN ('PAID', 'SUCCESS'))
+                  )
+                ORDER BY o.created_at DESC;
+            END
+            """;
+        jdbcTemplate.execute(sql);
+        log.info("Initialized stored procedure: SP_GetOrdersPageExportReport");
     }
 }

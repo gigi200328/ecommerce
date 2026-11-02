@@ -367,4 +367,146 @@ public class ReportController {
             throw new RuntimeException("Failed to generate dynamic refund report: " + e.getMessage(), e);
         }
     }
+
+    // =========================================================================
+    // DYNAMIC COLUMN STOCK MANAGEMENT (INVENTORY) EXPORT (PDF & EXCEL)
+    // =========================================================================
+
+    private static final List<String> DEFAULT_INVENTORY_COLUMNS = List.of(
+            "variantAndSku", "product", "sellingPrice", "physicalStock",
+            "reservedStock", "availableStock", "reorderLevel", "expiryAndBatch", "status"
+    );
+
+    @GetMapping("/inventory/export/pdf")
+    public ResponseEntity<byte[]> exportInventoryPdf(
+            @RequestParam(value = "tabFilter", required = false, defaultValue = "ALL") String tabFilter,
+            @RequestParam(value = "search", required = false) String search,
+            @RequestParam(value = "status", required = false, defaultValue = "ALL") String status,
+            @RequestParam(value = "columns", required = false) List<String> columns) {
+        if (columns == null || columns.isEmpty()) {
+            columns = DEFAULT_INVENTORY_COLUMNS;
+        }
+        try {
+            byte[] pdfBytes = jasperReportService.generateDynamicInventoryPdf(tabFilter, search, status, columns);
+            return ResponseEntity.ok()
+                    .headers(getReportHeaders("pdf", "Inventory_Stock_Report"))
+                    .body(pdfBytes);
+        } catch (Exception e) {
+            throw new RuntimeException("Failed to generate dynamic inventory PDF: " + e.getMessage(), e);
+        }
+    }
+
+    @GetMapping({"/inventory/export/excel", "/inventory/export/xlsx"})
+    public ResponseEntity<byte[]> exportInventoryExcel(
+            @RequestParam(value = "tabFilter", required = false, defaultValue = "ALL") String tabFilter,
+            @RequestParam(value = "search", required = false) String search,
+            @RequestParam(value = "status", required = false, defaultValue = "ALL") String status,
+            @RequestParam(value = "columns", required = false) List<String> columns) {
+        if (columns == null || columns.isEmpty()) {
+            columns = DEFAULT_INVENTORY_COLUMNS;
+        }
+        try {
+            byte[] excelBytes = jasperReportService.generateDynamicInventoryExcel(tabFilter, search, status, columns);
+            return ResponseEntity.ok()
+                    .headers(getReportHeaders("excel", "Inventory_Stock_Report"))
+                    .body(excelBytes);
+        } catch (Exception e) {
+            throw new RuntimeException("Failed to generate dynamic inventory Excel: " + e.getMessage(), e);
+        }
+    }
+
+    @GetMapping("/inventory/export")
+    public ResponseEntity<byte[]> exportInventoryReport(
+            @RequestParam(value = "tabFilter", required = false, defaultValue = "ALL") String tabFilter,
+            @RequestParam(value = "search", required = false) String search,
+            @RequestParam(value = "status", required = false, defaultValue = "ALL") String status,
+            @RequestParam(value = "columns", required = false) List<String> columns,
+            @RequestParam(value = "format", defaultValue = "pdf") String format) {
+        if (columns == null || columns.isEmpty()) {
+            columns = DEFAULT_INVENTORY_COLUMNS;
+        }
+        if (!"pdf".equalsIgnoreCase(format) && !"excel".equalsIgnoreCase(format) && !"xlsx".equalsIgnoreCase(format)) {
+            return ResponseEntity.badRequest().body("Unsupported export format. Supported formats: pdf, excel.".getBytes());
+        }
+        try {
+            byte[] reportBytes = jasperReportService.generateDynamicInventoryReport(tabFilter, search, status, columns, format);
+            return ResponseEntity.ok()
+                    .headers(getReportHeaders(format, "Inventory_Stock_Report"))
+                    .body(reportBytes);
+        } catch (Exception e) {
+            throw new RuntimeException("Failed to generate dynamic inventory report: " + e.getMessage(), e);
+        }
+    }
+
+    // =========================================================================
+    // DYNAMIC COLUMN ALL ORDERS PAGE EXPORT (PDF & EXCEL)
+    // =========================================================================
+
+    private static final List<String> DEFAULT_ORDER_COLUMNS = List.of(
+            "orderNo", "orderDate", "customerName", "totalAmount", "orderStatus", "paymentStatus"
+    );
+
+    @GetMapping("/orders/export/pdf")
+    public ResponseEntity<byte[]> exportOrdersPdf(
+            @RequestParam(value = "status", required = false, defaultValue = "ALL") String status,
+            @RequestParam(value = "tabStatus", required = false) String tabStatus,
+            @RequestParam(value = "search", required = false) String search,
+            @RequestParam(value = "columns", required = false) List<String> columns) {
+        String activeStatus = (tabStatus != null && !tabStatus.isBlank()) ? tabStatus : status;
+        if (columns == null || columns.isEmpty()) {
+            columns = DEFAULT_ORDER_COLUMNS;
+        }
+        try {
+            byte[] pdfBytes = jasperReportService.generateDynamicOrdersPagePdf(activeStatus, search, columns);
+            return ResponseEntity.ok()
+                    .headers(getReportHeaders("pdf", "orders-report"))
+                    .body(pdfBytes);
+        } catch (Exception e) {
+            throw new RuntimeException("Failed to generate dynamic orders PDF: " + e.getMessage(), e);
+        }
+    }
+
+    @GetMapping({"/orders/export/excel", "/orders/export/xlsx"})
+    public ResponseEntity<byte[]> exportOrdersExcel(
+            @RequestParam(value = "status", required = false, defaultValue = "ALL") String status,
+            @RequestParam(value = "tabStatus", required = false) String tabStatus,
+            @RequestParam(value = "search", required = false) String search,
+            @RequestParam(value = "columns", required = false) List<String> columns) {
+        String activeStatus = (tabStatus != null && !tabStatus.isBlank()) ? tabStatus : status;
+        if (columns == null || columns.isEmpty()) {
+            columns = DEFAULT_ORDER_COLUMNS;
+        }
+        try {
+            byte[] excelBytes = jasperReportService.generateDynamicOrdersPageExcel(activeStatus, search, columns);
+            return ResponseEntity.ok()
+                    .headers(getReportHeaders("excel", "orders-report"))
+                    .body(excelBytes);
+        } catch (Exception e) {
+            throw new RuntimeException("Failed to generate dynamic orders Excel: " + e.getMessage(), e);
+        }
+    }
+
+    @GetMapping("/orders/export")
+    public ResponseEntity<byte[]> exportOrdersReport(
+            @RequestParam(value = "status", required = false, defaultValue = "ALL") String status,
+            @RequestParam(value = "tabStatus", required = false) String tabStatus,
+            @RequestParam(value = "search", required = false) String search,
+            @RequestParam(value = "columns", required = false) List<String> columns,
+            @RequestParam(value = "format", defaultValue = "pdf") String format) {
+        String activeStatus = (tabStatus != null && !tabStatus.isBlank()) ? tabStatus : status;
+        if (columns == null || columns.isEmpty()) {
+            columns = DEFAULT_ORDER_COLUMNS;
+        }
+        if (!"pdf".equalsIgnoreCase(format) && !"excel".equalsIgnoreCase(format) && !"xlsx".equalsIgnoreCase(format)) {
+            return ResponseEntity.badRequest().body("Unsupported export format. Supported formats: pdf, excel.".getBytes());
+        }
+        try {
+            byte[] reportBytes = jasperReportService.generateDynamicOrdersPageReport(activeStatus, search, columns, format);
+            return ResponseEntity.ok()
+                    .headers(getReportHeaders(format, "orders-report"))
+                    .body(reportBytes);
+        } catch (Exception e) {
+            throw new RuntimeException("Failed to generate dynamic orders report: " + e.getMessage(), e);
+        }
+    }
 }
