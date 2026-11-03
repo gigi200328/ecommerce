@@ -11,6 +11,7 @@ import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
 import com.ojt.ecommerce.backofficeinventory.dto.CreateZoneGroupRequest;
+import com.ojt.ecommerce.backofficeinventory.dto.PaginatedResponseDto;
 import com.ojt.ecommerce.backofficeinventory.dto.UpdateZoneRateRequest;
 import com.ojt.ecommerce.backofficeinventory.dto.ZoneGroupResponse;
 import com.ojt.ecommerce.backofficeinventory.mapper.ShipmentMapper;
@@ -31,7 +32,8 @@ public class ShippingService {
 
 	// ၁။ Admin UI Table အတွက် Zone များကို zoneName အလိုက် Group ဖွဲ့၍ ဆွဲထုတ်ခြင်း
 	@Transactional(readOnly = true)
-	public List<ZoneGroupResponse> getAllZoneGroups() {
+	public PaginatedResponseDto<ZoneGroupResponse> getAllZoneGroups(String search, String statusFilter, int pageNo,
+			int pageSize) {
 		List<DeliveryZone> allZones = zoneRepository.findAllByOrderByZoneIdAsc();
 		LocalDateTime now = LocalDateTime.now();
 		Map<String, ZoneGroupResponse> groupedMap = new LinkedHashMap<>();
@@ -49,8 +51,49 @@ public class ShippingService {
 				group.getTownships().add(zone.getTownship());
 			}
 		}
+		List<ZoneGroupResponse> allGroupedZones = new ArrayList<>(groupedMap.values());
 
-		return new ArrayList<>(groupedMap.values());
+		// (က) Memory ပေါ်တွင် Search နှင့် Status ကို စစ်ထုတ်ခြင်း
+		List<ZoneGroupResponse> filteredZones = allGroupedZones.stream().filter(zone -> {
+			boolean matchSearch = true;
+			if (search != null && !search.trim().isEmpty()) {
+				String lowerSearch = search.toLowerCase();
+				matchSearch = (zone.getZoneName() != null && zone.getZoneName().toLowerCase().contains(lowerSearch))
+						|| (zone.getCity() != null && zone.getCity().toLowerCase().contains(lowerSearch))
+						|| zone.getTownships().stream().anyMatch(t -> t.toLowerCase().contains(lowerSearch));
+			}
+
+			boolean matchStatus = true;
+			if (statusFilter != null && !statusFilter.trim().isEmpty() && !statusFilter.equalsIgnoreCase("ALL")) {
+				matchStatus = zone.getStatus() != null && zone.getStatus().equalsIgnoreCase(statusFilter);
+			}
+
+			return matchSearch && matchStatus;
+		}).toList();
+
+		// (ခ) Memory ပေါ်တွင် Pagination ဖြတ်တောက်ခြင်း
+		int totalElements = filteredZones.size();
+		int totalPages = (int) Math.ceil((double) totalElements / pageSize);
+		int fromIndex = Math.min(pageNo * pageSize, totalElements);
+		int toIndex = Math.min((pageNo + 1) * pageSize, totalElements);
+
+		List<ZoneGroupResponse> pagedZones = filteredZones.subList(fromIndex, toIndex);
+
+		// DTO ထဲသို့ ထည့်၍ ပြန်ပေးခြင်း (Order မှာသုံးခဲ့သော PaginatedResponseDto)
+		return new PaginatedResponseDto<>(pagedZones, pageNo, pageSize, totalElements, totalPages,
+				toIndex == totalElements);
+	}
+
+	@Transactional
+	public void toggleZoneStatus(String zoneName, String city, String newStatus) {
+		List<DeliveryZone> zonesToUpdate = zoneRepository.findAllByOrderByZoneIdAsc().stream()
+				.filter(z -> z.getZoneName().equalsIgnoreCase(zoneName) && z.getCity().equalsIgnoreCase(city)).toList();
+
+		for (DeliveryZone zone : zonesToUpdate) {
+			zone.setStatus(newStatus.toUpperCase());
+			zone.setModifiedAt(LocalDateTime.now());
+			zoneRepository.save(zone);
+		}
 	}
 
 	// ၂။ Zone အသစ် ဖန်တီးခြင်း (Default City Rate သို့မဟုတ်

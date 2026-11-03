@@ -10,6 +10,7 @@ import org.springframework.stereotype.Service;
 
 import com.fasterxml.jackson.core.type.TypeReference;
 import com.fasterxml.jackson.databind.ObjectMapper;
+import com.ojt.ecommerce.backofficeinventory.dto.LocationCityDto;
 import com.ojt.ecommerce.backofficeinventory.dto.LocationRegionDto;
 
 import jakarta.annotation.PostConstruct;
@@ -40,10 +41,20 @@ public class LocationMasterService {
 		return cachedLocations;
 	}
 
-	// တိုင်း/ပြည်နယ် သို့မဟုတ် City အမည်ဖြင့် မြို့နယ်စာရင်းကိုသာ သီးသန့် ရယူရန်
-	public List<String> getTownshipsByRegionOrCity(String query) {
-		return cachedLocations.stream()
-				.filter(loc -> loc.getRegionOrState().equalsIgnoreCase(query) || loc.getCity().equalsIgnoreCase(query))
-				.findFirst().map(LocationRegionDto::getTownships).orElse(Collections.emptyList());
+	// ၂။ ⭐️ အသစ်: တိုင်း/ပြည်နယ် အမည်ဖြင့် ၎င်းအောက်ရှိ ခရိုင်/မြို့ (City)
+	// အမည်များကိုသာ ရယူရန်
+	public List<String> getCitiesByRegion(String region) {
+		return cachedLocations.stream().filter(loc -> loc.getRegionOrState().equalsIgnoreCase(region)).findFirst()
+				.map(loc -> loc.getCities().stream().map(LocationCityDto::getCityName).toList())
+				.orElse(Collections.emptyList());
+	}
+
+	// ၃။ ⭐️ ပြင်ဆင်: ခရိုင်/မြို့ (City) အမည်ဖြင့် ၎င်းအောက်ရှိ မြို့နယ် (Township)
+	// များကိုသာ ရယူရန်
+	public List<String> getTownshipsByCity(String city) {
+		return cachedLocations.stream().flatMap(loc -> loc.getCities().stream()) // Region အားလုံးအောက်ရှိ City များကို
+																					// ဖြန့်ထုတ်ခြင်း
+				.filter(c -> c.getCityName().equalsIgnoreCase(city)).findFirst().map(LocationCityDto::getTownships)
+				.orElse(Collections.emptyList());
 	}
 }

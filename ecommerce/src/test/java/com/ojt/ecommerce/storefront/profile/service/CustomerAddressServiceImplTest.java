@@ -314,7 +314,7 @@ class CustomerAddressServiceImplTest {
         address2.setIsDefault(false);
         when(addressRepository.findByAddressIdAndCustomerCustomerId(20L, 1L)).thenReturn(Optional.of(address2));
         when(addressRepository.findByCustomerCustomerId(1L)).thenReturn(List.of(address1, address2));
-        when(addressRepository.save(address2)).thenReturn(address2);
+        when(addressRepository.save(any(CustomerAddress.class))).thenAnswer(invocation -> invocation.getArgument(0));
         when(addressMapper.toResponse(address2)).thenReturn(response1);
 
         CustomerAddressResponse result = addressService.setDefaultAddress(1L, 20L);

@@ -56,17 +56,55 @@ public class ShippingServiceImpl implements ShippingService {
         LocalDateTime now = LocalDateTime.now();
         
         Optional<DeliveryZone> zoneOpt = deliveryZoneRepository.findByCityAndTownshipAndStatus(city, township, "ACTIVE");
+        if (zoneOpt.isEmpty() && city != null && city.endsWith(" City")) {
+            String altCity = city.replace(" City", "").trim();
+            zoneOpt = deliveryZoneRepository.findByCityAndTownshipAndStatus(altCity, township, "ACTIVE");
+        }
+        if (zoneOpt.isEmpty() && township != null && !township.isBlank()) {
+            List<DeliveryZone> allActive = deliveryZoneRepository.findByStatus("ACTIVE");
+            zoneOpt = allActive.stream()
+                    .filter(z -> township.equalsIgnoreCase(z.getTownship()))
+                    .findFirst();
+        }
         if (zoneOpt.isEmpty()) {
             zoneOpt = deliveryZoneRepository.findByCityAndStatusAndTownshipIsNull(city, "ACTIVE");
         }
+        if (zoneOpt.isEmpty() && city != null && city.endsWith(" City")) {
+            String altCity = city.replace(" City", "").trim();
+            zoneOpt = deliveryZoneRepository.findByCityAndStatusAndTownshipIsNull(altCity, "ACTIVE");
+        }
         
+        BigDecimal defaultFee = new BigDecimal("5000.00");
+        int defaultEstimatedDays = 3;
+
         if (zoneOpt.isEmpty()) {
-            throw new ResourceNotFoundException("No delivery zone available for the specified location");
+            return ShippingQuoteResponse.builder()
+                    .shippingRateId(0L)
+                    .zoneId(0L)
+                    .zoneCode("DEFAULT_ZONE")
+                    .zoneName("Standard Delivery")
+                    .city(city)
+                    .township(township)
+                    .shippingFee(defaultFee)
+                    .estimatedDays(defaultEstimatedDays)
+                    .build();
         }
         
         DeliveryZone zone = zoneOpt.get();
-        ShippingRate rate = shippingRateRepository.findActiveRateForZone(zone.getZoneId(), now)
-                .orElseThrow(() -> new ResourceNotFoundException("No active shipping rate found for this zone"));
+        Optional<ShippingRate> rateOpt = shippingRateRepository.findActiveRateForZone(zone.getZoneId(), now);
+        if (rateOpt.isEmpty()) {
+            return ShippingQuoteResponse.builder()
+                    .shippingRateId(0L)
+                    .zoneId(zone.getZoneId())
+                    .zoneCode(zone.getZoneCode())
+                    .zoneName(zone.getZoneName())
+                    .city(zone.getCity())
+                    .township(zone.getTownship())
+                    .shippingFee(defaultFee)
+                    .estimatedDays(defaultEstimatedDays)
+                    .build();
+        }
+        ShippingRate rate = rateOpt.get();
                 
         return ShippingQuoteResponse.builder()
                 .shippingRateId(rate.getShippingRateId())

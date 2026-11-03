@@ -13,6 +13,8 @@ import org.springframework.web.bind.annotation.RequestParam;
 import org.springframework.web.bind.annotation.RestController;
 
 import com.ojt.ecommerce.backofficeinventory.service.JasperReportService;
+import com.ojt.ecommerce.backofficeinventory.service.ProfitReportService;
+import com.ojt.ecommerce.backofficeinventory.dto.MonthlyProfitComparisonDto;
 
 import lombok.RequiredArgsConstructor;
 
@@ -22,6 +24,7 @@ import lombok.RequiredArgsConstructor;
 public class ReportController {
 
     private final JasperReportService jasperReportService;
+    private final ProfitReportService profitReportService;
 
     /**
      * Helper method to set up appropriate headers based on the requested format
@@ -508,5 +511,30 @@ public class ReportController {
         } catch (Exception e) {
             throw new RuntimeException("Failed to generate dynamic orders report: " + e.getMessage(), e);
         }
+    }
+
+    // =========================================================================
+    // MONTH-ON-MONTH (MoM) PROFIT & MARGIN COMPARISON
+    // =========================================================================
+
+    @GetMapping("/month-on-month-profit")
+    public ResponseEntity<MonthlyProfitComparisonDto> getMonthOnMonthProfit(
+            @RequestParam(value = "year", required = false) Integer year) {
+        if (year == null) {
+            year = LocalDate.now().getYear();
+        }
+        return ResponseEntity.ok(profitReportService.getMonthOnMonthProfitReport(year));
+    }
+
+    @GetMapping({"/month-on-month-profit/export", "/month-on-month-profit/export/excel", "/month-on-month-profit/export/xlsx"})
+    public ResponseEntity<byte[]> exportMonthOnMonthProfitExcel(
+            @RequestParam(value = "year", required = false) Integer year) {
+        if (year == null) {
+            year = LocalDate.now().getYear();
+        }
+        byte[] excelBytes = profitReportService.exportMonthOnMonthProfitExcel(year);
+        return ResponseEntity.ok()
+                .headers(getReportHeaders("excel", "Month_on_Month_Profit_Report_" + year))
+                .body(excelBytes);
     }
 }

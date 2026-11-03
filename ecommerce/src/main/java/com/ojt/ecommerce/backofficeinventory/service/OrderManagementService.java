@@ -1,14 +1,20 @@
 package com.ojt.ecommerce.backofficeinventory.service;
 
+import java.time.LocalDate;
 import java.time.LocalDateTime;
+import java.time.LocalTime;
+import java.util.ArrayList;
 import java.util.Arrays;
+import java.util.Collections;
 import java.util.List;
+import java.util.Map;
 import java.util.stream.Collectors;
 
 import org.springframework.data.domain.Page;
 import org.springframework.data.domain.PageRequest;
 import org.springframework.data.domain.Pageable;
 import org.springframework.data.domain.Sort;
+import org.springframework.data.jpa.domain.Specification;
 import org.springframework.security.core.Authentication;
 import org.springframework.security.core.context.SecurityContextHolder;
 import org.springframework.stereotype.Service;
@@ -35,6 +41,7 @@ import com.ojt.ecommerce.entity.Shipment;
 import com.ojt.ecommerce.entity.User;
 
 import jakarta.persistence.EntityNotFoundException;
+import jakarta.persistence.criteria.Predicate;
 import lombok.RequiredArgsConstructor;
 
 @Service
@@ -51,24 +58,49 @@ public class OrderManagementService {
 	private final InventoryService inventoryService;
 
 	@Transactional(readOnly = true)
-	public PaginatedResponseDto<OrderResponseDto> getOrders(String status, int pageNo, int pageSize) {
+	public PaginatedResponseDto<OrderResponseDto> getOrders(String status, String search, String startDate,
+			String endDate, int pageNo, int pageSize) {
 		Pageable pageable = PageRequest.of(pageNo, pageSize, Sort.by("createdAt").descending());
-		Page<Order> orders;
-		// Status ပါလာလျှင် Statusအားလုံး ကိုရှာမည်၊ မပါလာလျှင် အားလုံးကို ရှာမည်
-		if (status != null && !status.trim().isEmpty()) {
-			String upperStatus = status.toUpperCase();
+		// ⭐️ Server-side Filtering ပြုလုပ်ရန် Specification တည်ဆောက်ခြင်း ⭐️
+		Specification<Order> spec = (root, query, cb) -> {
+			List<Predicate> predicates = new ArrayList<>();
 
-			List<String> validStatuses = Arrays.asList("PENDING", "PAID", "PROCESSING", "SHIPPED", "DELIVERED",
-					"CANCELLED");
-
-			if (!validStatuses.contains(upperStatus)) {
-				throw new IllegalArgumentException(
-						"Invalid order status: '" + status + "'. Allowed values are: " + validStatuses);
+			// ၁။ Status ဖြင့် ရှာခြင်း (ALL မဟုတ်လျှင်)
+			if (status != null && !status.trim().isEmpty() && !status.equalsIgnoreCase("ALL")) {
+				String upperStatus = status.toUpperCase();
+				List<String> validStatuses = Arrays.asList("PENDING", "PAID", "PROCESSING", "SHIPPED", "DELIVERED",
+						"CANCELLED");
+				if (!validStatuses.contains(upperStatus)) {
+					throw new IllegalArgumentException("Invalid order status: '" + status + "'");
+				}
+				predicates.add(cb.equal(root.get("orderStatus"), upperStatus));
 			}
-			orders = orderRepository.findByOrderStatus(status, pageable);
-		} else {
-			orders = orderRepository.findAll(pageable);
-		}
+
+			// ၂။ Search ဖြင့် ရှာခြင်း (Order No သို့မဟုတ် Customer Name တွင်
+			// ပါဝင်မှုစစ်ဆေးခြင်း)
+			if (search != null && !search.trim().isEmpty()) {
+				String searchPattern = "%" + search.trim().toLowerCase() + "%";
+				Predicate orderNoMatch = cb.like(cb.lower(root.get("orderNo")), searchPattern);
+				// Note: Customer table ၏ customerName သို့ ချိတ်ဆက်၍ ရှာဖွေခြင်း
+				Predicate customerNameMatch = cb.like(cb.lower(root.join("customer").get("fullName")), searchPattern);
+				predicates.add(cb.or(orderNoMatch, customerNameMatch));
+			}
+
+			// ၃။ Date Range ဖြင့် ရှာခြင်း
+			if (startDate != null && !startDate.trim().isEmpty()) {
+				LocalDateTime startOfDay = LocalDate.parse(startDate).atStartOfDay(); // e.g. 2026-10-24 00:00:00
+				predicates.add(cb.greaterThanOrEqualTo(root.get("createdAt"), startOfDay));
+			}
+			if (endDate != null && !endDate.trim().isEmpty()) {
+				LocalDateTime endOfDay = LocalDate.parse(endDate).atTime(LocalTime.MAX); // e.g. 2026-10-24 23:59:59
+				predicates.add(cb.lessThanOrEqualTo(root.get("createdAt"), endOfDay));
+			}
+
+			return cb.and(predicates.toArray(new Predicate[0]));
+		};
+
+		// Filter များနှင့်အတူ Database မှ Page လိုက် တိုက်ရိုက်ဆွဲထုတ်ခြင်း
+		Page<Order> orders = orderRepository.findAll(spec, pageable);
 		// Mapper ကို အသုံးပြု၍ Entity မှ DTO သို့ ပြောင်းလဲခြင်း
 		return orderMapper.toPaginatedDto(orders);
 	}
@@ -79,6 +111,11 @@ public class OrderManagementService {
 				.orElseThrow(() -> new EntityNotFoundException("Order not found with order number: " + orderNo));
 		return orderMapper.toDto(order);
 	}
+
+	private static final Map<String, List<String>> VALID_TRANSITIONS = Map.of("PENDING", List.of("PAID"), "PAID",
+			List.of("PROCESSING"), "PROCESSING", List.of("SHIPPED"), "SHIPPED", List.of("DELIVERED"), "DELIVERED",
+			List.of("REFUNDED") // ⬅️ DELIVERED ရောက်လျှင် အခြားသို့ နောက်ပြန်ဆုတ်ခွင့် မရှိပါ
+	);
 
 	@Transactional(readOnly = false)
 	public OrderResponseDto updateOrderStatus(String orderNo, OrderStatusUpdateRequestDto requestDto) {
@@ -97,6 +134,12 @@ public class OrderManagementService {
 			throw new IllegalArgumentException("Order is already in " + newStatus + " status.");
 		}
 
+		List<String> allowedNextStatuses = VALID_TRANSITIONS.getOrDefault(oldStatus, Collections.emptyList());
+		if (!allowedNextStatuses.contains(newStatus)) {
+			throw new IllegalArgumentException(
+					"Invalid transition: Cannot change status from " + oldStatus + " to " + newStatus);
+		}
+
 		OrderStatusHistory history = OrderStatusHistory.builder().order(order).oldStatus(oldStatus).newStatus(newStatus)
 				.remark(requestDto.getRemark()).changedAt(LocalDateTime.now()).changedBy(currentUser).build();
 
@@ -109,7 +152,8 @@ public class OrderManagementService {
 		Order updatedOrder = orderRepository.save(order);
 
 		// 🔴 FR-8: Deduct inventory stock if moving to PAID, PROCESSING, or SHIPPED
-		if ("PAID".equalsIgnoreCase(newStatus) || "PROCESSING".equalsIgnoreCase(newStatus) || "SHIPPED".equalsIgnoreCase(newStatus)) {
+		if ("PAID".equalsIgnoreCase(newStatus) || "PROCESSING".equalsIgnoreCase(newStatus)
+				|| "SHIPPED".equalsIgnoreCase(newStatus)) {
 			inventoryService.deductStockForOrder(updatedOrder.getOrderId());
 		}
 

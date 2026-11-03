@@ -157,7 +157,7 @@ public class OrderHistoryServiceImpl implements OrderHistoryService {
 		List<OrderItemSnapshot> itemSnapshots = items.stream()
 				.map(i -> OrderItemSnapshot.builder().orderItemId(i.getOrderItemId()).productName(i.getProductName())
 						.variantAttributes(i.getVariantAttributes()).qty(i.getQty()).unitPrice(i.getUnitPrice())
-						.discountAmount(BigDecimal.ZERO).subtotal(i.getSubtotal()).build())
+						.costPrice(i.getCostPrice()).subtotal(i.getSubtotal()).build())
 				.collect(Collectors.toList());
 
 		OrderAddress addr = orderAddressRepository.findByOrderOrderId(orderId)
