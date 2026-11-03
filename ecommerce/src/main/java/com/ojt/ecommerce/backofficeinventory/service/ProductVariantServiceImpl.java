@@ -141,12 +141,20 @@ public class ProductVariantServiceImpl implements ProductVariantService {
 
         String invStatus = initialQty == 0 ? "OUT_OF_STOCK" : (initialQty <= 10 ? "LOW_STOCK" : "NORMAL");
 
+        Boolean isPerishable = dto.getIsPerishable();
+        if (isPerishable == null && savedVariant.getProduct() != null) {
+            isPerishable = savedVariant.getProduct().getIsPerishable();
+        }
+
         Inventory inventory = Inventory.builder()
                 .variant(savedVariant)
                 .quantity(initialQty)
                 .reservedQuantity(0)
                 .reorderLevel(10)
                 .status(invStatus)
+                .isPerishable(Boolean.TRUE.equals(isPerishable))
+                .expiryDate(dto.getExpiryDate())
+                .batchNumber(dto.getBatchNumber())
                 .createdBy(currentUser)
                 .createdAt(now)
                 .modifiedBy(currentUser)
@@ -209,7 +217,19 @@ public class ProductVariantServiceImpl implements ProductVariantService {
                 .filter(vov -> vov.getVariant() != null && vov.getVariant().getVariantId() != null)
                 .collect(Collectors.groupingBy(vov -> vov.getVariant().getVariantId()));
 
+        List<Inventory> inventories = inventoryRepository.findByVariant_VariantIdIn(variantIds);
+        Map<Long, Inventory> invByVariant = inventories.stream()
+                .filter(i -> i.getVariant() != null && i.getVariant().getVariantId() != null)
+                .collect(Collectors.toMap(i -> i.getVariant().getVariantId(), i -> i, (a, b) -> a));
+
         for (ProductVariant v : variants) {
+            Inventory inv = invByVariant.get(v.getVariantId());
+            if (inv != null) {
+                v.setExpiryDate(inv.getExpiryDate());
+                v.setBatchNumber(inv.getBatchNumber());
+                v.setIsPerishable(inv.getIsPerishable());
+            }
+
             List<VariantOptionValue> vovs = optionsByVariant.get(v.getVariantId());
             if (vovs != null && !vovs.isEmpty()) {
                 String summary = vovs.stream()

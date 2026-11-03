@@ -41,6 +41,15 @@ public class ProductVariantCreateDto {
     @Schema(description = "Initial stock quantity to place in inventory", example = "20")
     private Integer initialStock;
 
+    @Schema(description = "Optional expiration date for perishable variant", example = "2027-02-04")
+    private java.time.LocalDate expiryDate;
+
+    @Schema(description = "Optional batch or lot number", example = "LOT-2026-001")
+    private String batchNumber;
+
+    @Schema(description = "Whether this variant is perishable", example = "true")
+    private Boolean isPerishable;
+
     // Explicit Getters & Setters
     public Long getProductId() {
         return productId;
@@ -96,5 +105,29 @@ public class ProductVariantCreateDto {
 
     public void setInitialStock(Integer initialStock) {
         this.initialStock = initialStock;
+    }
+
+    public java.time.LocalDate getExpiryDate() {
+        return expiryDate;
+    }
+
+    public void setExpiryDate(java.time.LocalDate expiryDate) {
+        this.expiryDate = expiryDate;
+    }
+
+    public String getBatchNumber() {
+        return batchNumber;
+    }
+
+    public void setBatchNumber(String batchNumber) {
+        this.batchNumber = batchNumber;
+    }
+
+    public Boolean getIsPerishable() {
+        return isPerishable;
+    }
+
+    public void setIsPerishable(Boolean isPerishable) {
+        this.isPerishable = isPerishable;
     }
 }
