@@ -56,6 +56,7 @@ public class OrderManagementService {
 	private final PaymentMapper paymentMapper;
 	private final ShipmentMapper shipmentMapper;
 	private final InventoryService inventoryService;
+	private final AdminNotificationService notificationService;
 
 	@Transactional(readOnly = true)
 	public PaginatedResponseDto<OrderResponseDto> getOrders(String status, String search, String startDate,
@@ -157,6 +158,22 @@ public class OrderManagementService {
 			inventoryService.deductStockForOrder(updatedOrder.getOrderId());
 		}
 
+		String customerName = updatedOrder.getCustomer() != null ? updatedOrder.getCustomer().getFullName()
+				: "Customer";
+
+		if ("PAID".equalsIgnoreCase(newStatus)) {
+			// Payment အောင်မြင်ကြောင်း သီးသန့် Noti ပို့ရန်
+			notificationService.sendCustomNotification("NEW_ORDER", // Sale Staff အတွက် အရေးကြီးသော Noti
+					"Order Payment Confirmed",
+					"Payment for order " + orderNo + " (" + customerName + ") is verified. Ready to process!",
+					"/admin/orders/" + orderNo, updatedOrder.getOrderId());
+		} else {
+			// အခြား Status အပြောင်းအလဲများအတွက် Noti ပို့ရန်
+			notificationService.sendCustomNotification("ORDER_UPDATE", "Order Status Updated",
+					"Order " + orderNo + " is now " + newStatus + ".", "/admin/orders/" + orderNo,
+					updatedOrder.getOrderId());
+		}
+
 		// ပြောင်းလဲသွားတဲ့ အော်ဒါအချက်အလက်ကို DTO ပြောင်းပြီး ပြန်ပေးမည်
 		return orderMapper.toDto(updatedOrder);
 	}
@@ -206,6 +223,10 @@ public class OrderManagementService {
 
 		// 🔴 FR-8: Ensure stock is deducted before shipment dispatch
 		inventoryService.deductStockForOrder(order.getOrderId());
+
+		notificationService.sendCustomNotification("SHIPPING_UPDATE", "Order Shipped",
+				"Order " + orderNo + " has been shipped via " + requestDto.getCourierName() + ".",
+				"/admin/orders/" + orderNo, order.getOrderId());
 	}
 
 	@Transactional(readOnly = true)
