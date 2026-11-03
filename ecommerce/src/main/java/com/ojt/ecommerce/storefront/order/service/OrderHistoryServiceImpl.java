@@ -1,5 +1,6 @@
 package com.ojt.ecommerce.storefront.order.service;
 
+import java.math.BigDecimal;
 import java.time.LocalDate;
 import java.time.LocalDateTime;
 import java.time.format.DateTimeParseException;
@@ -156,7 +157,7 @@ public class OrderHistoryServiceImpl implements OrderHistoryService {
 		List<OrderItemSnapshot> itemSnapshots = items.stream()
 				.map(i -> OrderItemSnapshot.builder().orderItemId(i.getOrderItemId()).productName(i.getProductName())
 						.variantAttributes(i.getVariantAttributes()).qty(i.getQty()).unitPrice(i.getUnitPrice())
-						.discountAmount(i.getDiscountAmount()).subtotal(i.getSubtotal()).build())
+						.discountAmount(BigDecimal.ZERO).subtotal(i.getSubtotal()).build())
 				.collect(Collectors.toList());
 
 		OrderAddress addr = orderAddressRepository.findByOrderOrderId(orderId)

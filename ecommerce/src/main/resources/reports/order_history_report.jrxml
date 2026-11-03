@@ -239,7 +239,7 @@
                 <reportElement x="403" y="4" width="55" height="14"
                                forecolor="#475569" uuid="3b241102-0000-4000-8000-000000000029"/>
                 <textElement textAlignment="Center" verticalAlignment="Middle"><font size="7"/></textElement>
-                <textFieldExpression><![CDATA[$F{paymentMethod}]]></textFieldExpression>
+                <textFieldExpression><![CDATA["MINI_BANKING".equalsIgnoreCase($F{paymentMethod}) ? "EKARAJ BANK" : ($F{paymentMethod} != null ? $F{paymentMethod} : "-")]]></textFieldExpression>
             </textField>
 
             <!-- Total Amount -->

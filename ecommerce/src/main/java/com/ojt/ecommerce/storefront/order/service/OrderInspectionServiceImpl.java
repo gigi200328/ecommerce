@@ -335,7 +335,11 @@ public class OrderInspectionServiceImpl implements OrderInspectionService {
 
             PaymentInfoDTO payment = dto.getPaymentInfo();
             if (payment != null) {
-                params.put("PAYMENT_METHOD", payment.getPaymentMethod() != null ? payment.getPaymentMethod() : "N/A");
+                String method = payment.getPaymentMethod();
+                if (method != null && ("MINI_BANKING".equalsIgnoreCase(method) || method.toLowerCase().contains("mini"))) {
+                    method = "EKARAJ BANK";
+                }
+                params.put("PAYMENT_METHOD", method != null ? method : "N/A");
                 params.put("PAYMENT_STATUS", payment.getPaymentStatus() != null ? payment.getPaymentStatus() : "PENDING");
                 params.put("TRANSACTION_REF", payment.getTransactionRef() != null ? payment.getTransactionRef() : "-");
                 params.put("PAID_AT_STR", payment.getPaidAt() != null ? payment.getPaidAt().format(DATE_FMT) : "-");
@@ -399,6 +403,15 @@ public class OrderInspectionServiceImpl implements OrderInspectionService {
             String msg = extractMySqlSignalMessage(ex);
             log.warn("Order history report SP failed — customerId={}: {}", customerId, msg);
             throw new ResourceNotFoundException(msg);
+        }
+
+        if (rows != null) {
+            rows.forEach(r -> {
+                if (r.getPaymentMethod() != null && 
+                    ("MINI_BANKING".equalsIgnoreCase(r.getPaymentMethod()) || r.getPaymentMethod().toLowerCase().contains("mini"))) {
+                    r.setPaymentMethod("EKARAJ BANK");
+                }
+            });
         }
 
         try {

@@ -73,7 +73,6 @@ public class CheckoutServiceImpl implements CheckoutService {
         orderItem.setQty(qty);
         orderItem.setUnitPrice(unitPrice);
         orderItem.setSubtotal(itemSubtotal);
-        orderItem.setDiscountAmount(BigDecimal.ZERO);
         orderItem.setProductName(v.getProduct().getProductName());
         orderItem.setVariantAttributes(variantAttributesJson);
         

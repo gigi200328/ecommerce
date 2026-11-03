@@ -364,6 +364,14 @@ public class OrderInspectionRepository {
 
     /** Maps one row from Result Set 2 to an {@link OrderItemDetailDTO}. */
     private OrderItemDetailDTO mapOrderItemDetail(ResultSet rs) throws SQLException {
+        BigDecimal itemDiscount = BigDecimal.ZERO;
+        try {
+            itemDiscount = rs.getBigDecimal("discount_amount");
+            if (itemDiscount == null) itemDiscount = BigDecimal.ZERO;
+        } catch (SQLException ignored) {
+            // Column discount_amount removed from order_items
+        }
+
         return OrderItemDetailDTO.builder()
                 .orderItemId(rs.getLong("order_item_id"))
                 .productName(rs.getString("product_name"))
@@ -371,7 +379,7 @@ public class OrderInspectionRepository {
                 .variantAttributes(rs.getString("variant_attributes"))
                 .unitPrice(rs.getBigDecimal("unit_price"))
                 .qty(rs.getInt("qty"))
-                .discountAmount(rs.getBigDecimal("discount_amount"))
+                .discountAmount(itemDiscount)
                 .subtotal(rs.getBigDecimal("subtotal"))
                 .build();
     }
