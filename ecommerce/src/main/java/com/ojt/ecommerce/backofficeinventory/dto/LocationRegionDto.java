@@ -13,6 +13,5 @@ import lombok.NoArgsConstructor;
 @AllArgsConstructor
 public class LocationRegionDto {
 	private String regionOrState;
-	private String city;
-	private List<String> townships;
+	private List<LocationCityDto> cities;
 }
