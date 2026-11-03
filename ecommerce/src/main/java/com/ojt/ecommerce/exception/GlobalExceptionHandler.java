@@ -1,6 +1,5 @@
 package com.ojt.ecommerce.exception;
 
-
 import java.time.LocalDateTime;
 import java.util.HashMap;
 import java.util.Map;
@@ -51,8 +50,7 @@ public class GlobalExceptionHandler {
 		return new ResponseEntity<>(errorResponse, HttpStatus.BAD_REQUEST);
 	}
 
-	// 3. Logic အမှားများ (ဥပမာ- မိမိကိုယ်ကို Parent အဖြစ် set လုပ်ခြင်း) (HTTP 400
-	// Bad Request)
+	// 3. Logic အမှားများ (HTTP 400 Bad Request)
 	@ExceptionHandler(IllegalArgumentException.class)
 	public ResponseEntity<ErrorResponse> handleIllegalArgumentException(IllegalArgumentException ex) {
 		ErrorResponse errorResponse = ErrorResponse.builder().status(HttpStatus.BAD_REQUEST.value())
@@ -62,8 +60,17 @@ public class GlobalExceptionHandler {
 		return new ResponseEntity<>(errorResponse, HttpStatus.BAD_REQUEST);
 	}
 
-	// 4. မမျှော်လင့်ထားသော အခြား Server Error များအတွက် Catch-all (HTTP 500
-	// Internal Server Error)
+	// 3.1 Business Runtime Exceptions (ဥပမာ- Last Admin ကာကွယ်ခြင်း၊ မိမိကိုယ်ကို ဖျက်ခြင်း တားဆီးခြင်း)
+	@ExceptionHandler(RuntimeException.class)
+	public ResponseEntity<ErrorResponse> handleRuntimeException(RuntimeException ex) {
+		ErrorResponse errorResponse = ErrorResponse.builder().status(HttpStatus.BAD_REQUEST.value())
+				.error(HttpStatus.BAD_REQUEST.getReasonPhrase()).message(ex.getMessage()).timestamp(LocalDateTime.now())
+				.build();
+
+		return new ResponseEntity<>(errorResponse, HttpStatus.BAD_REQUEST);
+	}
+
+	// 4. မမျှော်လင့်ထားသော အခြား Server Error များအတွက် Catch-all (HTTP 500 Internal Server Error)
 	@ExceptionHandler(Exception.class)
 	public ResponseEntity<ErrorResponse> handleGenericException(Exception ex) {
 		ErrorResponse errorResponse = ErrorResponse.builder().status(HttpStatus.INTERNAL_SERVER_ERROR.value())
@@ -72,31 +79,30 @@ public class GlobalExceptionHandler {
 
 		return new ResponseEntity<>(errorResponse, HttpStatus.INTERNAL_SERVER_ERROR);
 	}
-	
-	
-	  @ExceptionHandler(ResourceNotFoundException.class)
-	    public ResponseEntity<Map<String, String>> handleNotFound(ResourceNotFoundException ex) {
-	        return buildErrorResponse(HttpStatus.NOT_FOUND, ex.getMessage());
-	    }
 
-	    @ExceptionHandler(InvalidRequestException.class)
-	    public ResponseEntity<Map<String, String>> handleInvalidRequest(InvalidRequestException ex) {
-	        return buildErrorResponse(HttpStatus.BAD_REQUEST, ex.getMessage());
-	    }
+	@ExceptionHandler(ResourceNotFoundException.class)
+	public ResponseEntity<Map<String, String>> handleNotFound(ResourceNotFoundException ex) {
+		return buildErrorResponse(HttpStatus.NOT_FOUND, ex.getMessage());
+	}
 
-	    @ExceptionHandler(AccessDeniedException.class)
-	    public ResponseEntity<Map<String, String>> handleAccessDenied(AccessDeniedException ex) {
-	        return buildErrorResponse(HttpStatus.FORBIDDEN, ex.getMessage());
-	    }
-	    
-	    @ExceptionHandler(ConflictException.class)
-	    public ResponseEntity<Map<String, String>> handleConflict(ConflictException ex) {
-	        return buildErrorResponse(HttpStatus.CONFLICT, ex.getMessage());
-	    }
-	    private ResponseEntity<Map<String, String>> buildErrorResponse(HttpStatus status, String message) {
-	        Map<String, String> response = new HashMap<>();
-	        response.put("message", message);
-	        return new ResponseEntity<>(response, status);
-	    }
+	@ExceptionHandler(InvalidRequestException.class)
+	public ResponseEntity<Map<String, String>> handleInvalidRequest(InvalidRequestException ex) {
+		return buildErrorResponse(HttpStatus.BAD_REQUEST, ex.getMessage());
+	}
 
+	@ExceptionHandler(AccessDeniedException.class)
+	public ResponseEntity<Map<String, String>> handleAccessDenied(AccessDeniedException ex) {
+		return buildErrorResponse(HttpStatus.FORBIDDEN, ex.getMessage());
+	}
+
+	@ExceptionHandler(ConflictException.class)
+	public ResponseEntity<Map<String, String>> handleConflict(ConflictException ex) {
+		return buildErrorResponse(HttpStatus.CONFLICT, ex.getMessage());
+	}
+
+	private ResponseEntity<Map<String, String>> buildErrorResponse(HttpStatus status, String message) {
+		Map<String, String> response = new HashMap<>();
+		response.put("message", message);
+		return new ResponseEntity<>(response, status);
+	}
 }

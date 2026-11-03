@@ -16,4 +16,5 @@ public class AuthResponseDto {
     private String email;
     private String role;
     private List<String> permissions;
+    private Boolean mustChangePassword;
 }

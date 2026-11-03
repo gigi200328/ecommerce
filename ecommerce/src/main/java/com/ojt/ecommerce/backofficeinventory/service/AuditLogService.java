@@ -15,6 +15,9 @@ import org.springframework.stereotype.Service;
 import org.springframework.web.context.request.RequestContextHolder;
 import org.springframework.web.context.request.ServletRequestAttributes;
 
+import java.time.LocalDate;
+import java.time.LocalDateTime;
+import java.time.LocalTime;
 import java.util.List;
 
 @Service
@@ -118,6 +121,32 @@ public class AuditLogService {
     }
 
     public Page<AuditLog> getAuditLogsPaged(Pageable pageable) {
+        return auditLogRepository.findAllByOrderByCreatedAtDesc(pageable);
+    }
+
+    /**
+     * ရက်စွဲအပိုင်းအခြား (Date Range) ဖြင့် စစ်ထုတ်၍ Audit Log များ ရယူခြင်း
+     */
+    public List<AuditLog> getAuditLogs(LocalDate startDate, LocalDate endDate) {
+        LocalDateTime startDateTime = (startDate != null) ? startDate.atStartOfDay() : null;
+        LocalDateTime endDateTime = (endDate != null) ? endDate.atTime(LocalTime.MAX) : null;
+
+        if (startDateTime != null || endDateTime != null) {
+            return auditLogRepository.findByDateRange(startDateTime, endDateTime);
+        }
+        return auditLogRepository.findAllByOrderByCreatedAtDesc();
+    }
+
+    /**
+     * ရက်စွဲအပိုင်းအခြား (Date Range) ဖြင့် စစ်ထုတ်၍ Pagination ဖြင့် ရယူခြင်း
+     */
+    public Page<AuditLog> getAuditLogsPaged(LocalDate startDate, LocalDate endDate, Pageable pageable) {
+        LocalDateTime startDateTime = (startDate != null) ? startDate.atStartOfDay() : null;
+        LocalDateTime endDateTime = (endDate != null) ? endDate.atTime(LocalTime.MAX) : null;
+
+        if (startDateTime != null || endDateTime != null) {
+            return auditLogRepository.findByDateRange(startDateTime, endDateTime, pageable);
+        }
         return auditLogRepository.findAllByOrderByCreatedAtDesc(pageable);
     }
 }
