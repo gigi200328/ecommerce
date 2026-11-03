@@ -184,13 +184,21 @@ public class GlobalExceptionHandler {
                 HttpStatus.FORBIDDEN, ex.getMessage());
     }
 
-    // 6. Conflict - 409
+ // 6. Conflict - 409
     @ExceptionHandler(ConflictException.class)
     public ResponseEntity<ErrorResponse> handleConflict(
             ConflictException ex) {
 
+        String originalMessage = ex.getMessage();
+        String message = originalMessage;
+
+        
+        if (originalMessage != null && (originalMessage.toLowerCase().contains("brand already exists") || originalMessage.toLowerCase().contains("exists"))) {
+            message = "This brand name already exists. Please choose a different brand name and try again.";
+        }
+
         return buildErrorResponse(
-                HttpStatus.CONFLICT, ex.getMessage());
+                HttpStatus.CONFLICT, message);
     }
 
     // 7. Database Constraint Violation - 409
