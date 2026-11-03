@@ -27,10 +27,19 @@ public class LocationMasterController {
 		return ResponseEntity.ok(locationMasterService.getAllLocations());
 	}
 
-	// ၂။ ရွေးချယ်လိုက်သော Region သို့မဟုတ် City အလိုက် မြို့နယ်များကိုသာ ဆွဲထုတ်ရန်
-	// GET /api/locations/townships?regionOrCity=Yangon
+	// ၂။ ⭐️ အသစ်: ရွေးချယ်လိုက်သော တိုင်း/ပြည်နယ် (Region) အောက်ရှိ
+	// ခရိုင်/မြို့များ (Cities) ကို ဆွဲထုတ်ရန်
+	// GET /api/locations/cities?region=Yangon Region
+	@GetMapping("/cities")
+	public ResponseEntity<List<String>> getCities(@RequestParam String region) {
+		return ResponseEntity.ok(locationMasterService.getCitiesByRegion(region));
+	}
+
+	// ၃။ ⭐️ ပြင်ဆင်: ရွေးချယ်လိုက်သော ခရိုင်/မြို့ (City) အောက်ရှိ မြို့နယ်များ
+	// (Townships) ကိုသာ ဆွဲထုတ်ရန်
+	// GET /api/locations/townships?city=Yangon City
 	@GetMapping("/townships")
-	public ResponseEntity<List<String>> getTownships(@RequestParam String regionOrCity) {
-		return ResponseEntity.ok(locationMasterService.getTownshipsByRegionOrCity(regionOrCity));
+	public ResponseEntity<List<String>> getTownships(@RequestParam String city) {
+		return ResponseEntity.ok(locationMasterService.getTownshipsByCity(city));
 	}
 }
