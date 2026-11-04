@@ -300,7 +300,7 @@ public class OrderInspectionRepository {
                 .orderId(rs.getLong("order_id"))
                 .orderNo(rs.getString("order_no"))
                 .orderDate(dt)
-                .orderDateStr(dt != null ? dt.format(java.time.format.DateTimeFormatter.ofPattern("MMM dd, yyyy, hh:mm a")) : "")
+                .orderDateStr(dt != null ? dt.format(java.time.format.DateTimeFormatter.ofPattern("dd/MM/yyyy, hh:mm a")) : "")
                 .orderStatus(rs.getString("order_status"))
                 .paymentStatus(rs.getString("payment_status"))
                 .paymentMethod(rs.getString("payment_method"))
