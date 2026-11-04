@@ -200,32 +200,37 @@ class ShippingServiceImplTest {
     }
 
     @Test
-    @DisplayName("Should throw ResourceNotFoundException when no delivery zone matches city and township")
-    void calculateQuoteForAddress_ThrowsNotFound_WhenNoZone() {
+    @DisplayName("Should return default shipping quote when no delivery zone matches city and township")
+    void calculateQuoteForAddress_FallbackToDefault_WhenNoZone() {
         when(deliveryZoneRepository.findByCityAndTownshipAndStatus("Taunggyi", "Aye Thar Yar", "ACTIVE"))
                 .thenReturn(Optional.empty());
         when(deliveryZoneRepository.findByCityAndStatusAndTownshipIsNull("Taunggyi", "ACTIVE"))
                 .thenReturn(Optional.empty());
 
-        ResourceNotFoundException ex = assertThrows(ResourceNotFoundException.class,
-                () -> shippingService.calculateQuoteForAddress("Taunggyi", "Aye Thar Yar"));
+        ShippingQuoteResponse quote = shippingService.calculateQuoteForAddress("Taunggyi", "Aye Thar Yar");
 
-        assertEquals("No delivery zone available for the specified location", ex.getMessage());
+        assertNotNull(quote);
+        assertEquals(new BigDecimal("5000.00"), quote.getShippingFee());
+        assertEquals("DEFAULT_ZONE", quote.getZoneCode());
+        assertEquals("Standard Delivery", quote.getZoneName());
+        assertEquals(3, quote.getEstimatedDays());
         verifyNoInteractions(shippingRateRepository);
     }
 
     @Test
-    @DisplayName("Should throw ResourceNotFoundException when delivery zone exists but has no active rate")
-    void calculateQuoteForAddress_ThrowsNotFound_WhenNoActiveRate() {
+    @DisplayName("Should return default shipping quote when delivery zone exists but has no active rate")
+    void calculateQuoteForAddress_FallbackToDefault_WhenNoActiveRate() {
         when(deliveryZoneRepository.findByCityAndTownshipAndStatus("Yangon", "Kyauktada", "ACTIVE"))
                 .thenReturn(Optional.of(zoneYangon));
         when(shippingRateRepository.findActiveRateForZone(eq(1L), any(LocalDateTime.class)))
                 .thenReturn(Optional.empty());
 
-        ResourceNotFoundException ex = assertThrows(ResourceNotFoundException.class,
-                () -> shippingService.calculateQuoteForAddress("Yangon", "Kyauktada"));
+        ShippingQuoteResponse quote = shippingService.calculateQuoteForAddress("Yangon", "Kyauktada");
 
-        assertEquals("No active shipping rate found for this zone", ex.getMessage());
+        assertNotNull(quote);
+        assertEquals(new BigDecimal("5000.00"), quote.getShippingFee());
+        assertEquals("ZONE-YGN-01", quote.getZoneCode());
+        assertEquals(3, quote.getEstimatedDays());
     }
 
     // =========================================================================

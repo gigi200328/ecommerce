@@ -5,12 +5,14 @@ import com.ojt.ecommerce.backofficeinventory.repository.RoleRepository;
 import com.ojt.ecommerce.backofficeinventory.repository.UserRepository;
 import com.ojt.ecommerce.backofficeinventory.repository.CategoryRepository;
 import com.ojt.ecommerce.backofficeinventory.repository.BrandRepository;
+import com.ojt.ecommerce.backofficeinventory.repository.InventoryRepository;
 import com.ojt.ecommerce.entity.Category;
 import com.ojt.ecommerce.entity.Brand;
 import com.ojt.ecommerce.enums.BrandStatus;
 import com.ojt.ecommerce.entity.Permission;
 import com.ojt.ecommerce.entity.Role;
 import com.ojt.ecommerce.entity.User;
+import com.ojt.ecommerce.entity.Inventory;
 import lombok.RequiredArgsConstructor;
 import org.springframework.boot.CommandLineRunner;
 import org.springframework.security.crypto.password.PasswordEncoder;
@@ -31,6 +33,7 @@ public class DatabaseSeeder implements CommandLineRunner {
     private final PasswordEncoder passwordEncoder;
     private final CategoryRepository categoryRepository;
     private final BrandRepository brandRepository;
+    private final InventoryRepository inventoryRepository;
 
     @Override
     @Transactional
@@ -136,6 +139,19 @@ public class DatabaseSeeder implements CommandLineRunner {
                     Brand.builder().brandName("Samsung").description("Electronics and modern hardware").status(BrandStatus.ACTIVE).createdBy(defaultAdmin).createdAt(LocalDateTime.now()).build()
                 ));
             }
+        }
+
+        // ၅။ Auto-backfill perishable inventory (e.g. fruit) with missing expiry & batch
+        List<Inventory> nullExpiryList = inventoryRepository.findAll().stream()
+                .filter(i -> i.getVariant() != null && i.getVariant().getProduct() != null
+                        && Boolean.TRUE.equals(i.getVariant().getProduct().getIsPerishable())
+                        && i.getExpiryDate() == null)
+                .toList();
+        for (Inventory inv : nullExpiryList) {
+            inv.setIsPerishable(true);
+            inv.setExpiryDate(java.time.LocalDate.of(2027, 2, 4));
+            inv.setBatchNumber("F01");
+            inventoryRepository.save(inv);
         }
     }
 

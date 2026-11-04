@@ -34,4 +34,6 @@ public interface InventoryService {
 
     // Cross-module integration: Restore stock upon refund approval
     void restoreStockForRefund(Long variantId, int quantity, Long refundId, String remark);
+
+    InventoryResponseDto updateExpiryAndBatch(Long variantId, java.time.LocalDate expiryDate, String batchNumber, Boolean isPerishable);
 }

@@ -64,4 +64,9 @@ public class ShippingController {
 		shippingService.toggleZoneStatus(zoneName, city, newStatus);
 		return ResponseEntity.ok(Map.of("message", "Status updated successfully"));
 	}
+
+	@GetMapping("/zones/stats")
+	public ResponseEntity<?> getZoneStats() {
+		return ResponseEntity.ok(shippingService.getZoneStats());
+	}
 }

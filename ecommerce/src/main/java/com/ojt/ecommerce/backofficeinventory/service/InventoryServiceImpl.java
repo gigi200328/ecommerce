@@ -49,6 +49,7 @@ public class InventoryServiceImpl implements InventoryService {
     private final OrderItemRepository orderItemRepository;
     private final InventoryMapper inventoryMapper;
     private final InventoryTransactionMapper transactionMapper;
+    private final AdminNotificationService notificationService;
 
     @Override
     @Transactional
@@ -179,6 +180,7 @@ public class InventoryServiceImpl implements InventoryService {
         inventory.setModifiedAt(now);
 
         Inventory updatedInventory = inventoryRepository.save(inventory);
+        checkAndTriggerStockNotification(updatedInventory, variant);
 
         InventoryTransaction txn = InventoryTransaction.builder()
                 .variant(variant)
@@ -234,6 +236,7 @@ public class InventoryServiceImpl implements InventoryService {
         inventory.setModifiedAt(now);
 
         Inventory updatedInventory = inventoryRepository.save(inventory);
+        checkAndTriggerStockNotification(updatedInventory, variant);
 
         InventoryTransaction txn = InventoryTransaction.builder()
                 .variant(variant)
@@ -366,6 +369,7 @@ public class InventoryServiceImpl implements InventoryService {
                 inventory.setModifiedBy(currentUser);
             }
             inventoryRepository.save(inventory);
+            checkAndTriggerStockNotification(inventory, variant);
 
             // Record SALE transaction audit
             InventoryTransaction txn = InventoryTransaction.builder()
@@ -474,5 +478,65 @@ public class InventoryServiceImpl implements InventoryService {
         } catch (Exception ignored) {
         }
         return userRepository.findByEmail("admin@ecommerce.com").orElse(null);
+    }
+
+    @Override
+    @Transactional
+    public InventoryResponseDto updateExpiryAndBatch(Long variantId, java.time.LocalDate expiryDate, String batchNumber, Boolean isPerishable) {
+        ProductVariant variant = productVariantRepository.findById(variantId)
+                .orElseThrow(() -> new EntityNotFoundException("Product variant not found with id: " + variantId));
+
+        Inventory inventory = inventoryRepository.findByVariant_VariantId(variantId)
+                .orElseGet(() -> createDefaultInventory(variant));
+
+        if (expiryDate != null) {
+            inventory.setExpiryDate(expiryDate);
+        }
+        if (batchNumber != null) {
+            inventory.setBatchNumber(batchNumber.trim());
+        }
+        if (isPerishable != null) {
+            inventory.setIsPerishable(isPerishable);
+        }
+        inventory.setModifiedAt(LocalDateTime.now());
+        User currentUser = getCurrentUser();
+        if (currentUser != null) {
+            inventory.setModifiedBy(currentUser);
+        }
+        Inventory saved = inventoryRepository.save(inventory);
+        return inventoryMapper.toResponseDto(saved);
+    }
+
+    private void checkAndTriggerStockNotification(Inventory inventory, ProductVariant variant) {
+        if (inventory == null || variant == null) {
+            return;
+        }
+
+        try {
+            int qty = inventory.getQuantity() != null ? inventory.getQuantity() : 0;
+            int reorder = inventory.getReorderLevel() != null ? inventory.getReorderLevel() : 10;
+            String productName = variant.getProduct() != null ? variant.getProduct().getProductName() : "Product";
+            String sku = variant.getSku() != null ? variant.getSku() : ("#" + variant.getVariantId());
+
+            if (qty <= 0) {
+                notificationService.sendCustomNotification(
+                        "OUT_OF_STOCK",
+                        "Out of Stock Alert",
+                        "SKU " + sku + " (" + productName + ") has reached 0 units. Please restock immediately!",
+                        "/admin/inventory",
+                        inventory.getInventoryId()
+                );
+            } else if (qty <= reorder) {
+                notificationService.sendCustomNotification(
+                        "LOW_STOCK",
+                        "Low Stock Warning",
+                        "SKU " + sku + " (" + productName + ") is running low (" + qty + " left, Reorder level: " + reorder + ").",
+                        "/admin/inventory",
+                        inventory.getInventoryId()
+                );
+            }
+        } catch (Exception e) {
+            log.error("Failed to send inventory stock notification: {}", e.getMessage());
+        }
     }
 }
