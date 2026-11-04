@@ -29,6 +29,7 @@ public class ShippingService {
 	private final DeliveryZoneRepository zoneRepository;
 	private final ShippingRateRepository rateRepository;
 	private final ShipmentMapper shipmentMapper;
+	private final AdminNotificationService notificationService;
 
 	// ၁။ Admin UI Table အတွက် Zone များကို zoneName အလိုက် Group ဖွဲ့၍ ဆွဲထုတ်ခြင်း
 	@Transactional(readOnly = true)
@@ -94,6 +95,10 @@ public class ShippingService {
 			zone.setModifiedAt(LocalDateTime.now());
 			zoneRepository.save(zone);
 		}
+
+		notificationService.sendCustomNotification("SHIPPING_UPDATE", "Zone Status Changed",
+				"Delivery for " + zoneName + " in " + city + " is now " + newStatus.toUpperCase() + ".",
+				"/admin/shipping-rates", null);
 	}
 
 	// ၂။ Zone အသစ် ဖန်တီးခြင်း (Default City Rate သို့မဟုတ်
@@ -102,27 +107,37 @@ public class ShippingService {
 	public void createZoneGroup(CreateZoneGroupRequest request) {
 		LocalDateTime now = LocalDateTime.now();
 
-		boolean isZoneNameExists = zoneRepository.existsByCityAndZoneName(request.getCity(), request.getZoneName());
-		if (isZoneNameExists) {
+		if (zoneRepository.existsByZoneNameIgnoreCase(request.getZoneName())) {
 			throw new IllegalArgumentException(
-					"A zone named '" + request.getZoneName() + "' already exists in " + request.getCity() + ".");
+					"A zone named '" + request.getZoneName() + "' already exists. Please choose a different name.");
 		}
 		// City ရှေ့ ၃ လုံးဖြင့် Auto-generate လုပ်မည်(ဥပမာ - YAN-101)
 		String baseCode = request.getCity().substring(0, Math.min(3, request.getCity().length())).toUpperCase() + "-"
 				+ (System.currentTimeMillis() % 1000);
 
-		// က။ ရွေးချယ်ထားသော မြို့နယ်တစ်ခုချင်းစီအတွက် Specific Zone များ ခွဲသိမ်းမည်
 		if (request.getTownships() != null && !request.getTownships().isEmpty()) {
+			// ၁။ တခြား Zone မှာ ပါပြီးသား မြို့နယ်များကို စုရန် List တစ်ခုဆောက်မည်
+			List<String> duplicatedTownships = new ArrayList<>();
+
+			// ၂။ မြို့နယ်အားလုံးကို အရင် စစ်ဆေးမည်
+			for (String township : request.getTownships()) {
+				if (zoneRepository.existsByCityAndTownship(request.getCity(), township)) {
+					duplicatedTownships.add(township);
+				}
+			}
+
+			// ၃။ ပါပြီးသား မြို့နယ်တွေ ရှိနေရင် စုပြီး Error တစ်ခါတည်း ပစ်မည်
+			if (!duplicatedTownships.isEmpty()) {
+				String joinedTownships = String.join(", ", duplicatedTownships);
+				throw new IllegalArgumentException("The following townships are already assigned to another zone: "
+						+ joinedTownships + ". Please edit the existing zone instead.");
+			}
+
+			// ၄။ Error မရှိမှသာ Entity များကို Save လုပ်မည်
 			int index = 1;
 			for (String township : request.getTownships()) {
-				zoneRepository.findByCityAndTownship(request.getCity(), township).ifPresent(existing -> {
-					throw new IllegalArgumentException(
-							township + " is '" + existing.getZoneName() + "' already in the zone.");
-				});
-
 				String generatedCode = String.format("%s-%02d", baseCode, index++);
 
-				// Mapper ကို အသုံးပြု၍ Entity တည်ဆောက်ခြင်း
 				DeliveryZone savedZone = zoneRepository
 						.save(shipmentMapper.toDeliveryZoneEntity(request, generatedCode, township, now));
 
@@ -175,6 +190,12 @@ public class ShippingService {
 				rateRepository.save(oldRate);
 			});
 
+			if (!zones.isEmpty()) {
+				notificationService.sendCustomNotification("SHIPPING_UPDATE", "Shipping Rates Updated",
+						"Shipping fees have been updated for " + zones.size() + " zones.", "/admin/shipping-rates",
+						null);
+			}
+
 			rateRepository.save(shipmentMapper.toShippingRateEntity(zone, request.getShippingFee(),
 					request.getEstimatedDays(), now));
 		}
@@ -184,8 +205,27 @@ public class ShippingService {
 	// ပြနိုင်ရန်စာရင်းထုတ်ပေးခြင်း
 	@Transactional(readOnly = true)
 	public List<String> getAssignedTownshipsByCity(String city) {
-		return zoneRepository.findAllByOrderByZoneIdAsc().stream()
-				.filter(z -> z.getCity().equalsIgnoreCase(city) && z.getTownship() != null)
+		return zoneRepository
+				.findAllByOrderByZoneIdAsc().stream().filter(z -> z.getCity().equalsIgnoreCase(city)
+						&& z.getTownship() != null && "ACTIVE".equalsIgnoreCase(z.getStatus()))
 				.map(DeliveryZone::getTownship).toList();
+	}
+
+	@Transactional(readOnly = true)
+	public Map<String, Long> getZoneStats() {
+		List<DeliveryZone> allZones = zoneRepository.findAllByOrderByZoneIdAsc();
+		Map<String, String> groupStatusMap = new LinkedHashMap<>();
+
+		// Zone များကို Name နှင့် City တူရာ Group ဖွဲ့မည်
+		for (DeliveryZone zone : allZones) {
+			String groupKey = zone.getZoneName() + "_" + zone.getCity();
+			groupStatusMap.putIfAbsent(groupKey, zone.getStatus());
+		}
+
+		long total = groupStatusMap.size();
+		long active = groupStatusMap.values().stream().filter(status -> "ACTIVE".equalsIgnoreCase(status)).count();
+		long inactive = total - active;
+
+		return Map.of("total", total, "active", active, "inactive", inactive);
 	}
 }

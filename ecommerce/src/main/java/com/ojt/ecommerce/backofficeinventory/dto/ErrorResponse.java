@@ -16,7 +16,5 @@ public class ErrorResponse {
     private String error;
     private String message;
     private LocalDateTime timestamp;
-    
-    // Request Validation (Validation Errors) ဖြစ်ပါက Field အလိုက် ပြပေးရန်
     private Map<String, String> validationErrors;
 }
