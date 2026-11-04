@@ -6,8 +6,12 @@ import java.util.stream.Collectors;
 import org.springframework.stereotype.Component;
 
 import com.ojt.ecommerce.backofficeinventory.dto.InventoryResponseDto;
+import com.ojt.ecommerce.backofficeinventory.repository.ProductImageRepository;
+import com.ojt.ecommerce.backofficeinventory.repository.ProductVariantImageRepository;
 import com.ojt.ecommerce.backofficeinventory.repository.VariantOptionValueRepository;
 import com.ojt.ecommerce.entity.Inventory;
+import com.ojt.ecommerce.entity.ProductImage;
+import com.ojt.ecommerce.entity.ProductVariantImage;
 import com.ojt.ecommerce.entity.VariantOptionValue;
 
 import lombok.RequiredArgsConstructor;
@@ -17,6 +21,8 @@ import lombok.RequiredArgsConstructor;
 public class InventoryMapper {
 
     private final VariantOptionValueRepository variantOptionValueRepository;
+    private final ProductImageRepository productImageRepository;
+    private final ProductVariantImageRepository productVariantImageRepository;
 
     public InventoryResponseDto toResponseDto(Inventory inventory) {
         if (inventory == null) {
@@ -32,6 +38,7 @@ public class InventoryMapper {
         String productName = null;
         java.math.BigDecimal sellingPrice = null;
         String attributeSummary = null;
+        String imageUrl = null;
 
         if (inventory.getVariant() != null) {
             variantId = inventory.getVariant().getVariantId();
@@ -42,6 +49,7 @@ public class InventoryMapper {
             }
 
             if (variantId != null) {
+                // 1. Resolve variant options summary
                 List<VariantOptionValue> optionValues = variantOptionValueRepository.findByVariant_VariantId(variantId);
                 if (optionValues != null && !optionValues.isEmpty()) {
                     attributeSummary = optionValues.stream()
@@ -53,6 +61,22 @@ public class InventoryMapper {
                                 return !attrName.isEmpty() ? attrName + ": " + val : val;
                             })
                             .collect(Collectors.joining(" | "));
+                }
+
+                // 2. Resolve variant image if present
+                List<ProductVariantImage> varImgs = productVariantImageRepository.findByProductVariantVariantId(variantId);
+                if (varImgs != null && !varImgs.isEmpty() && varImgs.get(0).getImageUrl() != null && !varImgs.get(0).getImageUrl().isBlank()) {
+                    imageUrl = varImgs.get(0).getImageUrl();
+                }
+            }
+
+            // 3. Fallback to product primary image if no variant image
+            if (imageUrl == null && inventory.getVariant().getProduct() != null) {
+                Long prodId = inventory.getVariant().getProduct().getProductId();
+                if (prodId != null) {
+                    imageUrl = productImageRepository.findFirstByProductProductIdOrderByIsPrimaryDescImageIdAsc(prodId)
+                            .map(ProductImage::getImageUrl)
+                            .orElse(null);
                 }
             }
         }
@@ -99,6 +123,7 @@ public class InventoryMapper {
                 .daysUntilExpiry(daysUntilExpiry)
                 .expiryStatus(expiryStatus)
                 .attributeSummary(attributeSummary)
+                .imageUrl(imageUrl)
                 .createdAt(inventory.getCreatedAt())
                 .modifiedAt(inventory.getModifiedAt())
                 .build();
