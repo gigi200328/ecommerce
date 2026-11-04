@@ -335,7 +335,11 @@ public class OrderInspectionServiceImpl implements OrderInspectionService {
 
             PaymentInfoDTO payment = dto.getPaymentInfo();
             if (payment != null) {
-                params.put("PAYMENT_METHOD", payment.getPaymentMethod() != null ? payment.getPaymentMethod() : "N/A");
+                String pm = payment.getPaymentMethod();
+                if (pm != null && (pm.equalsIgnoreCase("MINI_BANKING") || pm.toUpperCase().contains("MINI"))) {
+                    pm = "EKARAJ  BANK";
+                }
+                params.put("PAYMENT_METHOD", pm != null ? pm : "N/A");
                 params.put("PAYMENT_STATUS", payment.getPaymentStatus() != null ? payment.getPaymentStatus() : "PENDING");
                 params.put("TRANSACTION_REF", payment.getTransactionRef() != null ? payment.getTransactionRef() : "-");
                 params.put("PAID_AT_STR", payment.getPaidAt() != null ? payment.getPaidAt().format(DATE_FMT) : "-");

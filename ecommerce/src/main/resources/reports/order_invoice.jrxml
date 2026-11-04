@@ -196,7 +196,7 @@
                 <textElement textAlignment="Right" verticalAlignment="Middle">
                     <font size="9" isBold="true"/>
                 </textElement>
-                <textFieldExpression><![CDATA[$P{PAYMENT_METHOD}]]></textFieldExpression>
+                <textFieldExpression><![CDATA["MINI_BANKING".equalsIgnoreCase($P{PAYMENT_METHOD}) ? "EKARAJ  BANK" : $P{PAYMENT_METHOD}]]></textFieldExpression>
             </textField>
 
             <!-- Status label -->
@@ -210,13 +210,13 @@
             </staticText>
             <!-- Status badge background -->
             <rectangle radius="8">
-                <reportElement x="380" y="47" width="70" height="16"
+                <reportElement x="455" y="47" width="80" height="16"
                                backcolor="#DCFCE7" forecolor="#DCFCE7" uuid="3b241101-0000-4000-8000-000000000023"/>
                 <graphicElement><pen lineWidth="0"/></graphicElement>
             </rectangle>
             <!-- Status text -->
             <textField isBlankWhenNull="true">
-                <reportElement x="380" y="47" width="70" height="16"
+                <reportElement x="455" y="47" width="80" height="16"
                                forecolor="#16A34A" uuid="3b241101-0000-4000-8000-000000000024"/>
                 <textElement textAlignment="Center" verticalAlignment="Middle">
                     <font size="8" isBold="true"/>
