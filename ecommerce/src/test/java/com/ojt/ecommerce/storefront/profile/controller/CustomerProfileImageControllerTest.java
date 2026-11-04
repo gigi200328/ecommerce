@@ -15,6 +15,7 @@ import org.springframework.core.MethodParameter;
 import org.springframework.http.HttpMethod;
 import org.springframework.http.MediaType;
 import org.springframework.mock.web.MockMultipartFile;
+import org.springframework.http.converter.json.MappingJackson2HttpMessageConverter;
 import org.springframework.test.web.servlet.MockMvc;
 import org.springframework.test.web.servlet.setup.MockMvcBuilders;
 import org.springframework.web.bind.support.WebDataBinderFactory;
@@ -60,6 +61,7 @@ class CustomerProfileImageControllerTest {
 
         mockMvc = MockMvcBuilders.standaloneSetup(profileImageController)
                 .setCustomArgumentResolvers(customerPrincipalResolver)
+                .setMessageConverters(new MappingJackson2HttpMessageConverter())
                 .build();
     }
 

@@ -19,6 +19,6 @@ public class OrderItemDto {
 	private String variantAttributes; // ဥပမာ - {"Color": "Red", "Size": "M"}
 	private Integer qty; // Entity ပါအတိုင်း (quantity အစား qty)
 	private BigDecimal unitPrice; // Entity ပါအတိုင်း
-	private BigDecimal discountAmount; // Entity ပါအတိုင်း
+	private BigDecimal costPrice;
 	private BigDecimal subtotal; // Entity ပါအတိုင်း
 }

@@ -50,4 +50,9 @@ public class User {
     @Column(name = "token_version")
     @Builder.Default
     private Integer tokenVersion = 1;
+
+    // --- ပထမဆုံးအကြိမ် Login ဝင်ချိန်တွင် Password ပြောင်းခိုင်းရန် Flag ---
+    @Column(name = "must_change_password")
+    @Builder.Default
+    private Boolean mustChangePassword = false;
 }

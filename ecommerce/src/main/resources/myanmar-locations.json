@@ -1,147 +1,351 @@
 [
   {
     "regionOrState": "Yangon Region",
-    "city": "Yangon",
-    "townships": [
-      "Ahlone", "Bahan", "Botahtaung", "Cocokyun", "Dagon",
-      "Dagon Myothit (East)", "Dagon Myothit (North)", "Dagon Myothit (Seikkan)", "Dagon Myothit (South)",
-      "Dala", "Dawbon", "Hlaing", "Hlaing Tharyar", "Hlegu", "Hmawbi", "Htantabin",
-      "Insein", "Kamaryut", "Kawhmu", "Kayan", "Kungyangon", "Kyauktada", "Kyauktan",
-      "Kyimyindaing", "Lanmadaw", "Latha", "Mayangone", "Mingaladon", "Mingalar Taungnyunt",
-      "North Okkalapa", "Pabedan", "Pazundaung", "Sanchaung", "Seikgyikanaungto", "Seikkan",
-      "Shwepyithar", "South Okkalapa", "Taikkyi", "Tamwe", "Thaketa", "Thanlyin",
-      "Thingangyun", "Thongwa", "Twante", "Yankin"
+    "cities": [
+      {
+        "cityName": "Yangon City",
+        "townships": [
+          "Ahlone", "Bahan", "Botahtaung", "Dagon", "Dagon Myothit (East)", "Dagon Myothit (North)",
+          "Dagon Myothit (Seikkan)", "Dagon Myothit (South)", "Dawbon", "Hlaing", "Hlaing Tharyar",
+          "Insein", "Kamaryut", "Kyauktada", "Kyimyindaing", "Lanmadaw", "Latha", "Mayangone",
+          "Mingaladon", "Mingalar Taungnyunt", "North Okkalapa", "Pabedan", "Pazundaung",
+          "Sanchaung", "Seikkan", "Shwepyithar", "South Okkalapa", "Tamwe", "Thaketa", "Thingangyun", "Yankin"
+        ]
+      },
+      {
+        "cityName": "Thanlyin",
+        "townships": ["Thanlyin", "Kyauktan", "Kayan", "Thongwa"]
+      },
+      {
+        "cityName": "Twante",
+        "townships": ["Twante", "Kawhmu", "Kungyangon", "Dala", "Seikgyikanaungto"]
+      },
+      {
+        "cityName": "Hmawbi",
+        "townships": ["Hmawbi", "Taikkyi", "Hlegu", "Htantabin"]
+      },
+      {
+        "cityName": "Cocokyun",
+        "townships": ["Cocokyun"]
+      }
     ]
   },
   {
     "regionOrState": "Mandalay Region",
-    "city": "Mandalay",
-    "townships": [
-      "Amarapura", "Aungmyethazan", "Chanayethazan", "Chanmyathazi", "Kyaukpadaung",
-      "Kyaukse", "Madaya", "Maha Aungmye", "Mahlaing", "Meiktila", "Mogok", "Myingyan",
-      "Myittha", "Natogyi", "Ngazun", "Nyaung-U", "Patheingyi", "Pyawbwe", "Pyigyidagun",
-      "Pyin Oo Lwin", "Singu", "Sintgaing", "Tada-U", "Taungtha", "Thabeikkyin", "Thazi",
-      "Wundwin", "Yamethin"
+    "cities": [
+      {
+        "cityName": "Mandalay City",
+        "townships": ["Amarapura", "Aungmyethazan", "Chanayethazan", "Chanmyathazi", "Maha Aungmye", "Patheingyi", "Pyigyidagun"]
+      },
+      {
+        "cityName": "Pyin Oo Lwin",
+        "townships": ["Pyin Oo Lwin", "Madaya", "Singu", "Thabeikkyin", "Mogok"]
+      },
+      {
+        "cityName": "Kyaukse",
+        "townships": ["Kyaukse", "Myittha", "Sintgaing", "Tada-U"]
+      },
+      {
+        "cityName": "Meiktila",
+        "townships": ["Meiktila", "Mahlaing", "Thazi", "Wundwin"]
+      },
+      {
+        "cityName": "Myingyan",
+        "townships": ["Myingyan", "Natogyi", "Ngazun", "Taungtha"]
+      },
+      {
+        "cityName": "Nyaung-U",
+        "townships": ["Nyaung-U", "Kyaukpadaung"]
+      },
+      {
+        "cityName": "Yamethin",
+        "townships": ["Yamethin", "Pyawbwe"]
+      }
     ]
   },
   {
     "regionOrState": "Naypyidaw Union Territory",
-    "city": "Naypyidaw",
-    "townships": [
-      "Dekkhinathiri", "Lewe", "Ottarathiri", "Pobbathiri",
-      "Pyinmana", "Tatkon", "Zabuthiri", "Zeyathiri"
+    "cities": [
+      {
+        "cityName": "Naypyidaw",
+        "townships": ["Dekkhinathiri", "Lewe", "Ottarathiri", "Pobbathiri", "Pyinmana", "Tatkon", "Zabuthiri", "Zeyathiri"]
+      }
     ]
   },
   {
     "regionOrState": "Ayeyarwady Region",
-    "city": "Pathein",
-    "townships": [
-      "Bogale", "Danubyu", "Dedaye", "Einme", "Hinthada", "Ingapu", "Kangyidaunt",
-      "Kyaiklat", "Kyangin", "Kyaunggon", "Kyonpyaw", "Labutta", "Lemyethna", "Maubin",
-      "Mawlamyinegyun", "Myanaung", "Myaungmya", "Ngapudaw", "Nyaungdon", "Pantanaw",
-      "Pathein", "Pyapon", "Thabaung", "Wakema", "Yegyi", "Zalun"
+    "cities": [
+      {
+        "cityName": "Pathein",
+        "townships": ["Pathein", "Kangyidaunt", "Thabaung", "Ngapudaw", "Kyonpyaw", "Yegyi", "Kyaunggon"]
+      },
+      {
+        "cityName": "Hinthada",
+        "townships": ["Hinthada", "Zalun", "Lemyethna", "Myanaung", "Kyangin", "Ingapu"]
+      },
+      {
+        "cityName": "Myaungmya",
+        "townships": ["Myaungmya", "Einme", "Wakema"]
+      },
+      {
+        "cityName": "Maubin",
+        "townships": ["Maubin", "Pantanaw", "Nyaungdon", "Danubyu"]
+      },
+      {
+        "cityName": "Pyapon",
+        "townships": ["Pyapon", "Bogale", "Kyaiklat", "Dedaye"]
+      },
+      {
+        "cityName": "Labutta",
+        "townships": ["Labutta", "Mawlamyinegyun"]
+      }
     ]
   },
   {
     "regionOrState": "Bago Region",
-    "city": "Bago",
-    "townships": [
-      "Bago", "Daik-U", "Gyobingauk", "Htantabin", "Kawa", "Kyaukkyi", "Kyauktaga",
-      "Letpadan", "Minhla", "Monyo", "Nattalin", "Nyaunglebin", "Okpho", "Oktwin",
-      "Padaung", "Paukkhaung", "Paungde", "Phyu", "Pyay", "Shwedaung", "Shwegyin",
-      "Taungoo", "Thanatpin", "Tharrawaddy", "Thegon", "Waw", "Yedashe", "Zigon"
+    "cities": [
+      {
+        "cityName": "Bago",
+        "townships": ["Bago", "Thanatpin", "Kawa", "Waw", "Nyaunglebin", "Daik-U", "Shwegyin", "Kyauktaga"]
+      },
+      {
+        "cityName": "Taungoo",
+        "townships": ["Taungoo", "Kyaukkyi", "Phyu", "Oktwin", "Yedashe", "Htantabin"]
+      },
+      {
+        "cityName": "Pyay",
+        "townships": ["Pyay", "Paukkhaung", "Padaung", "Paungde", "Thegon", "Shwedaung"]
+      },
+      {
+        "cityName": "Tharrawaddy",
+        "townships": ["Tharrawaddy", "Letpadan", "Minhla", "Monyo", "Okpho", "Gyobingauk", "Zigon", "Nattalin"]
+      }
     ]
   },
   {
     "regionOrState": "Magway Region",
-    "city": "Magway",
-    "townships": [
-      "Aunglan", "Chauk", "Gangaw", "Kamma", "Magway", "Minbu", "Mindon", "Minhla",
-      "Myaing", "Myothit", "Natmauk", "Ngape", "Pakokku", "Pauk", "Pwintbyu", "Salin",
-      "Saw", "Seikphyu", "Sidoktaya", "Sinbaungwe", "Taungdwingyi", "Thayet", "Tilin",
-      "Yenangyaung", "Yesagyo"
+    "cities": [
+      {
+        "cityName": "Magway",
+        "townships": ["Magway", "Yenangyaung", "Chauk", "Taungdwingyi", "Myothit", "Natmauk"]
+      },
+      {
+        "cityName": "Minbu",
+        "townships": ["Minbu", "Pwintbyu", "Ngape", "Salin", "Sidoktaya"]
+      },
+      {
+        "cityName": "Thayet",
+        "townships": ["Thayet", "Minhla", "Mindon", "Kamma", "Aunglan", "Sinbaungwe"]
+      },
+      {
+        "cityName": "Pakokku",
+        "townships": ["Pakokku", "Yesagyo", "Myaing", "Pauk", "Seikphyu"]
+      },
+      {
+        "cityName": "Gangaw",
+        "townships": ["Gangaw", "Tilin", "Saw"]
+      }
     ]
   },
   {
     "regionOrState": "Sagaing Region",
-    "city": "Monywa",
-    "townships": [
-      "Ayadaw", "Banmauk", "Budalin", "Chaung-U", "Hkamti", "Homalin", "Indaw",
-      "Kale", "Kalewa", "Kanbalu", "Kani", "Katha", "Kawlin", "Khin-U", "Kyunhla",
-      "Lahe", "Lay Shi", "Mawlaik", "Mingin", "Monywa", "Myaung", "Myinmu", "Nanyun",
-      "Pale", "Paungbyin", "Pinlebu", "Sagaing", "Salingyi", "Shwebo", "Tabayin",
-      "Tamu", "Taze", "Tigyaing", "Wetlet", "Wuntho", "Ye-U", "Yinmabin"
+    "cities": [
+      {
+        "cityName": "Sagaing",
+        "townships": ["Sagaing", "Myinmu", "Myaung"]
+      },
+      {
+        "cityName": "Monywa",
+        "townships": ["Monywa", "Budalin", "Ayadaw", "Chaung-U"]
+      },
+      {
+        "cityName": "Shwebo",
+        "townships": ["Shwebo", "Khin-U", "Wetlet", "Kanbalu", "Kyunhla", "Ye-U", "Tabayin", "Taze"]
+      },
+      {
+        "cityName": "Katha",
+        "townships": ["Katha", "Indaw", "Tigyaing", "Banmauk", "Kawlin", "Wuntho", "Pinlebu"]
+      },
+      {
+        "cityName": "Kale",
+        "townships": ["Kale", "Kalewa", "Mingin"]
+      },
+      {
+        "cityName": "Tamu",
+        "townships": ["Tamu"]
+      },
+      {
+        "cityName": "Mawlaik",
+        "townships": ["Mawlaik", "Paungbyin"]
+      },
+      {
+        "cityName": "Hkamti",
+        "townships": ["Hkamti", "Homalin", "Lay Shi", "Lahe", "Nanyun"]
+      }
     ]
   },
   {
     "regionOrState": "Tanintharyi Region",
-    "city": "Dawei",
-    "townships": [
-      "Bokpyin", "Dawei", "Kawthaung", "Kyunsu", "Launglon",
-      "Myeik", "Palaw", "Tanintharyi", "Thayetchaung", "Yebyu"
+    "cities": [
+      {
+        "cityName": "Dawei",
+        "townships": ["Dawei", "Launglon", "Thayetchaung", "Yebyu"]
+      },
+      {
+        "cityName": "Myeik",
+        "townships": ["Myeik", "Kyunsu", "Palaw", "Tanintharyi"]
+      },
+      {
+        "cityName": "Kawthaung",
+        "townships": ["Kawthaung", "Bokpyin"]
+      }
     ]
   },
   {
     "regionOrState": "Mon State",
-    "city": "Mawlamyine",
-    "townships": [
-      "Bilin", "Chaungzon", "Kyaikmaraw", "Kyaikto", "Mawlamyine",
-      "Mudon", "Paung", "Thanbyuzayat", "Thaton", "Ye"
+    "cities": [
+      {
+        "cityName": "Mawlamyine",
+        "townships": ["Mawlamyine", "Kyaikmaraw", "Chaungzon", "Thanbyuzayat", "Mudon", "Ye"]
+      },
+      {
+        "cityName": "Thaton",
+        "townships": ["Thaton", "Paung", "Kyaikto", "Bilin"]
+      }
     ]
   },
   {
     "regionOrState": "Kayin State",
-    "city": "Hpa-An",
-    "townships": [
-      "Hlaingbwe", "Hpa-An", "Hpapun", "Kawkareik",
-      "Kyainseikgyi", "Myawaddy", "Thandaunggyi"
+    "cities": [
+      {
+        "cityName": "Hpa-An",
+        "townships": ["Hpa-An", "Hlaingbwe", "Hpapun", "Thandaunggyi"]
+      },
+      {
+        "cityName": "Kawkareik",
+        "townships": ["Kawkareik", "Kyainseikgyi"]
+      },
+      {
+        "cityName": "Myawaddy",
+        "townships": ["Myawaddy"]
+      }
     ]
   },
   {
     "regionOrState": "Kayah State",
-    "city": "Loikaw",
-    "townships": [
-      "Bawlakhe", "Demoso", "Hpasawng", "Hpruso", "Loikaw", "Mese", "Shadaw"
+    "cities": [
+      {
+        "cityName": "Loikaw",
+        "townships": ["Loikaw", "Demoso", "Hpruso", "Shadaw"]
+      },
+      {
+        "cityName": "Bawlakhe",
+        "townships": ["Bawlakhe", "Hpasawng", "Mese"]
+      }
     ]
   },
   {
     "regionOrState": "Shan State",
-    "city": "Taunggyi",
-    "townships": [
-      "Hopang", "Hopong", "Hsihseng", "Hsipaw", "Kalaw", "Kengtung", "Kunhing",
-      "Kunlong", "Kutkai", "Kyaukme", "Kyethi", "Laihka", "Langkho", "Lashio",
-      "Laukkaing", "Lawksawk", "Loilen", "Mabein", "Manton", "Mawkmai", "Mong Hpayak",
-      "Mong Hsat", "Mong Hsu", "Mong Kung", "Mong La", "Mong Mao", "Mong Mit",
-      "Mong Nai", "Mong Pan", "Mong Ping", "Mong Ton", "Mong Yang", "Mong Yawng",
-      "Muse", "Namhsan", "Namhkam", "Namtu", "Nanhkan", "Nansang", "Nawnghkio",
-      "Nyaungshwe", "Pekon", "Pindaya", "Pinlaung", "Tachileik", "Tangyan",
-      "Taunggyi", "Ywangan"
+    "cities": [
+      {
+        "cityName": "Taunggyi",
+        "townships": ["Taunggyi", "Nyaungshwe", "Hopong", "Hsihseng", "Kalaw", "Pindaya", "Ywangan", "Lawksawk", "Pinlaung", "Pekon"]
+      },
+      {
+        "cityName": "Loilen",
+        "townships": ["Loilen", "Laihka", "Nansang", "Kunhing", "Kyethi", "Mong Kung", "Mong Hsu"]
+      },
+      {
+        "cityName": "Langkho",
+        "townships": ["Langkho", "Mong Nai", "Mawkmai", "Mong Pan"]
+      },
+      {
+        "cityName": "Lashio",
+        "townships": ["Lashio", "Hseni", "Mong Yai", "Tangyan", "Pangsang", "Mong Mao", "Pangwaun", "Namphan"]
+      },
+      {
+        "cityName": "Muse",
+        "townships": ["Muse", "Namhkam", "Kutkai"]
+      },
+      {
+        "cityName": "Kyaukme",
+        "townships": ["Kyaukme", "Nawnghkio", "Hsipaw", "Namtu", "Namhsan", "Manton", "Mong Mit", "Mabein"]
+      },
+      {
+        "cityName": "Laukkaing",
+        "townships": ["Laukkaing", "Konkyan"]
+      },
+      {
+        "cityName": "Kengtung",
+        "townships": ["Kengtung", "Mong Khet", "Mong Yang", "Mong La"]
+      },
+      {
+        "cityName": "Mong Hsat",
+        "townships": ["Mong Hsat", "Mong Ton"]
+      },
+      {
+        "cityName": "Tachileik",
+        "townships": ["Tachileik", "Mong Hpayak", "Mong Yawng"]
+      }
     ]
   },
   {
     "regionOrState": "Kachin State",
-    "city": "Myitkyina",
-    "townships": [
-      "Bhamo", "Chipwi", "Hpakant", "Injangyang", "Khaunglanhpu", "Machanbaw",
-      "Mansi", "Mogaung", "Mohnyin", "Momauk", "Myitkyina", "Nawngmun",
-      "Putao", "Shwegu", "Sumprabum", "Tanai", "Tsawlaw", "Waingmaw"
+    "cities": [
+      {
+        "cityName": "Myitkyina",
+        "townships": ["Myitkyina", "Waingmaw", "Injangyang", "Tanai", "Chipwi", "Tsawlaw"]
+      },
+      {
+        "cityName": "Bhamo",
+        "townships": ["Bhamo", "Shwegu", "Momauk", "Mansi"]
+      },
+      {
+        "cityName": "Putao",
+        "townships": ["Putao", "Machanbaw", "Nawngmun", "Khaunglanhpu", "Sumprabum"]
+      },
+      {
+        "cityName": "Mohnyin",
+        "townships": ["Mohnyin", "Mogaung", "Hpakant"]
+      }
     ]
   },
   {
     "regionOrState": "Chin State",
-    "city": "Hakha",
-    "townships": [
-      "Falam", "Hakha", "Kanpetlet", "Matupi", "Mindat",
-      "Paletwa", "Tedim", "Thantlang", "Tonzang"
+    "cities": [
+      {
+        "cityName": "Hakha",
+        "townships": ["Hakha", "Thantlang"]
+      },
+      {
+        "cityName": "Falam",
+        "townships": ["Falam", "Tedim", "Tonzang"]
+      },
+      {
+        "cityName": "Mindat",
+        "townships": ["Mindat", "Matupi", "Kanpetlet", "Paletwa"]
+      }
     ]
   },
   {
     "regionOrState": "Rakhine State",
-    "city": "Sittwe",
-    "townships": [
-      "Ann", "Buthidaung", "Gwa", "Kyaukphyu", "Kyauktaw", "Manaung",
-      "Maungdaw", "Minbya", "Mrauk-U", "Myebon", "Pauktaw", "Ponnagyun",
-      "Ramree", "Rathedaung", "Sittwe", "Thandwe", "Toungup"
+    "cities": [
+      {
+        "cityName": "Sittwe",
+        "townships": ["Sittwe", "Ponnagyun", "Mrauk-U", "Kyauktaw", "Minbya", "Myebon", "Pauktaw", "Rathedaung"]
+      },
+      {
+        "cityName": "Maungdaw",
+        "townships": ["Maungdaw", "Buthidaung"]
+      },
+      {
+        "cityName": "Kyaukphyu",
+        "townships": ["Kyaukphyu", "Manaung", "Ramree", "Ann"]
+      },
+      {
+        "cityName": "Thandwe",
+        "townships": ["Thandwe", "Toungup", "Gwa"]
+      }
     ]
   }
 ]

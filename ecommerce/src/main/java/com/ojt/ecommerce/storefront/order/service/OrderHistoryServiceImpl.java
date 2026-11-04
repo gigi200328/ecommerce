@@ -156,7 +156,7 @@ public class OrderHistoryServiceImpl implements OrderHistoryService {
 		List<OrderItemSnapshot> itemSnapshots = items.stream()
 				.map(i -> OrderItemSnapshot.builder().orderItemId(i.getOrderItemId()).productName(i.getProductName())
 						.variantAttributes(i.getVariantAttributes()).qty(i.getQty()).unitPrice(i.getUnitPrice())
-						.discountAmount(i.getDiscountAmount()).subtotal(i.getSubtotal()).build())
+						.costPrice(i.getCostPrice()).subtotal(i.getSubtotal()).build())
 				.collect(Collectors.toList());
 
 		OrderAddress addr = orderAddressRepository.findByOrderOrderId(orderId)
@@ -170,7 +170,11 @@ public class OrderHistoryServiceImpl implements OrderHistoryService {
 		Payment payment = paymentRepository.findFirstByOrderOrderIdOrderByCreatedAtDesc(orderId).orElse(null);
 		OrderPaymentSummary paymentSummary = null;
 		if (payment != null) {
-			paymentSummary = OrderPaymentSummary.builder().paymentMethod(payment.getPaymentMethod())
+			String pm = payment.getPaymentMethod();
+			if (pm != null && (pm.equalsIgnoreCase("MINI_BANKING") || pm.toUpperCase().contains("MINI"))) {
+				pm = "EKARAJ  BANK";
+			}
+			paymentSummary = OrderPaymentSummary.builder().paymentMethod(pm)
 					.paymentStatus(payment.getPaymentStatus()).transactionRef(payment.getTransactionRef())
 					.amount(payment.getAmount())
 					.paidAt(payment.getPaidAt() != null ? payment.getPaidAt().toString() : null).build();

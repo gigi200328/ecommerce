@@ -1,6 +1,9 @@
 package com.ojt.ecommerce.backofficeinventory.service;
 
+import java.time.LocalDate;
 import java.time.LocalDateTime;
+import java.time.LocalTime;
+import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.Collections;
 import java.util.List;
@@ -11,6 +14,7 @@ import org.springframework.data.domain.Page;
 import org.springframework.data.domain.PageRequest;
 import org.springframework.data.domain.Pageable;
 import org.springframework.data.domain.Sort;
+import org.springframework.data.jpa.domain.Specification;
 import org.springframework.security.core.Authentication;
 import org.springframework.security.core.context.SecurityContextHolder;
 import org.springframework.stereotype.Service;
@@ -37,6 +41,7 @@ import com.ojt.ecommerce.entity.Shipment;
 import com.ojt.ecommerce.entity.User;
 
 import jakarta.persistence.EntityNotFoundException;
+import jakarta.persistence.criteria.Predicate;
 import lombok.RequiredArgsConstructor;
 
 @Service
@@ -51,26 +56,52 @@ public class OrderManagementService {
 	private final PaymentMapper paymentMapper;
 	private final ShipmentMapper shipmentMapper;
 	private final InventoryService inventoryService;
+	private final AdminNotificationService notificationService;
 
 	@Transactional(readOnly = true)
-	public PaginatedResponseDto<OrderResponseDto> getOrders(String status, int pageNo, int pageSize) {
+	public PaginatedResponseDto<OrderResponseDto> getOrders(String status, String search, String startDate,
+			String endDate, int pageNo, int pageSize) {
 		Pageable pageable = PageRequest.of(pageNo, pageSize, Sort.by("createdAt").descending());
-		Page<Order> orders;
-		// Status ပါလာလျှင် Statusအားလုံး ကိုရှာမည်၊ မပါလာလျှင် အားလုံးကို ရှာမည်
-		if (status != null && !status.trim().isEmpty()) {
-			String upperStatus = status.toUpperCase();
+		// ⭐️ Server-side Filtering ပြုလုပ်ရန် Specification တည်ဆောက်ခြင်း ⭐️
+		Specification<Order> spec = (root, query, cb) -> {
+			List<Predicate> predicates = new ArrayList<>();
 
-			List<String> validStatuses = Arrays.asList("PENDING", "PAID", "PROCESSING", "SHIPPED", "DELIVERED",
-					"CANCELLED");
-
-			if (!validStatuses.contains(upperStatus)) {
-				throw new IllegalArgumentException(
-						"Invalid order status: '" + status + "'. Allowed values are: " + validStatuses);
+			// ၁။ Status ဖြင့် ရှာခြင်း (ALL မဟုတ်လျှင်)
+			if (status != null && !status.trim().isEmpty() && !status.equalsIgnoreCase("ALL")) {
+				String upperStatus = status.toUpperCase();
+				List<String> validStatuses = Arrays.asList("PENDING", "PAID", "PROCESSING", "SHIPPED", "DELIVERED",
+						"CANCELLED");
+				if (!validStatuses.contains(upperStatus)) {
+					throw new IllegalArgumentException("Invalid order status: '" + status + "'");
+				}
+				predicates.add(cb.equal(root.get("orderStatus"), upperStatus));
 			}
-			orders = orderRepository.findByOrderStatus(status, pageable);
-		} else {
-			orders = orderRepository.findAll(pageable);
-		}
+
+			// ၂။ Search ဖြင့် ရှာခြင်း (Order No သို့မဟုတ် Customer Name တွင်
+			// ပါဝင်မှုစစ်ဆေးခြင်း)
+			if (search != null && !search.trim().isEmpty()) {
+				String searchPattern = "%" + search.trim().toLowerCase() + "%";
+				Predicate orderNoMatch = cb.like(cb.lower(root.get("orderNo")), searchPattern);
+				// Note: Customer table ၏ customerName သို့ ချိတ်ဆက်၍ ရှာဖွေခြင်း
+				Predicate customerNameMatch = cb.like(cb.lower(root.join("customer").get("fullName")), searchPattern);
+				predicates.add(cb.or(orderNoMatch, customerNameMatch));
+			}
+
+			// ၃။ Date Range ဖြင့် ရှာခြင်း
+			if (startDate != null && !startDate.trim().isEmpty()) {
+				LocalDateTime startOfDay = LocalDate.parse(startDate).atStartOfDay(); // e.g. 2026-10-24 00:00:00
+				predicates.add(cb.greaterThanOrEqualTo(root.get("createdAt"), startOfDay));
+			}
+			if (endDate != null && !endDate.trim().isEmpty()) {
+				LocalDateTime endOfDay = LocalDate.parse(endDate).atTime(LocalTime.MAX); // e.g. 2026-10-24 23:59:59
+				predicates.add(cb.lessThanOrEqualTo(root.get("createdAt"), endOfDay));
+			}
+
+			return cb.and(predicates.toArray(new Predicate[0]));
+		};
+
+		// Filter များနှင့်အတူ Database မှ Page လိုက် တိုက်ရိုက်ဆွဲထုတ်ခြင်း
+		Page<Order> orders = orderRepository.findAll(spec, pageable);
 		// Mapper ကို အသုံးပြု၍ Entity မှ DTO သို့ ပြောင်းလဲခြင်း
 		return orderMapper.toPaginatedDto(orders);
 	}
@@ -127,6 +158,22 @@ public class OrderManagementService {
 			inventoryService.deductStockForOrder(updatedOrder.getOrderId());
 		}
 
+		String customerName = updatedOrder.getCustomer() != null ? updatedOrder.getCustomer().getFullName()
+				: "Customer";
+
+		if ("PAID".equalsIgnoreCase(newStatus)) {
+			// Payment အောင်မြင်ကြောင်း သီးသန့် Noti ပို့ရန်
+			notificationService.sendCustomNotification("NEW_ORDER", // Sale Staff အတွက် အရေးကြီးသော Noti
+					"Order Payment Confirmed",
+					"Payment for order " + orderNo + " (" + customerName + ") is verified. Ready to process!",
+					"/admin/orders/" + orderNo, updatedOrder.getOrderId());
+		} else {
+			// အခြား Status အပြောင်းအလဲများအတွက် Noti ပို့ရန်
+			notificationService.sendCustomNotification("ORDER_UPDATE", "Order Status Updated",
+					"Order " + orderNo + " is now " + newStatus + ".", "/admin/orders/" + orderNo,
+					updatedOrder.getOrderId());
+		}
+
 		// ပြောင်းလဲသွားတဲ့ အော်ဒါအချက်အလက်ကို DTO ပြောင်းပြီး ပြန်ပေးမည်
 		return orderMapper.toDto(updatedOrder);
 	}
@@ -176,6 +223,10 @@ public class OrderManagementService {
 
 		// 🔴 FR-8: Ensure stock is deducted before shipment dispatch
 		inventoryService.deductStockForOrder(order.getOrderId());
+
+		notificationService.sendCustomNotification("SHIPPING_UPDATE", "Order Shipped",
+				"Order " + orderNo + " has been shipped via " + requestDto.getCourierName() + ".",
+				"/admin/orders/" + orderNo, order.getOrderId());
 	}
 
 	@Transactional(readOnly = true)

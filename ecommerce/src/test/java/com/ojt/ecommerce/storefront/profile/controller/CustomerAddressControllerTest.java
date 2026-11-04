@@ -14,6 +14,7 @@ import org.mockito.Mock;
 import org.mockito.junit.jupiter.MockitoExtension;
 import org.springframework.core.MethodParameter;
 import org.springframework.http.MediaType;
+import org.springframework.http.converter.json.MappingJackson2HttpMessageConverter;
 import org.springframework.test.web.servlet.MockMvc;
 import org.springframework.test.web.servlet.setup.MockMvcBuilders;
 import org.springframework.web.bind.support.WebDataBinderFactory;
@@ -62,6 +63,7 @@ class CustomerAddressControllerTest {
 
         mockMvc = MockMvcBuilders.standaloneSetup(addressController)
                 .setCustomArgumentResolvers(customerPrincipalResolver)
+                .setMessageConverters(new MappingJackson2HttpMessageConverter())
                 .build();
 
         sampleResponse = new CustomerAddressResponse();
