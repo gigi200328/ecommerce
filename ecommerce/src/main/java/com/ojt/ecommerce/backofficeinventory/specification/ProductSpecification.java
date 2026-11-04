@@ -1,3 +1,4 @@
+
 package com.ojt.ecommerce.backofficeinventory.specification;
 
 import java.math.BigDecimal;
@@ -25,16 +26,35 @@ public class ProductSpecification {
 
 			// ==========================================
 			// 1. KEYWORD SEARCH
+			// Product Name, Description, SKU,
+			// Brand Name, Category Name
 			// ==========================================
 			if (keyword != null && !keyword.isBlank()) {
 
 				String searchKeyword = "%" + keyword.trim().toLowerCase() + "%";
 
-				Predicate productName = cb.like(cb.lower(root.get("productName")), searchKeyword);
+				List<Predicate> keywordPredicates = new ArrayList<>();
 
-				Predicate description = cb.like(cb.lower(root.get("description")), searchKeyword);
+				// Search Product Name
+				keywordPredicates.add(cb.like(cb.lower(root.get("productName")), searchKeyword));
 
-				predicates.add(cb.or(productName, description));
+				// Search Description
+				keywordPredicates.add(cb.like(cb.lower(root.get("description")), searchKeyword));
+
+				// Search Brand Name
+				keywordPredicates.add(cb.like(cb.lower(root.get("brand").get("brandName")), searchKeyword));
+
+				// Search Category Name
+				keywordPredicates.add(cb.like(cb.lower(root.get("category").get("categoryName")), searchKeyword));
+
+				// Search SKU through Product Variants
+				Join<Product, ProductVariant> variantJoin = root.join("variants", JoinType.LEFT);
+
+				keywordPredicates.add(cb.like(cb.lower(variantJoin.get("sku")), searchKeyword));
+
+				predicates.add(cb.or(keywordPredicates.toArray(new Predicate[0])));
+
+				query.distinct(true);
 			}
 
 			// ==========================================
@@ -63,25 +83,24 @@ public class ProductSpecification {
 
 			// ==========================================
 			// 5. PRICE FILTER
-			// Product -> variants -> sellingPrice
+			// Product -> Variants -> Selling Price
 			// ==========================================
 			if (minPrice != null || maxPrice != null) {
 
-				Join<Product, ProductVariant> variant = root.join("variants", JoinType.INNER);
+				Join<Product, ProductVariant> priceVariantJoin = root.join("variants", JoinType.INNER);
 
-				// Minimum price
+				// Minimum Price
 				if (minPrice != null) {
 
-					predicates.add(cb.greaterThanOrEqualTo(variant.get("sellingPrice"), minPrice));
+					predicates.add(cb.greaterThanOrEqualTo(priceVariantJoin.get("sellingPrice"), minPrice));
 				}
 
-				// Maximum price
+				// Maximum Price
 				if (maxPrice != null) {
 
-					predicates.add(cb.lessThanOrEqualTo(variant.get("sellingPrice"), maxPrice));
+					predicates.add(cb.lessThanOrEqualTo(priceVariantJoin.get("sellingPrice"), maxPrice));
 				}
 
-				// Prevent duplicate products
 				query.distinct(true);
 			}
 
