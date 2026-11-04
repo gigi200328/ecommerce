@@ -155,7 +155,7 @@ public class SecurityConfig {
 								"/api/storefront/v1/auth/customer/register",
 								"/api/storefront/v1/auth/customer/forgot-password",
 								"/api/storefront/v1/auth/customer/reset-password",
-								"/api/storefront/v1/auth/customer/verify-code")
+								"/api/storefront/v1/auth/customer/verify-code","/api/storefront/v1/payment-callbacks/g3")
 						.permitAll()
 						.requestMatchers("/api/storefront/v1/products/**", "/api/storefront/v1/categories/**",
 								"/api/storefront/v1/cart/guest/**")
