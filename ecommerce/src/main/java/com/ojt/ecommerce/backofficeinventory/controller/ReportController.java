@@ -38,6 +38,11 @@ public class ReportController {
             headers.setContentType(MediaType.APPLICATION_PDF);
             headers.setContentDispositionFormData("inline", reportName + ".pdf");
         }
+        Integer count = jasperReportService.getLastRecordCount();
+        if (count != null) {
+            headers.add("X-Total-Count", String.valueOf(count));
+        }
+        headers.add("Access-Control-Expose-Headers", "X-Total-Count, Content-Disposition");
         return headers;
     }
 
@@ -56,6 +61,9 @@ public class ReportController {
         }
         if (startDate.isAfter(endDate)) {
             return ResponseEntity.badRequest().body("Start date cannot be after end date.".getBytes());
+        }
+        if (java.time.temporal.ChronoUnit.DAYS.between(startDate, endDate) > 365) {
+            return ResponseEntity.badRequest().body("Date range cannot exceed 1 year (365 days) for report generation.".getBytes());
         }
         if (!"pdf".equalsIgnoreCase(format) && !"excel".equalsIgnoreCase(format) && !"xlsx".equalsIgnoreCase(format)) {
             return ResponseEntity.badRequest().body("Unsupported export format. Supported formats: pdf, excel.".getBytes());
@@ -123,6 +131,9 @@ public class ReportController {
         if (startDate.isAfter(endDate)) {
             return ResponseEntity.badRequest().body("Start date cannot be after end date.".getBytes());
         }
+        if (java.time.temporal.ChronoUnit.DAYS.between(startDate, endDate) > 365) {
+            return ResponseEntity.badRequest().body("Date range cannot exceed 1 year (365 days) for report generation.".getBytes());
+        }
         if (!"pdf".equalsIgnoreCase(format) && !"excel".equalsIgnoreCase(format) && !"xlsx".equalsIgnoreCase(format)) {
             return ResponseEntity.badRequest().body("Unsupported export format. Supported formats: pdf, excel.".getBytes());
         }
@@ -170,6 +181,9 @@ public class ReportController {
         if (startDate.isAfter(endDate)) {
             return ResponseEntity.badRequest().body("Start date cannot be after end date.".getBytes());
         }
+        if (java.time.temporal.ChronoUnit.DAYS.between(startDate, endDate) > 365) {
+            return ResponseEntity.badRequest().body("Date range cannot exceed 1 year (365 days) for report generation.".getBytes());
+        }
         if (!"pdf".equalsIgnoreCase(format) && !"excel".equalsIgnoreCase(format) && !"xlsx".equalsIgnoreCase(format)) {
             return ResponseEntity.badRequest().body("Unsupported export format. Supported formats: pdf, excel.".getBytes());
         }
@@ -191,6 +205,9 @@ public class ReportController {
             @RequestParam(value = "brandId", required = false) Long brandId,
             @RequestParam(value = "status", required = false) String status,
             @RequestParam(value = "columns", required = false) List<String> columns) {
+        if (search != null && search.trim().length() > 100) {
+            return ResponseEntity.badRequest().body("Search query cannot exceed 100 characters.".getBytes());
+        }
         if (columns == null || columns.isEmpty()) {
             columns = List.of("productName", "sku", "price", "stock", "status");
         }
@@ -211,6 +228,9 @@ public class ReportController {
             @RequestParam(value = "brandId", required = false) Long brandId,
             @RequestParam(value = "status", required = false) String status,
             @RequestParam(value = "columns", required = false) List<String> columns) {
+        if (search != null && search.trim().length() > 100) {
+            return ResponseEntity.badRequest().body("Search query cannot exceed 100 characters.".getBytes());
+        }
         if (columns == null || columns.isEmpty()) {
             columns = List.of("productName", "sku", "price", "stock", "status");
         }
@@ -233,6 +253,9 @@ public class ReportController {
             @RequestParam(value = "status", required = false) String status,
             @RequestParam(value = "columns", required = false) List<String> columns,
             @RequestParam(value = "format", defaultValue = "pdf") String format) {
+        if (search != null && search.trim().length() > 100) {
+            return ResponseEntity.badRequest().body("Search query cannot exceed 100 characters.".getBytes());
+        }
         if (columns == null || columns.isEmpty()) {
             columns = List.of("productName", "sku", "price", "stock", "status");
         }
@@ -254,6 +277,9 @@ public class ReportController {
             @RequestParam(value = "search", required = false) String search,
             @RequestParam(value = "status", required = false, defaultValue = "ALL") String status,
             @RequestParam(value = "columns", required = false) List<String> columns) {
+        if (search != null && search.trim().length() > 100) {
+            return ResponseEntity.badRequest().body("Search query cannot exceed 100 characters.".getBytes());
+        }
         if (columns == null || columns.isEmpty()) {
             columns = List.of("brandName", "categoryName", "description", "status");
         }
@@ -272,6 +298,9 @@ public class ReportController {
             @RequestParam(value = "search", required = false) String search,
             @RequestParam(value = "status", required = false, defaultValue = "ALL") String status,
             @RequestParam(value = "columns", required = false) List<String> columns) {
+        if (search != null && search.trim().length() > 100) {
+            return ResponseEntity.badRequest().body("Search query cannot exceed 100 characters.".getBytes());
+        }
         if (columns == null || columns.isEmpty()) {
             columns = List.of("brandName", "categoryName", "description", "status");
         }
@@ -291,6 +320,9 @@ public class ReportController {
             @RequestParam(value = "status", required = false, defaultValue = "ALL") String status,
             @RequestParam(value = "columns", required = false) List<String> columns,
             @RequestParam(value = "format", defaultValue = "pdf") String format) {
+        if (search != null && search.trim().length() > 100) {
+            return ResponseEntity.badRequest().body("Search query cannot exceed 100 characters.".getBytes());
+        }
         if (columns == null || columns.isEmpty()) {
             columns = List.of("brandName", "categoryName", "description", "status");
         }
@@ -314,6 +346,17 @@ public class ReportController {
             @RequestParam(value = "search", required = false) String search,
             @RequestParam(value = "status", required = false, defaultValue = "ALL") String status,
             @RequestParam(value = "columns", required = false) List<String> columns) {
+        if (search != null && search.trim().length() > 100) {
+            return ResponseEntity.badRequest().body("Search query cannot exceed 100 characters.".getBytes());
+        }
+        if (startDate != null && endDate != null) {
+            if (startDate.isAfter(endDate)) {
+                return ResponseEntity.badRequest().body("Start date cannot be after end date.".getBytes());
+            }
+            if (java.time.temporal.ChronoUnit.DAYS.between(startDate, endDate) > 365) {
+                return ResponseEntity.badRequest().body("Date range cannot exceed 1 year (365 days) for report generation.".getBytes());
+            }
+        }
         if (columns == null || columns.isEmpty()) {
             columns = List.of("refundId", "orderNo", "customerName", "refundAmount", "reason", "status", "requestedDate");
         }
@@ -334,6 +377,17 @@ public class ReportController {
             @RequestParam(value = "search", required = false) String search,
             @RequestParam(value = "status", required = false, defaultValue = "ALL") String status,
             @RequestParam(value = "columns", required = false) List<String> columns) {
+        if (search != null && search.trim().length() > 100) {
+            return ResponseEntity.badRequest().body("Search query cannot exceed 100 characters.".getBytes());
+        }
+        if (startDate != null && endDate != null) {
+            if (startDate.isAfter(endDate)) {
+                return ResponseEntity.badRequest().body("Start date cannot be after end date.".getBytes());
+            }
+            if (java.time.temporal.ChronoUnit.DAYS.between(startDate, endDate) > 365) {
+                return ResponseEntity.badRequest().body("Date range cannot exceed 1 year (365 days) for report generation.".getBytes());
+            }
+        }
         if (columns == null || columns.isEmpty()) {
             columns = List.of("refundId", "orderNo", "customerName", "refundAmount", "reason", "status", "requestedDate");
         }
@@ -355,6 +409,17 @@ public class ReportController {
             @RequestParam(value = "status", required = false, defaultValue = "ALL") String status,
             @RequestParam(value = "columns", required = false) List<String> columns,
             @RequestParam(value = "format", defaultValue = "pdf") String format) {
+        if (search != null && search.trim().length() > 100) {
+            return ResponseEntity.badRequest().body("Search query cannot exceed 100 characters.".getBytes());
+        }
+        if (startDate != null && endDate != null) {
+            if (startDate.isAfter(endDate)) {
+                return ResponseEntity.badRequest().body("Start date cannot be after end date.".getBytes());
+            }
+            if (java.time.temporal.ChronoUnit.DAYS.between(startDate, endDate) > 365) {
+                return ResponseEntity.badRequest().body("Date range cannot exceed 1 year (365 days) for report generation.".getBytes());
+            }
+        }
         if (columns == null || columns.isEmpty()) {
             columns = List.of("refundId", "orderNo", "customerName", "refundAmount", "reason", "status", "requestedDate");
         }
@@ -386,6 +451,9 @@ public class ReportController {
             @RequestParam(value = "search", required = false) String search,
             @RequestParam(value = "status", required = false, defaultValue = "ALL") String status,
             @RequestParam(value = "columns", required = false) List<String> columns) {
+        if (search != null && search.trim().length() > 100) {
+            return ResponseEntity.badRequest().body("Search query cannot exceed 100 characters.".getBytes());
+        }
         if (columns == null || columns.isEmpty()) {
             columns = DEFAULT_INVENTORY_COLUMNS;
         }
@@ -405,6 +473,9 @@ public class ReportController {
             @RequestParam(value = "search", required = false) String search,
             @RequestParam(value = "status", required = false, defaultValue = "ALL") String status,
             @RequestParam(value = "columns", required = false) List<String> columns) {
+        if (search != null && search.trim().length() > 100) {
+            return ResponseEntity.badRequest().body("Search query cannot exceed 100 characters.".getBytes());
+        }
         if (columns == null || columns.isEmpty()) {
             columns = DEFAULT_INVENTORY_COLUMNS;
         }
@@ -425,6 +496,9 @@ public class ReportController {
             @RequestParam(value = "status", required = false, defaultValue = "ALL") String status,
             @RequestParam(value = "columns", required = false) List<String> columns,
             @RequestParam(value = "format", defaultValue = "pdf") String format) {
+        if (search != null && search.trim().length() > 100) {
+            return ResponseEntity.badRequest().body("Search query cannot exceed 100 characters.".getBytes());
+        }
         if (columns == null || columns.isEmpty()) {
             columns = DEFAULT_INVENTORY_COLUMNS;
         }
@@ -455,6 +529,9 @@ public class ReportController {
             @RequestParam(value = "tabStatus", required = false) String tabStatus,
             @RequestParam(value = "search", required = false) String search,
             @RequestParam(value = "columns", required = false) List<String> columns) {
+        if (search != null && search.trim().length() > 100) {
+            return ResponseEntity.badRequest().body("Search query cannot exceed 100 characters.".getBytes());
+        }
         String activeStatus = (tabStatus != null && !tabStatus.isBlank()) ? tabStatus : status;
         if (columns == null || columns.isEmpty()) {
             columns = DEFAULT_ORDER_COLUMNS;
@@ -475,6 +552,9 @@ public class ReportController {
             @RequestParam(value = "tabStatus", required = false) String tabStatus,
             @RequestParam(value = "search", required = false) String search,
             @RequestParam(value = "columns", required = false) List<String> columns) {
+        if (search != null && search.trim().length() > 100) {
+            return ResponseEntity.badRequest().body("Search query cannot exceed 100 characters.".getBytes());
+        }
         String activeStatus = (tabStatus != null && !tabStatus.isBlank()) ? tabStatus : status;
         if (columns == null || columns.isEmpty()) {
             columns = DEFAULT_ORDER_COLUMNS;
@@ -496,6 +576,9 @@ public class ReportController {
             @RequestParam(value = "search", required = false) String search,
             @RequestParam(value = "columns", required = false) List<String> columns,
             @RequestParam(value = "format", defaultValue = "pdf") String format) {
+        if (search != null && search.trim().length() > 100) {
+            return ResponseEntity.badRequest().body("Search query cannot exceed 100 characters.".getBytes());
+        }
         String activeStatus = (tabStatus != null && !tabStatus.isBlank()) ? tabStatus : status;
         if (columns == null || columns.isEmpty()) {
             columns = DEFAULT_ORDER_COLUMNS;

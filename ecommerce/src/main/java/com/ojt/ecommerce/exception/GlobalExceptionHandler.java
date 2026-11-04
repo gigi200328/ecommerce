@@ -1,10 +1,9 @@
-
 package com.ojt.ecommerce.exception;
 
 import java.time.LocalDateTime;
 import java.util.HashMap;
-import java.util.Map;
 import java.util.Locale;
+import java.util.Map;
 
 import org.springframework.dao.DataIntegrityViolationException;
 import org.springframework.http.HttpStatus;
@@ -25,47 +24,43 @@ import jakarta.persistence.EntityNotFoundException;
 @RestControllerAdvice
 public class GlobalExceptionHandler {
 
-    // Common Error Response Builder
-    private ResponseEntity<ErrorResponse> buildErrorResponse(
-            HttpStatus status, String message) {
-
+    // --- 0. Common Error Response Builder ---
+    private ResponseEntity<ErrorResponse> buildErrorResponse(HttpStatus status, String message) {
         ErrorResponse errorResponse = ErrorResponse.builder()
                 .status(status.value())
                 .error(status.getReasonPhrase())
-                .message(message != null
-                        ? message
-                        : status.getReasonPhrase())
+                .message(message != null ? message : status.getReasonPhrase())
                 .timestamp(LocalDateTime.now())
                 .build();
-
-        return ResponseEntity.status(status).body(errorResponse);
+        return new ResponseEntity<>(errorResponse, status);
     }
 
-    // 1. Entity / Resource Not Found - 404
-    @ExceptionHandler({
-            EntityNotFoundException.class,
-            ResourceNotFoundException.class
-    })
-    public ResponseEntity<ErrorResponse> handleNotFound(
-            Exception ex) {
-
-        return buildErrorResponse(
-                HttpStatus.NOT_FOUND,
-                ex.getMessage()
-        );
+    private ResponseEntity<ErrorResponse> buildErrorResponseWithValidation(
+            HttpStatus status, String message, Map<String, String> errors) {
+        
+        ErrorResponse errorResponse = ErrorResponse.builder()
+                .status(status.value())
+                .error(status.getReasonPhrase())
+                .message(message)
+                .validationErrors(errors)
+                .timestamp(LocalDateTime.now())
+                .build();
+        return new ResponseEntity<>(errorResponse, status);
     }
 
-    // 2. DTO Validation Error - 400
+    // --- 1. Entity / Resource Not Found - 404 ---
+    @ExceptionHandler({ EntityNotFoundException.class, ResourceNotFoundException.class })
+    public ResponseEntity<ErrorResponse> handleNotFound(Exception ex) {
+        return buildErrorResponse(HttpStatus.NOT_FOUND, ex.getMessage());
+    }
+
+    // --- 2. DTO Validation Error - 400 ---
     @ExceptionHandler(MethodArgumentNotValidException.class)
-    public ResponseEntity<ErrorResponse> handleValidationExceptions(
-            MethodArgumentNotValidException ex) {
-
+    public ResponseEntity<ErrorResponse> handleValidationExceptions(MethodArgumentNotValidException ex) {
         Map<String, String> errors = new HashMap<>();
-
+        
         ex.getBindingResult().getAllErrors().forEach(error -> {
-
             String fieldName;
-
             if (error instanceof FieldError) {
                 fieldName = ((FieldError) error).getField();
             } else {
@@ -73,143 +68,74 @@ public class GlobalExceptionHandler {
             }
 
             String errorMessage = error.getDefaultMessage();
-
-            errors.put(
-                    fieldName,
-                    errorMessage != null
-                            ? errorMessage
-                            : "Invalid value"
-            );
+            errors.put(fieldName, errorMessage != null ? errorMessage : "Invalid value");
         });
 
-        ErrorResponse errorResponse = ErrorResponse.builder()
-                .status(HttpStatus.BAD_REQUEST.value())
-                .error(HttpStatus.BAD_REQUEST.getReasonPhrase())
-                .message("Validation failed for request parameters")
-                .validationErrors(errors)
-                .timestamp(LocalDateTime.now())
-                .build();
-
-        return ResponseEntity
-                .status(HttpStatus.BAD_REQUEST)
-                .body(errorResponse);
-    }
-
-    // 3. Illegal Argument - 400
-    @ExceptionHandler(IllegalArgumentException.class)
-    public ResponseEntity<ErrorResponse> handleIllegalArgumentException(
-            IllegalArgumentException ex) {
-
-        return buildErrorResponse(
-                HttpStatus.BAD_REQUEST,
-                ex.getMessage()
+        return buildErrorResponseWithValidation(
+                HttpStatus.BAD_REQUEST, 
+                "Validation failed for request parameters", 
+                errors
         );
     }
 
-    // 4. Invalid Request - 400
-    @ExceptionHandler(InvalidRequestException.class)
-    public ResponseEntity<ErrorResponse> handleInvalidRequest(
-            InvalidRequestException ex) {
-
-        return buildErrorResponse(
-                HttpStatus.BAD_REQUEST,
-                ex.getMessage()
-        );
+    // --- 3. Illegal Argument & Invalid Request - 400 ---
+    @ExceptionHandler({ IllegalArgumentException.class, InvalidRequestException.class })
+    public ResponseEntity<ErrorResponse> handleBadRequestExceptions(Exception ex) {
+        return buildErrorResponse(HttpStatus.BAD_REQUEST, ex.getMessage());
     }
 
-    // 5. Access Denied - 403
+    // --- 4. Business Runtime Exceptions - 400 ---
+    @ExceptionHandler(RuntimeException.class)
+    public ResponseEntity<ErrorResponse> handleRuntimeException(RuntimeException ex) {
+        return buildErrorResponse(HttpStatus.BAD_REQUEST, ex.getMessage());
+    }
+
+    // --- 5. Access Denied - 403 ---
     @ExceptionHandler(AccessDeniedException.class)
-    public ResponseEntity<ErrorResponse> handleAccessDenied(
-            AccessDeniedException ex) {
-
-        return buildErrorResponse(
-                HttpStatus.FORBIDDEN,
-                ex.getMessage()
-        );
+    public ResponseEntity<ErrorResponse> handleAccessDenied(AccessDeniedException ex) {
+        return buildErrorResponse(HttpStatus.FORBIDDEN, ex.getMessage());
     }
 
-    // 6. Conflict Exception - 409
+    // --- 6. Conflict Exception - 409 ---
     @ExceptionHandler(ConflictException.class)
-    public ResponseEntity<ErrorResponse> handleConflict(
-            ConflictException ex) {
-
+    public ResponseEntity<ErrorResponse> handleConflict(ConflictException ex) {
         String originalMessage = ex.getMessage();
-
-        String message = originalMessage != null
-                ? originalMessage
-                : "The requested operation conflicts with existing data.";
-
+        String message = originalMessage != null ? originalMessage : "The requested operation conflicts with existing data.";
         String lowerMessage = message.toLowerCase(Locale.ROOT);
 
-        if (lowerMessage.contains("brand already exists")
-                || lowerMessage.contains("brand name already exists")) {
-
-            message = "This brand name already exists. "
-                    + "Please choose a different brand name and try again.";
+        if (lowerMessage.contains("brand already exists") || lowerMessage.contains("brand name already exists")) {
+            message = "This brand name already exists. Please choose a different brand name and try again.";
         }
 
-        return buildErrorResponse(
-                HttpStatus.CONFLICT,
-                message
-        );
+        return buildErrorResponse(HttpStatus.CONFLICT, message);
     }
 
-    // 7. Database Constraint Violation - 409
+    // --- 7. Database Constraint Violation - 409 ---
     @ExceptionHandler(DataIntegrityViolationException.class)
-    public ResponseEntity<ErrorResponse> handleDataIntegrityViolationException(
-            DataIntegrityViolationException ex) {
-
+    public ResponseEntity<ErrorResponse> handleDataIntegrityViolationException(DataIntegrityViolationException ex) {
         String rootCauseMessage = "";
-
-        if (ex.getMostSpecificCause() != null
-                && ex.getMostSpecificCause().getMessage() != null) {
-
-            rootCauseMessage = ex.getMostSpecificCause()
-                    .getMessage()
-                    .toLowerCase(Locale.ROOT);
+        
+        if (ex.getMostSpecificCause() != null && ex.getMostSpecificCause().getMessage() != null) {
+            rootCauseMessage = ex.getMostSpecificCause().getMessage().toLowerCase(Locale.ROOT);
         }
 
-        String message =
-                "This record cannot be deleted or modified "
-                + "because it is currently in use elsewhere.";
+        String message = "This record cannot be deleted or modified because it is currently in use elsewhere.";
 
-        if (rootCauseMessage.contains("product_tags")
-                || rootCauseMessage.contains("tag")) {
-
-            message = "This tag cannot be deleted because it is "
-                    + "still being used by products. "
-                    + "Please set its status to Inactive instead.";
-
-        } else if (rootCauseMessage.contains("product_brands")
-                || rootCauseMessage.contains("brand")) {
-
-            message = "This brand cannot be deleted because it is "
-                    + "still being used by products. "
-                    + "Please set its status to Inactive instead.";
-
+        if (rootCauseMessage.contains("product_tags") || rootCauseMessage.contains("tag")) {
+            message = "This tag cannot be deleted because it is still being used by products. Please set its status to Inactive instead.";
+        } else if (rootCauseMessage.contains("product_brands") || rootCauseMessage.contains("brand")) {
+            message = "This brand cannot be deleted because it is still being used by products. Please set its status to Inactive instead.";
         } else if (rootCauseMessage.contains("category")) {
-
-            message = "This category cannot be deleted because "
-                    + "it is still being used in the system.";
+            message = "This category cannot be deleted because it is still being used in the system.";
         }
 
-        return buildErrorResponse(
-                HttpStatus.CONFLICT,
-                message
-        );
+        return buildErrorResponse(HttpStatus.CONFLICT, message);
     }
 
-    // 8. Generic Exception - 500
+    // --- 8. Generic Exception (Catch-all) - 500 ---
     @ExceptionHandler(Exception.class)
-    public ResponseEntity<ErrorResponse> handleGenericException(
-            Exception ex) {
-
-        // Log actual exception for debugging
-        ex.printStackTrace();
-
-        return buildErrorResponse(
-                HttpStatus.INTERNAL_SERVER_ERROR,
-                "An unexpected error occurred. Please try again later."
-        );
+    public ResponseEntity<ErrorResponse> handleGenericException(Exception ex) {
+        ex.printStackTrace(); // Log actual exception for debugging
+        return buildErrorResponse(HttpStatus.INTERNAL_SERVER_ERROR, "An unexpected error occurred. Please try again later.");
     }
 }

@@ -1,0 +1,497 @@
+{
+  "info": {
+    "name": "E-Commerce Backoffice - User Features Collection",
+    "description": "Postman Collection for testing all Backoffice APIs (Products, Variants, Inventory, Excel Import, MoM Profit, Shipping, Reports).",
+    "schema": "https://schema.getpostman.com/json/collection/v2.1.0/collection.json"
+  },
+  "variable": [
+    {
+      "key": "baseUrl",
+      "value": "http://localhost:8080",
+      "type": "string"
+    },
+    {
+      "key": "token",
+      "value": "",
+      "type": "string"
+    }
+  ],
+  "item": [
+    {
+      "name": "0. Authentication (Login First)",
+      "item": [
+        {
+          "name": "Admin Login (Get Bearer Token)",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "exec": [
+                  "var jsonData = pm.response.json();",
+                  "if (jsonData.token) {",
+                  "    pm.collectionVariables.set(\"token\", jsonData.token);",
+                  "    console.log(\"Saved Bearer Token successfully!\");",
+                  "}"
+                ],
+                "type": "text/javascript"
+              }
+            }
+          ],
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"email\": \"admin@ecommerce.com\",\n  \"password\": \"Admin@123\"\n}"
+            },
+            "url": {
+              "raw": "{{baseUrl}}/api/backoffice/auth/login",
+              "host": ["{{baseUrl}}"],
+              "path": ["api", "backoffice", "auth", "login"]
+            }
+          }
+        }
+      ]
+    },
+    {
+      "name": "1. MoM Profit & Margin Reports",
+      "item": [
+        {
+          "name": "Get MoM Profit & Margin Report (JSON)",
+          "request": {
+            "method": "GET",
+            "header": [
+              {
+                "key": "Authorization",
+                "value": "Bearer {{token}}"
+              }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/api/backoffice/reports/month-on-month-profit?year=2026",
+              "host": ["{{baseUrl}}"],
+              "path": ["api", "backoffice", "reports", "month-on-month-profit"],
+              "query": [
+                {
+                  "key": "year",
+                  "value": "2026"
+                }
+              ]
+            }
+          }
+        },
+        {
+          "name": "Export MoM Profit Report (Excel .xlsx)",
+          "request": {
+            "method": "GET",
+            "header": [
+              {
+                "key": "Authorization",
+                "value": "Bearer {{token}}"
+              }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/api/backoffice/reports/month-on-month-profit/export?year=2026",
+              "host": ["{{baseUrl}}"],
+              "path": ["api", "backoffice", "reports", "month-on-month-profit", "export"],
+              "query": [
+                {
+                  "key": "year",
+                  "value": "2026"
+                }
+              ]
+            }
+          }
+        }
+      ]
+    },
+    {
+      "name": "2. Products & Variants (Cost & Selling Price)",
+      "item": [
+        {
+          "name": "Get All Products",
+          "request": {
+            "method": "GET",
+            "header": [
+              {
+                "key": "Authorization",
+                "value": "Bearer {{token}}"
+              }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/api/backoffice/products",
+              "host": ["{{baseUrl}}"],
+              "path": ["api", "backoffice", "products"]
+            }
+          }
+        },
+        {
+          "name": "Get All Product Variants (Check Selling & Cost Price)",
+          "request": {
+            "method": "GET",
+            "header": [
+              {
+                "key": "Authorization",
+                "value": "Bearer {{token}}"
+              }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/api/backoffice/product-variants",
+              "host": ["{{baseUrl}}"],
+              "path": ["api", "backoffice", "product-variants"]
+            }
+          }
+        },
+        {
+          "name": "Create Product Variant with Options (Price & Cost)",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Authorization",
+                "value": "Bearer {{token}}"
+              },
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"productId\": 1,\n  \"sku\": \"TSHIRT-BLK-M-01\",\n  \"sellingPrice\": 45000.00,\n  \"costPrice\": 30000.00,\n  \"status\": \"ACTIVE\",\n  \"optionIds\": [1, 2]\n}"
+            },
+            "url": {
+              "raw": "{{baseUrl}}/api/backoffice/product-variants/create-with-options",
+              "host": ["{{baseUrl}}"],
+              "path": ["api", "backoffice", "product-variants", "create-with-options"]
+            }
+          }
+        },
+        {
+          "name": "Upload Variant Image (Multipart)",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Authorization",
+                "value": "Bearer {{token}}"
+              }
+            ],
+            "body": {
+              "mode": "formdata",
+              "formdata": [
+                {
+                  "key": "variantId",
+                  "value": "1",
+                  "type": "text"
+                },
+                {
+                  "key": "file",
+                  "type": "file",
+                  "src": ""
+                },
+                {
+                  "key": "isPrimary",
+                  "value": "true",
+                  "type": "text"
+                }
+              ]
+            },
+            "url": {
+              "raw": "{{baseUrl}}/api/backoffice/product-variant-images/upload",
+              "host": ["{{baseUrl}}"],
+              "path": ["api", "backoffice", "product-variant-images", "upload"]
+            }
+          }
+        }
+      ]
+    },
+    {
+      "name": "3. Excel Bulk Import",
+      "item": [
+        {
+          "name": "Download Product Excel Template",
+          "request": {
+            "method": "GET",
+            "header": [
+              {
+                "key": "Authorization",
+                "value": "Bearer {{token}}"
+              }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/api/backoffice/products/excel-template",
+              "host": ["{{baseUrl}}"],
+              "path": ["api", "backoffice", "products", "excel-template"]
+            }
+          }
+        },
+        {
+          "name": "Bulk Import Products via Excel File",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Authorization",
+                "value": "Bearer {{token}}"
+              }
+            ],
+            "body": {
+              "mode": "formdata",
+              "formdata": [
+                {
+                  "key": "file",
+                  "type": "file",
+                  "src": ""
+                }
+              ]
+            },
+            "url": {
+              "raw": "{{baseUrl}}/api/backoffice/products/bulk-import",
+              "host": ["{{baseUrl}}"],
+              "path": ["api", "backoffice", "products", "bulk-import"]
+            }
+          }
+        }
+      ]
+    },
+    {
+      "name": "4. Inventory & Stock Management",
+      "item": [
+        {
+          "name": "Get All Inventory Stock",
+          "request": {
+            "method": "GET",
+            "header": [
+              {
+                "key": "Authorization",
+                "value": "Bearer {{token}}"
+              }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/api/backoffice/inventory",
+              "host": ["{{baseUrl}}"],
+              "path": ["api", "backoffice", "inventory"]
+            }
+          }
+        },
+        {
+          "name": "Get Low Stock Alerts",
+          "request": {
+            "method": "GET",
+            "header": [
+              {
+                "key": "Authorization",
+                "value": "Bearer {{token}}"
+              }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/api/backoffice/inventory/low-stock",
+              "host": ["{{baseUrl}}"],
+              "path": ["api", "backoffice", "inventory", "low-stock"]
+            }
+          }
+        },
+        {
+          "name": "Adjust Stock Quantity",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Authorization",
+                "value": "Bearer {{token}}"
+              },
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"inventoryId\": 1,\n  \"adjustment\": 5,\n  \"reason\": \"COUNT_CORRECTION\",\n  \"remarks\": \"Verified stock\"\n}"
+            },
+            "url": {
+              "raw": "{{baseUrl}}/api/backoffice/inventory/adjust",
+              "host": ["{{baseUrl}}"],
+              "path": ["api", "backoffice", "inventory", "adjust"]
+            }
+          }
+        }
+      ]
+    },
+    {
+      "name": "5. Shipping Rates & Delivery Zones",
+      "item": [
+        {
+          "name": "Get All Delivery Zones",
+          "request": {
+            "method": "GET",
+            "header": [
+              {
+                "key": "Authorization",
+                "value": "Bearer {{token}}"
+              }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/api/backoffice/shipping/zones",
+              "host": ["{{baseUrl}}"],
+              "path": ["api", "backoffice", "shipping", "zones"]
+            }
+          }
+        },
+        {
+          "name": "Create New Delivery Zone Group",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Authorization",
+                "value": "Bearer {{token}}"
+              },
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"zoneName\": \"Mandalay Downtown\",\n  \"regionOrState\": \"Mandalay Region\",\n  \"city\": \"Mandalay\",\n  \"townships\": [\"Chanayethazan\", \"Mahaaungmyay\"],\n  \"shippingFee\": 3000,\n  \"estimatedDays\": 2\n}"
+            },
+            "url": {
+              "raw": "{{baseUrl}}/api/backoffice/shipping/zones",
+              "host": ["{{baseUrl}}"],
+              "path": ["api", "backoffice", "shipping", "zones"]
+            }
+          }
+        },
+        {
+          "name": "Update Zone Rate & Status",
+          "request": {
+            "method": "PUT",
+            "header": [
+              {
+                "key": "Authorization",
+                "value": "Bearer {{token}}"
+              },
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"zoneIds\": [1],\n  \"zoneName\": \"Updated Zone Name\",\n  \"shippingFee\": 3500,\n  \"estimatedDays\": 2,\n  \"status\": \"ACTIVE\"\n}"
+            },
+            "url": {
+              "raw": "{{baseUrl}}/api/backoffice/shipping/zones/rate",
+              "host": ["{{baseUrl}}"],
+              "path": ["api", "backoffice", "shipping", "zones", "rate"]
+            }
+          }
+        }
+      ]
+    },
+    {
+      "name": "6. Operational Reports & Analytics",
+      "item": [
+        {
+          "name": "Daily Product Sales Report (PDF/Excel)",
+          "request": {
+            "method": "GET",
+            "header": [
+              {
+                "key": "Authorization",
+                "value": "Bearer {{token}}"
+              }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/api/backoffice/reports/daily-product-sales?startDate=2026-11-01&endDate=2026-11-03&format=excel",
+              "host": ["{{baseUrl}}"],
+              "path": ["api", "backoffice", "reports", "daily-product-sales"],
+              "query": [
+                {
+                  "key": "startDate",
+                  "value": "2026-11-01"
+                },
+                {
+                  "key": "endDate",
+                  "value": "2026-11-03"
+                },
+                {
+                  "key": "format",
+                  "value": "excel"
+                }
+              ]
+            }
+          }
+        },
+        {
+          "name": "Top Selling Products Report",
+          "request": {
+            "method": "GET",
+            "header": [
+              {
+                "key": "Authorization",
+                "value": "Bearer {{token}}"
+              }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/api/backoffice/reports/top-selling?limitCount=10&format=excel",
+              "host": ["{{baseUrl}}"],
+              "path": ["api", "backoffice", "reports", "top-selling"],
+              "query": [
+                {
+                  "key": "limitCount",
+                  "value": "10"
+                },
+                {
+                  "key": "format",
+                  "value": "excel"
+                }
+              ]
+            }
+          }
+        },
+        {
+          "name": "Order Fulfillment Status Report",
+          "request": {
+            "method": "GET",
+            "header": [
+              {
+                "key": "Authorization",
+                "value": "Bearer {{token}}"
+              }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/api/backoffice/reports/order-fulfillment?startDate=2026-11-01&endDate=2026-11-03&status=ALL&format=excel",
+              "host": ["{{baseUrl}}"],
+              "path": ["api", "backoffice", "reports", "order-fulfillment"],
+              "query": [
+                {
+                  "key": "startDate",
+                  "value": "2026-11-01"
+                },
+                {
+                  "key": "endDate",
+                  "value": "2026-11-03"
+                },
+                {
+                  "key": "status",
+                  "value": "ALL"
+                },
+                {
+                  "key": "format",
+                  "value": "excel"
+                }
+              ]
+            }
+          }
+        }
+      ]
+    }
+  ]
+}

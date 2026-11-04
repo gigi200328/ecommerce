@@ -76,8 +76,15 @@ public class AuditLogAspect {
         // Request Body / Payload ကို ရှာဖွေဖမ်းယူခြင်း
         Object payload = findPayload(args);
         if (auditable.action() == AuditAction.CREATE || auditable.action() == AuditAction.UPDATE) {
-            if (payload != null) {
+            if ("updateStaffStatus".equals(methodName) && args != null && args.length >= 2) {
+                // Wrap plain status in a clean map {"status": status} so old and new can diff cleanly
+                newValue = serializePayloadSafely(Collections.singletonMap("status", String.valueOf(args[1])));
+            } else if (payload != null) {
                 newValue = serializePayloadSafely(payload);
+            }
+        } else if (auditable.action() == AuditAction.DELETE) {
+            if ("deleteStaff".equals(methodName)) {
+                newValue = serializePayloadSafely(Collections.singletonMap("status", "INACTIVE"));
             }
         }
 
@@ -111,7 +118,7 @@ public class AuditLogAspect {
 
                 String description = auditable.description();
                 if (description == null || description.isBlank()) {
-                    description = "Executed method: " + methodName;
+                    description = generateFriendlyDescription(methodName, auditable.moduleName(), auditable.action(), args, recordId);
                 }
                 if (caughtException != null) {
                     description += " [Error: " + caughtException.getMessage() + "]";
@@ -136,6 +143,46 @@ public class AuditLogAspect {
             } catch (Exception e) {
                 log.error("Failed to record audit log for method {}: {}", methodName, e.getMessage(), e);
             }
+        }
+    }
+
+    /**
+     * လူသုံးများသော နားလည်လွယ်သည့် Activity Description ထုတ်လုပ်ပေးခြင်း
+     */
+    private String generateFriendlyDescription(String methodName, String moduleName, AuditAction action, Object[] args, Long recordId) {
+        String idStr = (recordId != null) ? " (ID: #" + recordId + ")" : "";
+        switch (methodName) {
+            case "createStaff":
+                return "Created new staff/admin account" + idStr;
+            case "updateStaff":
+                return "Updated staff account details" + idStr;
+            case "updateStaffStatus":
+                String status = (args != null && args.length >= 2 && args[1] != null) ? String.valueOf(args[1]).toUpperCase() : "UPDATED";
+                return "Changed staff account status to " + status + idStr;
+            case "deleteStaff":
+                return "Deactivated/Suspended staff account" + idStr;
+            case "changePassword":
+                return "Changed user account password";
+            default:
+                break;
+        }
+
+        String readableName = methodName
+                .replaceAll("([A-Z])", " $1")
+                .trim();
+        if (!readableName.isEmpty()) {
+            readableName = Character.toUpperCase(readableName.charAt(0)) + readableName.substring(1);
+        }
+
+        switch (action) {
+            case CREATE:
+                return "Created new record in " + moduleName + idStr;
+            case UPDATE:
+                return "Updated " + moduleName + " record" + idStr;
+            case DELETE:
+                return "Deleted/Deactivated " + moduleName + " record" + idStr;
+            default:
+                return moduleName + " - " + readableName;
         }
     }
 
@@ -194,6 +241,7 @@ public class AuditLogAspect {
 
     /**
      * Entity တစ်ခု၏ Data များကို Infinite Loop / Lazy Loading မဖြစ်စေဘဲ သန့်ရှင်းစွာ Snapshot ထုတ်ယူခြင်း
+     * (Internal technical / sensitive fields များကို ဖယ်ထုတ်ထားပါသည်)
      */
     private Map<String, Object> extractEntitySnapshot(Object entity) {
         if (entity == null) return null;
@@ -205,7 +253,10 @@ public class AuditLogAspect {
 
             for (PropertyDescriptor pd : descriptors) {
                 String name = pd.getName();
-                if ("class".equals(name) || "hibernateLazyInitializer".equals(name) || "handler".equals(name)) {
+                // Exclude internal framework, technical, and sensitive properties
+                if ("class".equals(name) || "hibernateLazyInitializer".equals(name) || "handler".equals(name)
+                    || "passwordHash".equals(name) || "tokenVersion".equals(name) || "mustChangePassword".equals(name)
+                    || "createdBy".equals(name) || "modifiedBy".equals(name)) {
                     continue;
                 }
                 Class<?> propType = pd.getPropertyType();

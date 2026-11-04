@@ -14,5 +14,8 @@ public interface DeliveryZoneRepository extends JpaRepository<DeliveryZone, Long
 
 	List<DeliveryZone> findAllByOrderByZoneIdAsc();
 
-	boolean existsByCityAndZoneName(String city, String zoneName);
+	boolean existsByZoneNameIgnoreCase(String zoneName);
+
+	// ၂။ သက်ဆိုင်ရာ City ထဲတွင် အဆိုပါ Township သတ်မှတ်ပြီးသား ရှိမရှိ စစ်ဆေးရန်
+	boolean existsByCityAndTownship(String city, String township);
 }

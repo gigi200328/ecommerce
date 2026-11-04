@@ -6,6 +6,8 @@ import com.ojt.ecommerce.storefront.order.dto.OrderInvoiceResponseDTO.OrderItemD
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.jdbc.core.JdbcTemplate;
+import org.springframework.dao.DataAccessException;
+import org.springframework.jdbc.UncategorizedSQLException;
 import org.springframework.stereotype.Repository;
 
 import javax.sql.DataSource;
@@ -265,8 +267,16 @@ public class OrderInspectionRepository {
              * layer can handle MySQL SIGNAL errors uniformly via
              * DataAccessException.getMostSpecificCause().
              */
-            throw jdbcTemplate.getExceptionTranslator()
-                    .translate("callGetOrderInvoiceDetail", null, ex);
+            log.warn("Database error executing sp_get_order_invoice_detail (orderId={}, customerId={}): [{}] {}",
+                    orderId, customerId, ex.getSQLState(), ex.getMessage());
+            DataAccessException dae = (jdbcTemplate.getExceptionTranslator() != null)
+                    ? jdbcTemplate.getExceptionTranslator().translate("callGetOrderInvoiceDetail", "CALL ecom.sp_get_order_invoice_detail(?, ?)", ex)
+                    : null;
+            if (dae != null) {
+                throw dae;
+            }
+            throw new UncategorizedSQLException("callGetOrderInvoiceDetail", "CALL ecom.sp_get_order_invoice_detail(?, ?)", ex);
+
         }
     }
 
@@ -285,11 +295,11 @@ public class OrderInspectionRepository {
                 .subtotalAmount(rs.getBigDecimal("subtotal_amount"))
                 .shippingFee(rs.getBigDecimal("shipping_fee"))
                 .taxAmount(rs.getBigDecimal("tax_amount"))
-                .discountAmount(rs.getBigDecimal("discount_amount"))
+                .discountAmount(BigDecimal.ZERO)
                 .totalAmount(rs.getBigDecimal("total_amount"))
                 .totalLineItems(rs.getInt("total_line_items"))
                 .totalItemQuantity(rs.getInt("total_item_quantity"))
-                .latestPaymentMethod(rs.getString("latest_payment_method"))
+                .latestPaymentMethod(formatMethod(rs.getString("latest_payment_method")))
                 .build();
     }
 
@@ -300,15 +310,15 @@ public class OrderInspectionRepository {
                 .orderId(rs.getLong("order_id"))
                 .orderNo(rs.getString("order_no"))
                 .orderDate(dt)
-                .orderDateStr(dt != null ? dt.format(java.time.format.DateTimeFormatter.ofPattern("MMM dd, yyyy, hh:mm a")) : "")
+                .orderDateStr(dt != null ? dt.format(java.time.format.DateTimeFormatter.ofPattern("dd/MM/yyyy, hh:mm a")) : "")
                 .orderStatus(rs.getString("order_status"))
                 .paymentStatus(rs.getString("payment_status"))
-                .paymentMethod(rs.getString("payment_method"))
+                .paymentMethod(formatMethod(rs.getString("payment_method")))
                 .itemsSummary(rs.getString("items_summary"))
                 .totalItemQuantity(rs.getInt("total_item_quantity"))
                 .subtotalAmount(rs.getBigDecimal("subtotal_amount"))
                 .shippingFee(rs.getBigDecimal("shipping_fee"))
-                .discountAmount(rs.getBigDecimal("discount_amount"))
+                .discountAmount(BigDecimal.ZERO)
                 .totalAmount(rs.getBigDecimal("total_amount"))
                 .customerName(rs.getString("customer_name"))
                 .customerEmail(rs.getString("customer_email"))
@@ -347,7 +357,7 @@ public class OrderInspectionRepository {
                 rs.getString("full_address_text"),
                 // Payment (nullable)
                 nullableLong(rs, "payment_id"),
-                rs.getString("payment_method"),
+                formatMethod(rs.getString("payment_method")),
                 rs.getString("latest_payment_status"),
                 rs.getString("transaction_ref"),
                 toLocalDateTime(rs.getTimestamp("paid_at")),
@@ -371,12 +381,20 @@ public class OrderInspectionRepository {
                 .variantAttributes(rs.getString("variant_attributes"))
                 .unitPrice(rs.getBigDecimal("unit_price"))
                 .qty(rs.getInt("qty"))
-                .discountAmount(rs.getBigDecimal("discount_amount"))
+                .discountAmount(BigDecimal.ZERO)
                 .subtotal(rs.getBigDecimal("subtotal"))
                 .build();
     }
 
     // ── Type-conversion utilities ──────────────────────────────────────────
+
+    private static String formatMethod(String m) {
+        if (m == null) return null;
+        if ("MINI_BANKING".equalsIgnoreCase(m) || m.toLowerCase().contains("mini")) {
+            return "EKARAJ  BANK";
+        }
+        return m;
+    }
 
     /** Null-safe {@link Timestamp} → {@link LocalDateTime} conversion. */
     private static LocalDateTime toLocalDateTime(Timestamp ts) {

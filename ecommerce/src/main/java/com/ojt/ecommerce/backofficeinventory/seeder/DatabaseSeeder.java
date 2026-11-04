@@ -5,12 +5,14 @@ import com.ojt.ecommerce.backofficeinventory.repository.RoleRepository;
 import com.ojt.ecommerce.backofficeinventory.repository.UserRepository;
 import com.ojt.ecommerce.backofficeinventory.repository.CategoryRepository;
 import com.ojt.ecommerce.backofficeinventory.repository.BrandRepository;
+import com.ojt.ecommerce.backofficeinventory.repository.InventoryRepository;
 import com.ojt.ecommerce.entity.Category;
 import com.ojt.ecommerce.entity.Brand;
 import com.ojt.ecommerce.enums.BrandStatus;
 import com.ojt.ecommerce.entity.Permission;
 import com.ojt.ecommerce.entity.Role;
 import com.ojt.ecommerce.entity.User;
+import com.ojt.ecommerce.entity.Inventory;
 import lombok.RequiredArgsConstructor;
 import org.springframework.boot.CommandLineRunner;
 import org.springframework.security.crypto.password.PasswordEncoder;
@@ -31,6 +33,7 @@ public class DatabaseSeeder implements CommandLineRunner {
     private final PasswordEncoder passwordEncoder;
     private final CategoryRepository categoryRepository;
     private final BrandRepository brandRepository;
+    private final InventoryRepository inventoryRepository;
 
     @Override
     @Transactional
@@ -116,26 +119,39 @@ public class DatabaseSeeder implements CommandLineRunner {
             userRepository.save(orderUser);
         }
 
-        // ၄။ Default Categories & Brands
+        // ၄။ Default Categories & Brands (createdBy, modifiedBy, createdAt နှင့် modifiedAt အပြည့်အစုံဖြင့်)
         User defaultAdmin = userRepository.findByEmail("admin@ecommerce.com").orElse(null);
         if (defaultAdmin != null) {
             if (categoryRepository.count() == 0) {
                 categoryRepository.saveAll(List.of(
-                    Category.builder().categoryName("Clothing").description("Fashion apparel, garments, and casual wear").createdBy(defaultAdmin).createdAt(LocalDateTime.now()).build(),
-                    Category.builder().categoryName("Footwear").description("Shoes, sneakers, and sandals").createdBy(defaultAdmin).createdAt(LocalDateTime.now()).build(),
-                    Category.builder().categoryName("Cosmetics").description("Beauty and personal care products").createdBy(defaultAdmin).createdAt(LocalDateTime.now()).build(),
-                    Category.builder().categoryName("Beverages").description("Refreshing drinks and beverages").createdBy(defaultAdmin).createdAt(LocalDateTime.now()).build(),
-                    Category.builder().categoryName("Electronics").description("Phones, computers, and electronic gadgets").createdBy(defaultAdmin).createdAt(LocalDateTime.now()).build()
+                    Category.builder().categoryName("Clothing").description("Fashion apparel, garments, and casual wear").createdBy(defaultAdmin).modifiedBy(defaultAdmin).createdAt(LocalDateTime.now()).modifiedAt(LocalDateTime.now()).build(),
+                    Category.builder().categoryName("Footwear").description("Shoes, sneakers, and sandals").createdBy(defaultAdmin).modifiedBy(defaultAdmin).createdAt(LocalDateTime.now()).modifiedAt(LocalDateTime.now()).build(),
+                    Category.builder().categoryName("Cosmetics").description("Beauty and personal care products").createdBy(defaultAdmin).modifiedBy(defaultAdmin).createdAt(LocalDateTime.now()).modifiedAt(LocalDateTime.now()).build(),
+                    Category.builder().categoryName("Beverages").description("Refreshing drinks and beverages").createdBy(defaultAdmin).modifiedBy(defaultAdmin).createdAt(LocalDateTime.now()).modifiedAt(LocalDateTime.now()).build(),
+                    Category.builder().categoryName("Electronics").description("Phones, computers, and electronic gadgets").createdBy(defaultAdmin).modifiedBy(defaultAdmin).createdAt(LocalDateTime.now()).modifiedAt(LocalDateTime.now()).build()
                 ));
             }
             if (brandRepository.count() == 0) {
                 brandRepository.saveAll(List.of(
-                    Brand.builder().brandName("Nike").description("Premium athletic footwear and sportswear").status(BrandStatus.ACTIVE).createdBy(defaultAdmin).createdAt(LocalDateTime.now()).build(),
-                    Brand.builder().brandName("Zara").description("Contemporary fashion and lifestyle").status(BrandStatus.ACTIVE).createdBy(defaultAdmin).createdAt(LocalDateTime.now()).build(),
-                    Brand.builder().brandName("Apple").description("Smart devices and consumer electronics").status(BrandStatus.ACTIVE).createdBy(defaultAdmin).createdAt(LocalDateTime.now()).build(),
-                    Brand.builder().brandName("Samsung").description("Electronics and modern hardware").status(BrandStatus.ACTIVE).createdBy(defaultAdmin).createdAt(LocalDateTime.now()).build()
+                    Brand.builder().brandName("Nike").description("Premium athletic footwear and sportswear").status(BrandStatus.ACTIVE).createdBy(defaultAdmin).modifiedBy(defaultAdmin).createdAt(LocalDateTime.now()).modifiedAt(LocalDateTime.now()).build(),
+                    Brand.builder().brandName("Zara").description("Contemporary fashion and lifestyle").status(BrandStatus.ACTIVE).createdBy(defaultAdmin).modifiedBy(defaultAdmin).createdAt(LocalDateTime.now()).modifiedAt(LocalDateTime.now()).build(),
+                    Brand.builder().brandName("Apple").description("Smart devices and consumer electronics").status(BrandStatus.ACTIVE).createdBy(defaultAdmin).modifiedBy(defaultAdmin).createdAt(LocalDateTime.now()).modifiedAt(LocalDateTime.now()).build(),
+                    Brand.builder().brandName("Samsung").description("Electronics and modern hardware").status(BrandStatus.ACTIVE).createdBy(defaultAdmin).modifiedBy(defaultAdmin).createdAt(LocalDateTime.now()).modifiedAt(LocalDateTime.now()).build()
                 ));
             }
+        }
+
+        // ၅။ Auto-backfill perishable inventory (e.g. fruit) with missing expiry & batch
+        List<Inventory> nullExpiryList = inventoryRepository.findAll().stream()
+                .filter(i -> i.getVariant() != null && i.getVariant().getProduct() != null
+                        && Boolean.TRUE.equals(i.getVariant().getProduct().getIsPerishable())
+                        && i.getExpiryDate() == null)
+                .toList();
+        for (Inventory inv : nullExpiryList) {
+            inv.setIsPerishable(true);
+            inv.setExpiryDate(java.time.LocalDate.of(2027, 2, 4));
+            inv.setBatchNumber("F01");
+            inventoryRepository.save(inv);
         }
     }
 

@@ -73,4 +73,16 @@ public class ProductVariant {
     @Transient
     @Schema(description = "Summary of variant attributes (e.g. Color: Black | Storage: 128GB)", example = "Color: Black | Storage: 128GB")
     private String attributeSummary;
+
+    @Transient
+    @Schema(description = "Expiration date if perishable", example = "2027-02-04")
+    private java.time.LocalDate expiryDate;
+
+    @Transient
+    @Schema(description = "Batch or lot number", example = "F01")
+    private String batchNumber;
+
+    @Transient
+    @Schema(description = "Whether this variant is perishable", example = "true")
+    private Boolean isPerishable;
 }
