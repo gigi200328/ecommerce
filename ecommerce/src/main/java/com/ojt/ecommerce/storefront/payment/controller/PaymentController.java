@@ -39,7 +39,8 @@ public class PaymentController {
 
     @PostMapping("/payment-callbacks/g3")
     public ResponseEntity<MockCallbackResponse> processMockCallback(
-            @RequestBody MockCallbackRequest request) {
-        return ResponseEntity.ok(paymentService.processMockCallback(request));
+            @RequestHeader(value = "X-Signature", required = false) String signature,
+            @RequestBody String rawPayload) {
+        return ResponseEntity.ok(paymentService.processMockCallback(rawPayload, signature));
     }
 }
