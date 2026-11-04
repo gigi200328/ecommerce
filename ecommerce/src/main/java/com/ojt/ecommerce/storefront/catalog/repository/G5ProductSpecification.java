@@ -42,21 +42,46 @@ public class G5ProductSpecification {
             }
 
             if (minPrice != null || maxPrice != null) {
+
                 Subquery<Long> priceSub = query.subquery(Long.class);
-                Root<ProductVariant> pv = priceSub.from(ProductVariant.class);
-                priceSub.select(pv.get("product").get("productId"));
-                
-                Expression<BigDecimal> effectivePrice = cb.coalesce(pv.get("discountPrice"), pv.get("sellingPrice"));
-                Predicate pricePred = cb.equal(pv.get("status"), "ACTIVE");
-                
+
+                Root<ProductVariant> pv =
+                        priceSub.from(ProductVariant.class);
+
+                Predicate pricePred = cb.equal(
+                        pv.get("product").get("productId"),
+                        root.get("productId")
+                );
+
+                pricePred = cb.and(
+                        pricePred,
+                        cb.equal(pv.get("status"), "ACTIVE")
+                );
+
                 if (minPrice != null) {
-                    pricePred = cb.and(pricePred, cb.greaterThanOrEqualTo(effectivePrice, minPrice));
+                    pricePred = cb.and(
+                            pricePred,
+                            cb.greaterThanOrEqualTo(
+                                    pv.<BigDecimal>get("sellingPrice"),
+                                    minPrice
+                            )
+                    );
                 }
+
                 if (maxPrice != null) {
-                    pricePred = cb.and(pricePred, cb.lessThanOrEqualTo(effectivePrice, maxPrice));
+                    pricePred = cb.and(
+                            pricePred,
+                            cb.lessThanOrEqualTo(
+                                    pv.<BigDecimal>get("sellingPrice"),
+                                    maxPrice
+                            )
+                    );
                 }
+
+                priceSub.select(pv.get("variantId"));
                 priceSub.where(pricePred);
-                p = cb.and(p, cb.in(root.get("productId")).value(priceSub));
+
+                p = cb.and(p, cb.exists(priceSub));
             }
 
             if (availability != null && !availability.equalsIgnoreCase("ALL")) {
