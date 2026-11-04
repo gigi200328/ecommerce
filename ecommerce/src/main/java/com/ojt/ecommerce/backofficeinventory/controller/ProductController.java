@@ -45,22 +45,31 @@ public class ProductController {
 	@GetMapping("/search")
 	public ResponseEntity<Page<ProductResponseDto>> searchProducts(
 
-			@RequestParam(required = false) String keyword,
+	        @RequestParam(required = false) String keyword,
 
-			@RequestParam(required = false) Long categoryId,
+	        @RequestParam(required = false) Long categoryId,
 
-			@RequestParam(required = false) Long brandId,
+	        @RequestParam(required = false) Long brandId,
 
-			@RequestParam(required = false) ProductStatus status,
+	        @RequestParam(required = false) ProductStatus status,
 
-			@RequestParam(required = false) BigDecimal minPrice,
+	        @RequestParam(required = false) BigDecimal minPrice,
 
-			@RequestParam(required = false) BigDecimal maxPrice,
+	        @RequestParam(required = false) BigDecimal maxPrice,
 
-			@PageableDefault(size = 20, sort = "productName") Pageable pageable) {
+	        @PageableDefault(size = 20, sort = "productName") Pageable pageable) {
 
-		return ResponseEntity
-				.ok(productService.searchProducts(keyword, categoryId, brandId, status, minPrice, maxPrice, pageable));
+	    return ResponseEntity.ok(
+	        productService.searchProducts(
+	            keyword,
+	            categoryId,
+	            brandId,
+	            status,
+	            minPrice,
+	            maxPrice,
+	            pageable
+	        )
+	    );
 	}
 
 	// =========================================================
