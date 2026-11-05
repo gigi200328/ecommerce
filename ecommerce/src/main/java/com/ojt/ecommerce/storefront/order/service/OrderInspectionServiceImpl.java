@@ -291,7 +291,7 @@ public class OrderInspectionServiceImpl implements OrderInspectionService {
      * runtime.</p>
      */
     private static final DateTimeFormatter DATE_FMT =
-            DateTimeFormatter.ofPattern("MMM dd, yyyy, hh:mm a");
+            DateTimeFormatter.ofPattern("dd/MM/yyyy, hh:mm a");
 
     @Override
     @Transactional(readOnly = true)
@@ -335,7 +335,11 @@ public class OrderInspectionServiceImpl implements OrderInspectionService {
 
             PaymentInfoDTO payment = dto.getPaymentInfo();
             if (payment != null) {
-                params.put("PAYMENT_METHOD", payment.getPaymentMethod() != null ? payment.getPaymentMethod() : "N/A");
+                String pm = payment.getPaymentMethod();
+                if (pm != null && (pm.equalsIgnoreCase("MINI_BANKING") || pm.toUpperCase().contains("MINI"))) {
+                    pm = "EKARAJ  BANK";
+                }
+                params.put("PAYMENT_METHOD", pm != null ? pm : "N/A");
                 params.put("PAYMENT_STATUS", payment.getPaymentStatus() != null ? payment.getPaymentStatus() : "PENDING");
                 params.put("TRANSACTION_REF", payment.getTransactionRef() != null ? payment.getTransactionRef() : "-");
                 params.put("PAID_AT_STR", payment.getPaidAt() != null ? payment.getPaidAt().format(DATE_FMT) : "-");
@@ -427,15 +431,15 @@ public class OrderInspectionServiceImpl implements OrderInspectionService {
             String periodStr;
             if (startDate != null && endDate != null) {
                 if (startDate.equals(endDate)) {
-                    periodStr = "Date: " + startDate.format(DateTimeFormatter.ofPattern("MMM dd, yyyy"));
+                    periodStr = "Date: " + startDate.format(DateTimeFormatter.ofPattern("dd/MM/yyyy"));
                 } else {
-                    periodStr = "From: " + startDate.format(DateTimeFormatter.ofPattern("MMM dd, yyyy"))
-                            + " To: " + endDate.format(DateTimeFormatter.ofPattern("MMM dd, yyyy"));
+                    periodStr = "From: " + startDate.format(DateTimeFormatter.ofPattern("dd/MM/yyyy"))
+                            + " To: " + endDate.format(DateTimeFormatter.ofPattern("dd/MM/yyyy"));
                 }
             } else if (startDate != null) {
-                periodStr = "From: " + startDate.format(DateTimeFormatter.ofPattern("MMM dd, yyyy"));
+                periodStr = "From: " + startDate.format(DateTimeFormatter.ofPattern("dd/MM/yyyy"));
             } else if (endDate != null) {
-                periodStr = "Up to: " + endDate.format(DateTimeFormatter.ofPattern("MMM dd, yyyy"));
+                periodStr = "Up to: " + endDate.format(DateTimeFormatter.ofPattern("dd/MM/yyyy"));
             } else {
                 periodStr = "All Time";
             }

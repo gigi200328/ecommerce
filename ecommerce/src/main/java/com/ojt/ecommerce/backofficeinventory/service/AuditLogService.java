@@ -15,9 +15,13 @@ import org.springframework.stereotype.Service;
 import org.springframework.web.context.request.RequestContextHolder;
 import org.springframework.web.context.request.ServletRequestAttributes;
 
+import java.net.Inet4Address;
+import java.net.InetAddress;
+import java.net.NetworkInterface;
 import java.time.LocalDate;
 import java.time.LocalDateTime;
 import java.time.LocalTime;
+import java.util.Enumeration;
 import java.util.List;
 
 @Service
@@ -74,12 +78,7 @@ public class AuditLogService {
             ServletRequestAttributes attributes = (ServletRequestAttributes) RequestContextHolder.getRequestAttributes();
             if (attributes != null) {
                 HttpServletRequest request = attributes.getRequest();
-                ipAddress = request.getHeader("X-Forwarded-For");
-                if (ipAddress == null || ipAddress.isBlank() || "unknown".equalsIgnoreCase(ipAddress)) {
-                    ipAddress = request.getRemoteAddr();
-                } else {
-                    ipAddress = ipAddress.split(",")[0].trim();
-                }
+                ipAddress = resolveClientIp(request);
                 userAgent = request.getHeader("User-Agent");
                 endpoint = request.getRequestURI();
                 httpMethod = request.getMethod();
@@ -106,6 +105,75 @@ public class AuditLogService {
         } catch (Exception e) {
             log.error("Failed to save audit log: {}", e.getMessage(), e);
         }
+    }
+
+    /**
+     * Client ၏ တကယ့် IP Address (WiFi / LAN / Proxy IP) ကို စစ်ထုတ်ရယူခြင်း
+     */
+    private String resolveClientIp(HttpServletRequest request) {
+        String[] headers = {
+            "X-Forwarded-For",
+            "Proxy-Client-IP",
+            "WL-Proxy-Client-IP",
+            "HTTP_X_FORWARDED_FOR",
+            "HTTP_X_FORWARDED",
+            "HTTP_X_CLUSTER_CLIENT_IP",
+            "HTTP_CLIENT_IP",
+            "HTTP_FORWARDED_FOR",
+            "HTTP_FORWARDED",
+            "HTTP_VIA",
+            "REMOTE_ADDR"
+        };
+
+        String ip = null;
+        for (String header : headers) {
+            String value = request.getHeader(header);
+            if (value != null && !value.isBlank() && !"unknown".equalsIgnoreCase(value)) {
+                ip = value.split(",")[0].trim();
+                break;
+            }
+        }
+
+        if (ip == null || ip.isBlank() || "unknown".equalsIgnoreCase(ip)) {
+            ip = request.getRemoteAddr();
+        }
+
+        // Localhost / Loopback ဖြစ်နေပါက အသုံးပြုနေသော လက်ရှိ WiFi / LAN IP address ကို ရယူမည်
+        if (ip != null && (ip.equals("0:0:0:0:0:0:0:1") || ip.equals("::1") || ip.equals("127.0.0.1"))) {
+            String lanIp = getActiveLanIp();
+            if (lanIp != null && !lanIp.isBlank()) {
+                ip = lanIp;
+            }
+        }
+
+        return ip != null ? ip : "127.0.0.1";
+    }
+
+    /**
+     * လက်ရှိစက်၏ ချိတ်ဆက်ထားသော WiFi / LAN IPv4 Address ကို ရယူခြင်း
+     */
+    private String getActiveLanIp() {
+        try {
+            Enumeration<NetworkInterface> interfaces = NetworkInterface.getNetworkInterfaces();
+            while (interfaces.hasMoreElements()) {
+                NetworkInterface iface = interfaces.nextElement();
+                if (iface.isLoopback() || !iface.isUp() || iface.isVirtual()) continue;
+
+                Enumeration<InetAddress> addresses = iface.getInetAddresses();
+                while (addresses.hasMoreElements()) {
+                    InetAddress addr = addresses.nextElement();
+                    if (addr instanceof Inet4Address && !addr.isLoopbackAddress() && !addr.isLinkLocalAddress()) {
+                        return addr.getHostAddress();
+                    }
+                }
+            }
+            InetAddress localHost = InetAddress.getLocalHost();
+            if (localHost != null && !localHost.isLoopbackAddress()) {
+                return localHost.getHostAddress();
+            }
+        } catch (Exception ignored) {
+        }
+        return "127.0.0.1";
     }
 
     /**
