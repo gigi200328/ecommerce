@@ -99,14 +99,14 @@ VALUES
 (107, 7, 1, 'DEFECTIVE_PRODUCT', 249.00, 'REJECTED', NOW() - INTERVAL 7 DAY, 1, NOW() - INTERVAL 5 DAY, 'Rejected: Quality assessment confirmed normal functionality; no hardware defect found.')
 ON DUPLICATE KEY UPDATE status=VALUES(status), remark=VALUES(remark), refund_amount=VALUES(refund_amount);
 
--- (E) Admin Notifications
-INSERT INTO admin_notifications (notification_id, title, message, type, reference_id, link, is_read, created_at)
-VALUES 
-(101, 'New Refund Request: ORD-20261015-001', 'Aung Kyaw Thu requested a refund of $1,199.00 for iPhone 15 Pro Max. Reason: DEFECTIVE_PRODUCT', 'REFUND_REQUEST', 101, '/admin/refunds', 0, NOW() - INTERVAL 1 DAY),
-(102, 'New Refund Request: ORD-20261016-002', 'Su Myat Noe requested a refund of $2,499.00 for MacBook Pro 16. Reason: DAMAGED_ITEM', 'REFUND_REQUEST', 102, '/admin/refunds', 0, NOW() - INTERVAL 2 DAY),
-(103, 'New Refund Request: ORD-20261019-005', 'Min Khant Ko requested a refund of $2,499.00 for MacBook Pro 16. Reason: WRONG_ITEM_SENT', 'REFUND_REQUEST', 103, '/admin/refunds', 0, NOW() - INTERVAL 3 HOUR),
-(104, 'Refund Approved: ORD-20261017-003', 'Zaw Lin Htet refund of $249.00 for AirPods Pro 2 was APPROVED.', 'REFUND_REQUEST', 104, '/admin/refunds', 1, NOW() - INTERVAL 3 DAY)
-ON DUPLICATE KEY UPDATE title=VALUES(title), message=VALUES(message), is_read=VALUES(is_read);
+-- (E) Admin Notifications (Mock notifications disabled for real data testing)
+-- INSERT INTO admin_notifications (notification_id, title, message, type, reference_id, link, is_read, created_at)
+-- VALUES 
+-- (101, 'New Refund Request: ORD-20261015-001', 'Aung Kyaw Thu requested a refund of ,199.00 for iPhone 15 Pro Max. Reason: DEFECTIVE_PRODUCT', 'REFUND_REQUEST', 101, '/admin/refunds', 0, NOW() - INTERVAL 1 DAY),
+-- (102, 'New Refund Request: ORD-20261016-002', 'Su Myat Noe requested a refund of ,499.00 for MacBook Pro 16. Reason: DAMAGED_ITEM', 'REFUND_REQUEST', 102, '/admin/refunds', 0, NOW() - INTERVAL 2 DAY),
+-- (103, 'New Refund Request: ORD-20261019-005', 'Min Khant Ko requested a refund of ,499.00 for MacBook Pro 16. Reason: WRONG_ITEM_SENT', 'REFUND_REQUEST', 103, '/admin/refunds', 0, NOW() - INTERVAL 3 HOUR),
+-- (104, 'Refund Approved: ORD-20261017-003', 'Zaw Lin Htet refund of .00 for AirPods Pro 2 was APPROVED.', 'REFUND_REQUEST', 104, '/admin/refunds', 1, NOW() - INTERVAL 3 DAY)
+-- ON DUPLICATE KEY UPDATE title=VALUES(title), message=VALUES(message), is_read=VALUES(is_read);
 
 -- 9. Dynamic Stock Management Export Report (PDF & Excel)
 DROP PROCEDURE IF EXISTS SP_GetInventoryExportReport;
