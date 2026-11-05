@@ -309,16 +309,15 @@ void bestSellers_usesCorrectPagination() {
     );
 }
 
+
 @Test
 void products_reservedStock_returnsSoldOut() {
 
     // Arrange
     Product product = mock(Product.class);
     ProductVariant variant = mock(ProductVariant.class);
-    Inventory inventory = mock(Inventory.class);
 
     when(product.getProductId()).thenReturn(1L);
-
     when(product.getStatus()).thenReturn(ProductStatus.ACTIVE);
     when(variant.getStatus()).thenReturn(ProductVariantStatus.ACTIVE);
 
@@ -326,19 +325,16 @@ void products_reservedStock_returnsSoldOut() {
     when(variant.getVariantId()).thenReturn(10L);
 
     when(productRepository.findAll(
-    		ArgumentMatchers.<Specification<Product>>any(),
+            ArgumentMatchers.<Specification<Product>>any(),
             any(Pageable.class)
     )).thenReturn(new PageImpl<>(List.of(product)));
 
     when(variantRepository.findByProductProductIdIn(List.of(1L)))
             .thenReturn(List.of(variant));
 
-    when(inventoryRepository.findByVariantVariantIdIn(List.of(10L)))
-            .thenReturn(List.of(inventory));
-
-    when(inventory.getVariant()).thenReturn(variant);
-    when(inventory.getQuantity()).thenReturn(10);
-    when(inventory.getReservedQuantity()).thenReturn(10);
+    // Mock available stock from reservation service
+    when(reservationService.getAvailableStockForVariants(List.of(10L)))
+            .thenReturn(java.util.Map.of(10L, 0));
 
     // Act
     PageResponse<ProductListResponse> result =

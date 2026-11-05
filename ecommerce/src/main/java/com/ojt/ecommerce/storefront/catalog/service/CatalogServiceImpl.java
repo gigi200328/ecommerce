@@ -306,24 +306,10 @@ public class CatalogServiceImpl implements CatalogService {
             
             if (!variantIds.isEmpty()) {
 
-                List<Inventory> inventories = inventoryRepository.findByVariantVariantIdIn(variantIds);
-                for (Inventory inv : inventories) {
+                Map<Long, Integer> availableMap =
+                        reservationService.getAvailableStockForVariants(variantIds);
 
-                    int availableQty = Math.max(
-                        0,
-                        inv.getQuantity() - inv.getReservedQuantity()
-                    );
-
-                    inventoryMap.merge(
-                        inv.getVariant().getVariantId(),
-                        availableQty,
-                        Integer::sum
-                    );
-                }
-
-                Map<Long, Integer> availableMap = reservationService.getAvailableStockForVariants(variantIds);
                 inventoryMap.putAll(availableMap);
-
             }
             
             List<ProductImage> images = imageRepository.findByProductProductIdIn(productIds);
@@ -498,21 +484,6 @@ if (!variantIds.isEmpty()) {
 
         for (Inventory inv : inventories) {
             Long variantId = inv.getVariant().getVariantId();
-
-
-            // Keep stock quantity for each variant
-            
-            int availableQty = Math.max(
-            	    0,
-            	    inv.getQuantity() - inv.getReservedQuantity()
-            	);
-            
-            inventoryMap.merge(
-                    variantId,
-                    inv.getQuantity(),
-                    Integer::sum
-            );
-
 
             // Expiry Date only for perishable products
             if (Boolean.TRUE.equals(product.getIsPerishable())
