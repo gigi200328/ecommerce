@@ -2,10 +2,12 @@ package com.ojt.ecommerce.backofficeinventory.service;
 
 import java.time.LocalDateTime;
 import java.util.ArrayList;
+import java.util.HashSet;
 import java.util.LinkedHashMap;
 import java.util.List;
 import java.util.Map;
 import java.util.Optional;
+import java.util.Set;
 
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
@@ -181,23 +183,31 @@ public class ShippingService {
 		LocalDateTime now = LocalDateTime.now();
 		List<DeliveryZone> zones = zoneRepository.findAllById(request.getZoneIds());
 
+		Set<String> updatedZoneNames = new HashSet<>();
+
 		for (DeliveryZone zone : zones) {
 			shipmentMapper.updateZoneEntity(zone, request, now);
 			zoneRepository.save(zone);
+
+			// Zone နာမည်ကို Set ထဲ ထည့်မည် (Duplicates မပါအောင် Set ကို သုံးထားပါသည်)
+			if (zone.getZoneName() != null) {
+				updatedZoneNames.add(zone.getZoneName());
+			}
 
 			rateRepository.findCurrentRateByZoneId(zone.getZoneId(), now).ifPresent(oldRate -> {
 				shipmentMapper.deactivateRateEntity(oldRate, now);
 				rateRepository.save(oldRate);
 			});
 
-			if (!zones.isEmpty()) {
-				notificationService.sendCustomNotification("SHIPPING_UPDATE", "Shipping Rates Updated",
-						"Shipping fees have been updated for " + zones.size() + " zones.", "/admin/shipping-rates",
-						null);
-			}
-
 			rateRepository.save(shipmentMapper.toShippingRateEntity(zone, request.getShippingFee(),
 					request.getEstimatedDays(), now));
+		}
+
+		if (!updatedZoneNames.isEmpty()) {
+			String joinedNames = String.join(", ", updatedZoneNames);
+
+			notificationService.sendCustomNotification("SHIPPING_UPDATE", "Shipping Rates Updated",
+					"Shipping fees have been updated for: " + joinedNames, "/admin/shipping-rates", null);
 		}
 	}
 
