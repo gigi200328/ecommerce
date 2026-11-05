@@ -157,9 +157,25 @@ public class SecurityConfig {
 								"/api/storefront/v1/auth/customer/reset-password",
 								"/api/storefront/v1/auth/customer/verify-code","/api/storefront/v1/payment-callbacks/g3")
 						.permitAll()
-						.requestMatchers("/api/storefront/v1/products/**", "/api/storefront/v1/categories/**",
-								"/api/storefront/v1/cart/guest/**")
-						.permitAll().anyRequest().authenticated())
+						.requestMatchers(
+						        HttpMethod.GET,
+						        "/api/storefront/v1/brands",
+						        "/api/storefront/v1/brands/**",
+						        "/api/storefront/v1/tags",
+						        "/api/storefront/v1/tags/**",
+						        "/api/storefront/v1/products",
+						        "/api/storefront/v1/products/**",
+						        "/api/storefront/v1/categories",
+						        "/api/storefront/v1/categories/**"
+						)
+						.permitAll()
+
+						.requestMatchers(
+						        "/api/storefront/v1/cart/guest/**"
+						)
+						.permitAll()
+
+						.anyRequest().authenticated())
 				.sessionManagement(sess -> sess.sessionCreationPolicy(SessionCreationPolicy.STATELESS))
 				.addFilterBefore(storefrontFilter, UsernamePasswordAuthenticationFilter.class);
 

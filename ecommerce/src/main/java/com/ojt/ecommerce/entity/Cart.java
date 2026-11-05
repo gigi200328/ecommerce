@@ -22,7 +22,7 @@ public class Cart {
     @JoinColumn(name = "customer_id", referencedColumnName = "customer_id", nullable = false, foreignKey = @ForeignKey(name = "fk_cart_customer"))
     private Customer customer;
 
-    @Column(name = "status", nullable = false, columnDefinition = "ENUM('ACTIVE', 'CHECKED_OUT')")
+    @Column(name = "status", nullable = false, columnDefinition = "ENUM('ACTIVE', 'PENDING_PAYMENT', 'CHECKED_OUT', 'RESTORED')")
     private String status;
 
     @Column(name = "version", nullable = false)

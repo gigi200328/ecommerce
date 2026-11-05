@@ -5,9 +5,7 @@ import static org.junit.jupiter.api.Assertions.assertNotNull;
 import static org.junit.jupiter.api.Assertions.assertThrows;
 import static org.junit.jupiter.api.Assertions.assertTrue;
 import static org.mockito.ArgumentMatchers.any;
-import static org.mockito.Mockito.verify;
-import static org.mockito.Mockito.verifyNoInteractions;
-import static org.mockito.Mockito.when;
+import static org.mockito.Mockito.*;
 
 import java.math.BigDecimal;
 import java.time.LocalDateTime;
@@ -45,9 +43,11 @@ import com.ojt.ecommerce.storefront.exception.InvalidRequestException;
 import com.ojt.ecommerce.storefront.exception.ResourceNotFoundException;
 import com.ojt.ecommerce.storefront.order.dto.OrderDetailResponse;
 import com.ojt.ecommerce.storefront.order.dto.OrderListResponse;
+import com.ojt.ecommerce.storefront.order.dto.PendingOrderExpiryResponse;
 import com.ojt.ecommerce.storefront.order.dto.ShipmentTracking;
 import com.ojt.ecommerce.storefront.order.port.ShipmentTrackingPort;
 import com.ojt.ecommerce.storefront.payment.repository.G5PaymentRepository;
+import com.ojt.ecommerce.storefront.reservation.service.InventoryReservationService;
 import com.ojt.ecommerce.storefront.shipping.repository.G5ShipmentRepository;
 
 @ExtendWith(MockitoExtension.class)
@@ -73,6 +73,9 @@ class OrderHistoryServiceImplTest {
 
 	@Mock
 	private ShipmentTrackingPort shipmentTrackingPort;
+
+	@Mock
+	private InventoryReservationService reservationService;
 
 	@InjectMocks
 	private OrderHistoryServiceImpl orderHistoryService;
@@ -324,5 +327,182 @@ class OrderHistoryServiceImplTest {
 				() -> orderHistoryService.getOrderById(1L, 10L));
 
 		assertEquals("Order address missing", ex.getMessage());
+	}
+
+	// =========================================================================
+	// Phase 9: resumePayment Tests
+	// =========================================================================
+
+	@Test
+	@DisplayName("Phase 9: resumePayment succeeds with active reservation without re-reserving")
+	void resumePayment_ActiveReservation_DoesNotReReserve() {
+		Order pendingOrder = Order.builder()
+				.orderId(10L)
+				.orderNo("ORD-1001")
+				.customer(customer)
+				.orderStatus("PENDING")
+				.paymentStatus("PENDING")
+				.subtotalAmount(new BigDecimal("100000.00"))
+				.totalAmount(new BigDecimal("105000.00"))
+				.createdAt(LocalDateTime.now())
+				.build();
+
+		when(orderRepository.findById(10L)).thenReturn(Optional.of(pendingOrder));
+		when(reservationService.isReservationActiveForOrder(10L)).thenReturn(true);
+		when(orderItemRepository.findByOrderOrderId(10L)).thenReturn(List.of(orderItem));
+		when(orderAddressRepository.findByOrderOrderId(10L)).thenReturn(Optional.of(orderAddress));
+
+		OrderDetailResponse response = orderHistoryService.resumePayment(1L, 10L);
+
+		assertNotNull(response);
+		assertEquals(10L, response.getOrderId());
+		verify(reservationService, never()).reReserveStockForOrder(any());
+	}
+
+	@Test
+	@DisplayName("Final UX Alignment: resumePayment throws InvalidRequestException when reservation is expired")
+	void resumePayment_ThrowsInvalidRequest_WhenReservationExpired() {
+		Order pendingOrder = Order.builder()
+				.orderId(10L)
+				.orderNo("ORD-1001")
+				.customer(customer)
+				.orderStatus("PENDING")
+				.paymentStatus("PENDING")
+				.subtotalAmount(new BigDecimal("100000.00"))
+				.totalAmount(new BigDecimal("105000.00"))
+				.createdAt(LocalDateTime.now())
+				.build();
+
+		when(orderRepository.findById(10L)).thenReturn(Optional.of(pendingOrder));
+		when(paymentRepository.existsByOrderOrderId(10L)).thenReturn(false);
+		when(reservationService.isReservationActiveForOrder(10L)).thenReturn(false);
+
+		assertThrows(InvalidRequestException.class, () -> orderHistoryService.resumePayment(1L, 10L));
+		verify(reservationService, never()).reReserveStockForOrder(any());
+	}
+
+	@Test
+	@DisplayName("Final UX Alignment: resumePayment throws InvalidRequestException when payment has already been initiated")
+	void resumePayment_ThrowsInvalidRequest_WhenPaymentAlreadyInitiated() {
+		Order pendingOrder = Order.builder()
+				.orderId(10L)
+				.orderNo("ORD-1001")
+				.customer(customer)
+				.orderStatus("PENDING")
+				.paymentStatus("PENDING")
+				.build();
+
+		when(orderRepository.findById(10L)).thenReturn(Optional.of(pendingOrder));
+		when(paymentRepository.existsByOrderOrderId(10L)).thenReturn(true);
+
+		assertThrows(InvalidRequestException.class, () -> orderHistoryService.resumePayment(1L, 10L));
+		verify(reservationService, never()).reReserveStockForOrder(any());
+	}
+
+	@Test
+	@DisplayName("Phase 9: resumePayment throws ResourceNotFoundException when customer does not own order")
+	void resumePayment_ThrowsNotFound_WhenUnauthorized() {
+		Order pendingOrder = Order.builder()
+				.orderId(10L)
+				.orderNo("ORD-1001")
+				.customer(customer)
+				.orderStatus("PENDING")
+				.paymentStatus("PENDING")
+				.build();
+
+		when(orderRepository.findById(10L)).thenReturn(Optional.of(pendingOrder));
+
+		assertThrows(ResourceNotFoundException.class, () -> orderHistoryService.resumePayment(999L, 10L));
+		verify(reservationService, never()).reReserveStockForOrder(any());
+	}
+
+	@Test
+	@DisplayName("Phase 9: resumePayment throws InvalidRequestException when order is already paid")
+	void resumePayment_ThrowsInvalidRequest_WhenAlreadyPaid() {
+		Order paidOrder = Order.builder()
+				.orderId(10L)
+				.customer(customer)
+				.orderStatus("PAID")
+				.paymentStatus("SUCCESS")
+				.build();
+
+		when(orderRepository.findById(10L)).thenReturn(Optional.of(paidOrder));
+
+		assertThrows(InvalidRequestException.class, () -> orderHistoryService.resumePayment(1L, 10L));
+		verify(reservationService, never()).reReserveStockForOrder(any());
+	}
+
+	@Test
+	@DisplayName("Phase 9: resumePayment throws InvalidRequestException when order is cancelled")
+	void resumePayment_ThrowsInvalidRequest_WhenCancelled() {
+		Order cancelledOrder = Order.builder()
+				.orderId(10L)
+				.customer(customer)
+				.orderStatus("CANCELLED")
+				.paymentStatus("PENDING")
+				.build();
+
+		when(orderRepository.findById(10L)).thenReturn(Optional.of(cancelledOrder));
+
+		assertThrows(InvalidRequestException.class, () -> orderHistoryService.resumePayment(1L, 10L));
+		verify(reservationService, never()).reReserveStockForOrder(any());
+	}
+
+	@Test
+	@DisplayName("Revised UX: getPendingOrderExpiry returns nearest expiry among active pending orders")
+	void getPendingOrderExpiry_returnsNearestExpiry() {
+		LocalDateTime now = LocalDateTime.now();
+		Order order1 = Order.builder()
+				.orderId(101L)
+				.orderNo("ORD-101")
+				.orderStatus("PENDING")
+				.paymentStatus("PENDING")
+				.build();
+		Order order2 = Order.builder()
+				.orderId(102L)
+				.orderNo("ORD-102")
+				.orderStatus("PENDING")
+				.paymentStatus("PENDING")
+				.build();
+
+		when(orderRepository.findByCustomerCustomerIdAndOrderStatus(1L, "PENDING"))
+				.thenReturn(List.of(order1, order2));
+		when(paymentRepository.existsByOrderOrderId(101L)).thenReturn(false);
+		when(paymentRepository.existsByOrderOrderId(102L)).thenReturn(false);
+
+		when(reservationService.getReservationExpiryForOrder(101L))
+				.thenReturn(Optional.of(now.plusMinutes(2)));
+		when(reservationService.getReservationExpiryForOrder(102L))
+				.thenReturn(Optional.of(now.plusMinutes(1)));
+		when(reservationService.isReservationActiveForOrder(101L)).thenReturn(true);
+		when(reservationService.isReservationActiveForOrder(102L)).thenReturn(true);
+
+		PendingOrderExpiryResponse res = orderHistoryService.getPendingOrderExpiry(1L);
+
+		assertNotNull(res);
+		assertEquals(2, res.getPendingCount());
+		assertEquals(102L, res.getOrderId());
+		assertEquals("ORD-102", res.getOrderNo());
+		assertNotNull(res.getExpiresAt());
+	}
+
+	@Test
+	@DisplayName("Revised UX: getPendingOrderExpiry returns zero pendingCount when all orders have initiated payment")
+	void getPendingOrderExpiry_skipsInitiatedPaymentOrders() {
+		Order order1 = Order.builder()
+				.orderId(101L)
+				.orderNo("ORD-101")
+				.orderStatus("PENDING")
+				.paymentStatus("PENDING")
+				.build();
+
+		when(orderRepository.findByCustomerCustomerIdAndOrderStatus(1L, "PENDING"))
+				.thenReturn(List.of(order1));
+		when(paymentRepository.existsByOrderOrderId(101L)).thenReturn(true);
+
+		PendingOrderExpiryResponse res = orderHistoryService.getPendingOrderExpiry(1L);
+
+		assertNotNull(res);
+		assertEquals(0, res.getPendingCount());
 	}
 }
