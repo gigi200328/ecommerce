@@ -16,8 +16,9 @@ import java.util.concurrent.ConcurrentHashMap;
 
 /**
  * Brute-Force Password Protection Service
- * IP တစ်ခုချင်းစီအလိုက် Password မှားယွင်းမှု အကြိမ်ရေကို စောင့်ကြည့်ပြီး
+ * အကောင့် Email နှင့် IP အလိုက် Password မှားယွင်းမှု အကြိမ်ရေကို စောင့်ကြည့်ပြီး
  * ၅ ကြိမ် ဆက်တိုက် မှားယွင်းပါက ၁၅ မိနစ် ယာယီ Lock ချပေးသည့် စနစ်
+ * Super Admin (admin@ecommerce.com) သည် အခြားသူများ၏ အမှားများကြောင့် Lock မကျစေရန် ကာကွယ်ထားပါသည်
  */
 @Service
 @Slf4j
@@ -60,44 +61,86 @@ public class LoginAttemptService {
 
     private final Map<String, AttemptRecord> attemptsCache = new ConcurrentHashMap<>();
 
+    private String getCacheKey(String email, String ipAddress) {
+        if (email != null && !email.isBlank()) {
+            return email.trim().toLowerCase() + ":" + (ipAddress != null ? ipAddress : "127.0.0.1");
+        }
+        return ipAddress != null ? ipAddress : "127.0.0.1";
+    }
+
     /**
-     * IP Address အား ယာယီ Lock ချထားခြင်း ရှိ/မရှိ စစ်ဆေးခြင်း
+     * Account / IP Address အား ယာယီ Lock ချထားခြင်း ရှိ/မရှိ စစ်ဆေးခြင်း
+     * Super Admin (admin@ecommerce.com) သည် Brute-force Lock ကြောင့် ဘယ်သောအခါမှ Login ပိတ်မခံရစေပါ
      */
-    public boolean isBlocked(String ipAddress) {
-        if (ipAddress == null || ipAddress.isBlank()) return false;
-        AttemptRecord record = attemptsCache.get(ipAddress);
+    public boolean isBlocked(String email, String ipAddress) {
+        if ("admin@ecommerce.com".equalsIgnoreCase(email)) {
+            return false;
+        }
+        String key = getCacheKey(email, ipAddress);
+        AttemptRecord record = attemptsCache.get(key);
         return record != null && record.isCurrentlyLocked();
+    }
+
+    public boolean isBlocked(String ipAddress) {
+        return isBlocked(null, ipAddress);
     }
 
     /**
      * Lock ပြည့်ရန် ကျန်ရှိသော မိနစ်အရေအတွက်
      */
-    public long getRemainingLockMinutes(String ipAddress) {
-        AttemptRecord record = attemptsCache.get(ipAddress);
+    public long getRemainingLockMinutes(String email, String ipAddress) {
+        String key = getCacheKey(email, ipAddress);
+        AttemptRecord record = attemptsCache.get(key);
         return record != null ? record.getRemainingMinutes() : 0;
+    }
+
+    public long getRemainingLockMinutes(String ipAddress) {
+        return getRemainingLockMinutes(null, ipAddress);
     }
 
     /**
      * Login မအောင်မြင်သည့်အခါ အကြိမ်ရေ ၁ တိုးပြီး ကျန်ရှိသည့် အကြိမ်ရေကို ပြန်ပေးခြင်း
-     * @return ကျန်ရှိသော အကြိမ်ရေ (0 သို့မဟုတ် အောက်ရောက်ပါက Lock ကျသွားမည်)
      */
-    public int loginFailed(String ipAddress) {
-        AttemptRecord record = attemptsCache.computeIfAbsent(ipAddress, k -> new AttemptRecord());
+    public int loginFailed(String email, String ipAddress) {
+        if ("admin@ecommerce.com".equalsIgnoreCase(email)) {
+            return MAX_ATTEMPTS;
+        }
+        String key = getCacheKey(email, ipAddress);
+        AttemptRecord record = attemptsCache.computeIfAbsent(key, k -> new AttemptRecord());
         record.increment();
         int remaining = MAX_ATTEMPTS - record.getFailedAttempts();
-        log.warn("Failed login attempt from IP: {}. Total failed attempts: {} / {}", 
-                ipAddress, record.getFailedAttempts(), MAX_ATTEMPTS);
+        log.warn("Failed login attempt for {}: {}. Total failed attempts: {} / {}", 
+                email != null ? email : "IP", ipAddress, record.getFailedAttempts(), MAX_ATTEMPTS);
         return Math.max(0, remaining);
     }
 
+    public int loginFailed(String ipAddress) {
+        return loginFailed(null, ipAddress);
+    }
+
     /**
-     * Login အောင်မြင်သည့်အခါ ထို IP ၏ မှားယွင်းထားသော အကြိမ်ရေကို Reset ပြန်လုပ်ခြင်း
+     * Login အောင်မြင်သည့်အခါ ထို Account / IP ၏ မှားယွင်းထားသော အကြိမ်ရေကို Reset ပြန်လုပ်ခြင်း
      */
-    public void loginSucceeded(String ipAddress) {
+    public void loginSucceeded(String email, String ipAddress) {
+        if (email != null && !email.isBlank()) {
+            attemptsCache.remove(getCacheKey(email, ipAddress));
+        }
         if (ipAddress != null) {
             attemptsCache.remove(ipAddress);
-            log.info("Login succeeded from IP: {}. Reset failed attempts counter.", ipAddress);
         }
+        log.info("Login succeeded for {}: {}. Reset failed attempts counter.", email, ipAddress);
+    }
+
+    public void loginSucceeded(String ipAddress) {
+        loginSucceeded(null, ipAddress);
+    }
+
+    /**
+     * Cache အားလုံးကို အရေးပေါ် Reset ပြုလုပ်ရန် Method
+     */
+    public void resetAll() {
+        attemptsCache.clear();
+        log.info("Reset all login lockout attempts cache.");
     }
 
     /**
