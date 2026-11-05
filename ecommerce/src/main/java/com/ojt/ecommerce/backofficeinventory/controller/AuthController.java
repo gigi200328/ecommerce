@@ -205,4 +205,17 @@ public class AuthController {
         
         return ResponseEntity.ok(Map.of("message", "Successfully logged out."));
     }
+
+    /**
+     * Session အသက်ဝင်နေခြင်း ရှိ/မရှိ စစ်ဆေးသည့် ပေါ့ပါးသော Endpoint
+     * JwtAuthenticationFilter မှ Token Version မကိုက်ညီပါက 401 SESSION_TERMINATED ပြန်လည်ပေးပို့မည်။
+     */
+    @GetMapping("/validate-session")
+    public ResponseEntity<?> validateSession(Principal principal) {
+        if (principal == null) {
+            return ResponseEntity.status(HttpStatus.UNAUTHORIZED)
+                    .body(Map.of("valid", false, "message", "No active session found."));
+        }
+        return ResponseEntity.ok(Map.of("valid", true, "username", principal.getName()));
+    }
 }
