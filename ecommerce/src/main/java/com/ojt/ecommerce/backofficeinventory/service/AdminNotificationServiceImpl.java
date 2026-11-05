@@ -93,7 +93,7 @@ public class AdminNotificationServiceImpl implements AdminNotificationService {
                 .type(type != null ? type : "INFO")
                 .title(title)
                 .message(message)
-                .link(link != null ? link : "/admin/refunds")
+                .link(link != null ? link : (type != null && type.toUpperCase().contains("REFUND") ? "/admin/refunds" : null))
                 .referenceId(referenceId)
                 .isRead(false)
                 .createdAt(LocalDateTime.now())
