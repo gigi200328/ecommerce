@@ -233,7 +233,6 @@ public class ProductExcelServiceImpl implements ProductExcelService {
     }
 
     @Override
-    @Transactional
     public ProductImportResultDto importProductsFromExcel(MultipartFile file) {
         if (file == null || file.isEmpty()) {
             throw new IllegalArgumentException("The uploaded file is empty.");
@@ -463,7 +462,6 @@ public class ProductExcelServiceImpl implements ProductExcelService {
     }
 
     @Override
-    @Transactional
     public ProductImportResultDto batchCreateProducts(List<com.ojt.ecommerce.backofficeinventory.dto.ProductBatchRowDto> rows) {
         if (rows == null || rows.isEmpty()) {
             return ProductImportResultDto.builder().totalRows(0).successCount(0).failedCount(0).errors(List.of()).build();
