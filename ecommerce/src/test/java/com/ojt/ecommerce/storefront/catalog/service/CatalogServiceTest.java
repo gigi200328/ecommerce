@@ -5,6 +5,7 @@ import com.ojt.ecommerce.enums.BrandStatus;
 import com.ojt.ecommerce.storefront.catalog.dto.*;
 import com.ojt.ecommerce.storefront.catalog.repository.*;
 import com.ojt.ecommerce.storefront.exception.ResourceNotFoundException;
+import com.ojt.ecommerce.storefront.reservation.service.InventoryReservationService;
 import com.ojt.ecommerce.storefront.searchhistory.service.SearchHistoryService;
 import com.ojt.ecommerce.storefront.searchhistory.repository.SearchKeywordStatsRepository;
 import org.junit.jupiter.api.Test;
@@ -44,6 +45,7 @@ class CatalogServiceTest {
     @Mock private G5ProductTagRepository productTagRepository;
     @Mock private SearchHistoryService searchHistoryService;
     @Mock private SearchKeywordStatsRepository searchKeywordStatsRepository;
+    @Mock private InventoryReservationService reservationService;
     @InjectMocks private CatalogServiceImpl catalogService;
 
     @Test

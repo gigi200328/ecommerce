@@ -2,12 +2,15 @@ package com.ojt.ecommerce.storefront.order.service;
 
 import java.time.LocalDate;
 import java.time.LocalDateTime;
+import java.time.ZoneId;
 import java.time.format.DateTimeParseException;
 import java.util.ArrayList;
 import java.util.Collections;
+import java.util.Comparator;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
+import java.util.Optional;
 import java.util.stream.Collectors;
 
 import org.springframework.data.domain.Page;
@@ -35,11 +38,13 @@ import com.ojt.ecommerce.storefront.order.dto.OrderDetailResponse;
 import com.ojt.ecommerce.storefront.order.dto.OrderItemSnapshot;
 import com.ojt.ecommerce.storefront.order.dto.OrderItemSummary;
 import com.ojt.ecommerce.storefront.order.dto.OrderListResponse;
+import com.ojt.ecommerce.storefront.order.dto.PendingOrderExpiryResponse;
 import com.ojt.ecommerce.storefront.order.dto.OrderPaymentSummary;
 import com.ojt.ecommerce.storefront.order.dto.OrderStatusHistoryDto;
 import com.ojt.ecommerce.storefront.order.dto.ShipmentTracking;
 import com.ojt.ecommerce.storefront.order.port.ShipmentTrackingPort;
 import com.ojt.ecommerce.storefront.payment.repository.G5PaymentRepository;
+import com.ojt.ecommerce.storefront.reservation.service.InventoryReservationService;
 import com.ojt.ecommerce.storefront.shipping.repository.G5ShipmentRepository;
 
 import jakarta.persistence.criteria.Predicate;
@@ -55,6 +60,7 @@ public class OrderHistoryServiceImpl implements OrderHistoryService {
 	private final G5OrderStatusHistoryRepository orderStatusHistoryRepository;
 	private final G5PaymentRepository paymentRepository;
 	private final G5ShipmentRepository shipmentRepository;
+	private final InventoryReservationService reservationService;
 
 	private final ShipmentTrackingPort shipmentTrackingPort;
 
@@ -135,11 +141,27 @@ public class OrderHistoryServiceImpl implements OrderHistoryService {
 			}
 		}
 
-		return ordersPage.map(order -> OrderListResponse.builder().orderId(order.getOrderId())
-				.orderNo(order.getOrderNo()).totalAmount(order.getTotalAmount()).orderStatus(order.getOrderStatus())
-				.paymentStatus(order.getPaymentStatus()).createdAt(order.getCreatedAt().toString())
-				.items(itemsMap.getOrDefault(order.getOrderId(), Collections.emptyList()))
-				.trackingNumbers(trackingMap.getOrDefault(order.getOrderId(), Collections.emptyList())).build());
+		return ordersPage.map(order -> {
+			Optional<LocalDateTime> expiryOpt = reservationService.getReservationExpiryForOrder(order.getOrderId());
+			String expiresAtIso = expiryOpt
+					.map(exp -> exp.atZone(ZoneId.systemDefault()).toInstant().toString())
+					.orElse(null);
+			boolean reservationActive = reservationService.isReservationActiveForOrder(order.getOrderId());
+			boolean hasInitiatedPayment = paymentRepository.existsByOrderOrderId(order.getOrderId());
+			boolean isExpired = reservationService.isOrderExpired(order.getOrderId());
+
+			return OrderListResponse.builder().orderId(order.getOrderId())
+					.orderNo(order.getOrderNo()).totalAmount(order.getTotalAmount()).orderStatus(order.getOrderStatus())
+					.paymentStatus(order.getPaymentStatus()).createdAt(order.getCreatedAt().toString())
+					.items(itemsMap.getOrDefault(order.getOrderId(), Collections.emptyList()))
+					.trackingNumbers(trackingMap.getOrDefault(order.getOrderId(), Collections.emptyList()))
+					.checkoutType(order.getCheckoutType())
+					.reservationExpiresAt(expiresAtIso)
+					.reservationActive(reservationActive)
+					.hasInitiatedPayment(hasInitiatedPayment)
+					.isExpired(isExpired)
+					.build();
+		});
 	}
 
 	@Override
@@ -188,12 +210,114 @@ public class OrderHistoryServiceImpl implements OrderHistoryService {
 
 		List<ShipmentTracking> shipments = shipmentTrackingPort.getTrackingByOrderId(orderId);
 
+		Optional<LocalDateTime> expiryOpt = reservationService.getReservationExpiryForOrder(orderId);
+		String expiresAtIso = expiryOpt
+				.map(exp -> exp.atZone(ZoneId.systemDefault()).toInstant().toString())
+				.orElse(null);
+		boolean reservationActive = reservationService.isReservationActiveForOrder(orderId);
+		boolean isExpired = reservationService.isOrderExpired(orderId);
+
 		return OrderDetailResponse.builder().orderId(order.getOrderId()).orderNo(order.getOrderNo())
 				.createdAt(order.getCreatedAt().toString()).orderStatus(order.getOrderStatus())
 				.paymentStatus(order.getPaymentStatus()).subtotalAmount(order.getSubtotalAmount())
 				.discountAmount(order.getDiscountAmount()).taxAmount(order.getTaxAmount())
 				.shippingFee(order.getShippingFee()).totalAmount(order.getTotalAmount()).items(itemSnapshots)
 				.shippingAddress(addressSnapshot).payment(paymentSummary).statusHistory(historyDtos)
-				.shipments(shipments).build();
+				.shipments(shipments)
+				.checkoutType(order.getCheckoutType())
+				.reservationExpiresAt(expiresAtIso)
+				.reservationActive(reservationActive)
+				.isExpired(isExpired)
+				.build();
+	}
+
+	@Override
+	@Transactional
+	public OrderDetailResponse resumePayment(Long customerId, Long orderId) {
+		Order order = orderRepository.findById(orderId)
+				.orElseThrow(() -> new ResourceNotFoundException("Order not found"));
+
+		if (!order.getCustomer().getCustomerId().equals(customerId)) {
+			throw new ResourceNotFoundException("Order not found");
+		}
+
+		if ("PAID".equalsIgnoreCase(order.getOrderStatus()) || "SUCCESS".equalsIgnoreCase(order.getPaymentStatus())) {
+			throw new InvalidRequestException("Order is already paid");
+		}
+
+		if ("CANCELLED".equalsIgnoreCase(order.getOrderStatus())) {
+			throw new InvalidRequestException("Cancelled order cannot be resumed");
+		}
+
+		if (!"PENDING".equalsIgnoreCase(order.getOrderStatus()) || !"PENDING".equalsIgnoreCase(order.getPaymentStatus())) {
+			throw new InvalidRequestException("Order is not in a payable state: " + order.getOrderStatus());
+		}
+
+		// Final UX Rule 2: Cannot resume if payment has already been initiated (processing)
+		if (paymentRepository.existsByOrderOrderId(orderId)) {
+			throw new InvalidRequestException("Payment is currently processing for this order. Please wait for the result.");
+		}
+
+		// Final UX Rule 6: Cannot resume if reservation is expired (no re-reserve allowed)
+		boolean isActive = reservationService.isReservationActiveForOrder(orderId);
+		if (!isActive) {
+			throw new InvalidRequestException("The order has expired and can no longer be paid.");
+		}
+
+		return getOrderById(customerId, orderId);
+	}
+
+	@Override
+	@Transactional(readOnly = true)
+	public PendingOrderExpiryResponse getPendingOrderExpiry(Long customerId) {
+		if (customerId == null) {
+			return PendingOrderExpiryResponse.builder().pendingCount(0).build();
+		}
+
+		List<Order> pendingOrders = orderRepository.findByCustomerCustomerIdAndOrderStatus(customerId, "PENDING");
+		if (pendingOrders.isEmpty()) {
+			return PendingOrderExpiryResponse.builder().pendingCount(0).build();
+		}
+
+		LocalDateTime now = LocalDateTime.now();
+		List<OrderExpiryCandidate> candidates = new ArrayList<>();
+
+		for (Order order : pendingOrders) {
+			if (!"PENDING".equalsIgnoreCase(order.getPaymentStatus())) {
+				continue;
+			}
+			if (paymentRepository.existsByOrderOrderId(order.getOrderId())) {
+				continue; // Payment already initiated / processing
+			}
+			Optional<LocalDateTime> expiryOpt = reservationService.getReservationExpiryForOrder(order.getOrderId());
+			if (expiryOpt.isPresent() && expiryOpt.get().isAfter(now) && reservationService.isReservationActiveForOrder(order.getOrderId())) {
+				candidates.add(new OrderExpiryCandidate(order, expiryOpt.get()));
+			}
+		}
+
+		if (candidates.isEmpty()) {
+			return PendingOrderExpiryResponse.builder().pendingCount(0).build();
+		}
+
+		candidates.sort(Comparator.comparing(c -> c.expiresAt));
+
+		OrderExpiryCandidate nearest = candidates.get(0);
+		String expiresAtIso = nearest.expiresAt.atZone(ZoneId.systemDefault()).toInstant().toString();
+
+		return PendingOrderExpiryResponse.builder()
+				.orderId(nearest.order.getOrderId())
+				.orderNo(nearest.order.getOrderNo())
+				.expiresAt(expiresAtIso)
+				.pendingCount(candidates.size())
+				.build();
+	}
+
+	private static class OrderExpiryCandidate {
+		final Order order;
+		final LocalDateTime expiresAt;
+		OrderExpiryCandidate(Order order, LocalDateTime expiresAt) {
+			this.order = order;
+			this.expiresAt = expiresAt;
+		}
 	}
 }

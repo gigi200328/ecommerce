@@ -8,12 +8,14 @@ import org.springframework.http.ResponseEntity;
 import org.springframework.security.core.annotation.AuthenticationPrincipal;
 import org.springframework.web.bind.annotation.GetMapping;
 import org.springframework.web.bind.annotation.PathVariable;
+import org.springframework.web.bind.annotation.PostMapping;
 import org.springframework.web.bind.annotation.RequestMapping;
 import org.springframework.web.bind.annotation.RequestParam;
 import org.springframework.web.bind.annotation.RestController;
 
 import com.ojt.ecommerce.storefront.order.dto.OrderDetailResponse;
 import com.ojt.ecommerce.storefront.order.dto.OrderListResponse;
+import com.ojt.ecommerce.storefront.order.dto.PendingOrderExpiryResponse;
 import com.ojt.ecommerce.storefront.order.service.OrderHistoryService;
 import com.ojt.ecommerce.storefront.security.CustomerPrincipal;
 
@@ -25,6 +27,12 @@ import lombok.RequiredArgsConstructor;
 public class OrderHistoryController {
 
 	private final OrderHistoryService orderHistoryService;
+
+	@GetMapping("/pending-expiry")
+	public ResponseEntity<PendingOrderExpiryResponse> getPendingOrderExpiry(
+			@AuthenticationPrincipal CustomerPrincipal principal) {
+		return ResponseEntity.ok(orderHistoryService.getPendingOrderExpiry(principal.getCustomerId()));
+	}
 
 	@GetMapping
 	public ResponseEntity<Page<OrderListResponse>> getMyOrders(@AuthenticationPrincipal CustomerPrincipal principal,
@@ -41,5 +49,12 @@ public class OrderHistoryController {
 			@PathVariable Long orderId) {
 
 		return ResponseEntity.ok(orderHistoryService.getOrderById(principal.getCustomerId(), orderId));
+	}
+
+	@PostMapping("/{orderId}/resume-payment")
+	public ResponseEntity<OrderDetailResponse> resumePayment(@AuthenticationPrincipal CustomerPrincipal principal,
+			@PathVariable Long orderId) {
+
+		return ResponseEntity.ok(orderHistoryService.resumePayment(principal.getCustomerId(), orderId));
 	}
 }

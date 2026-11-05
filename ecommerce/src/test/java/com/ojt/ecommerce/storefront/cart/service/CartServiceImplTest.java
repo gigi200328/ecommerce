@@ -18,6 +18,8 @@ import org.mockito.ArgumentCaptor;
 import org.mockito.InjectMocks;
 import org.mockito.Mock;
 import org.mockito.junit.jupiter.MockitoExtension;
+import org.mockito.junit.jupiter.MockitoSettings;
+import org.mockito.quality.Strictness;
 
 import com.ojt.ecommerce.entity.*;
 import com.ojt.ecommerce.enums.ProductStatus;
@@ -27,10 +29,15 @@ import com.ojt.ecommerce.storefront.cart.repository.CartItemRepository;
 import com.ojt.ecommerce.storefront.cart.repository.CartRepository;
 import com.ojt.ecommerce.storefront.cart.service.CartServiceImpl;
 import com.ojt.ecommerce.storefront.catalog.repository.*;
+import com.ojt.ecommerce.storefront.checkout.repository.G5OrderRepository;
+import com.ojt.ecommerce.storefront.exception.AccessDeniedException;
+import com.ojt.ecommerce.storefront.exception.ConflictException;
 import com.ojt.ecommerce.storefront.exception.InvalidRequestException;
 import com.ojt.ecommerce.storefront.exception.ResourceNotFoundException;
+import com.ojt.ecommerce.storefront.reservation.service.InventoryReservationService;
 
 @ExtendWith(MockitoExtension.class)
+@MockitoSettings(strictness = Strictness.LENIENT)
 class CartServiceImplTest {
 
     @Mock
@@ -54,6 +61,12 @@ class CartServiceImplTest {
     @Mock
     private G5VariantOptionValueRepository optionValueRepository;
 
+    @Mock
+    private G5OrderRepository orderRepository;
+
+    @Mock
+    private InventoryReservationService reservationService;
+
     @InjectMocks
     private CartServiceImpl cartService;
 
@@ -68,6 +81,38 @@ class CartServiceImplTest {
         mockProduct = createProduct(1L, ProductStatus.ACTIVE);
         mockVariant = createVariant(101L, mockProduct, BigDecimal.valueOf(5000), ProductVariantStatus.ACTIVE);
         mockInventory = createInventory(1L, mockVariant, 10);
+
+        lenient().when(reservationService.getAvailableStock(anyLong())).thenAnswer(invoc -> {
+            Long vId = invoc.getArgument(0);
+            Optional<Inventory> opt = inventoryRepository.findByVariantVariantId(vId);
+            if (opt != null && opt.isPresent()) {
+                Inventory inv = opt.get();
+                int q = inv.getQuantity() != null ? inv.getQuantity() : 0;
+                int r = inv.getReservedQuantity() != null ? inv.getReservedQuantity() : 0;
+                return Math.max(0, q - r);
+            }
+            return 10;
+        });
+        lenient().when(reservationService.getAvailableStockForVariants(anyList())).thenAnswer(invocation -> {
+            List<Long> ids = invocation.getArgument(0);
+            Map<Long, Integer> map = new HashMap<>();
+            if (ids != null) {
+                List<Inventory> invs = inventoryRepository.findByVariantVariantIdIn(ids);
+                if (invs != null && !invs.isEmpty()) {
+                    for (Inventory inv : invs) {
+                        if (inv.getVariant() != null && inv.getVariant().getVariantId() != null) {
+                            int q = inv.getQuantity() != null ? inv.getQuantity() : 0;
+                            int r = inv.getReservedQuantity() != null ? inv.getReservedQuantity() : 0;
+                            map.put(inv.getVariant().getVariantId(), Math.max(0, q - r));
+                        }
+                    }
+                }
+                for (Long id : ids) {
+                    map.putIfAbsent(id, 10);
+                }
+            }
+            return map;
+        });
     }
 
     // =========================================================================
@@ -123,6 +168,49 @@ class CartServiceImplTest {
     }
 
     @Test
+    @DisplayName("Phase 2 - Test 7: addItem - when Cart A is PENDING_PAYMENT, getActiveCartOrCreate creates Cart B as ACTIVE")
+    void addItem_whenCartAIsPendingPayment_createsCartBActive() {
+        // Arrange
+        Long customerId = 1L;
+        AddToCartRequest request = new AddToCartRequest();
+        request.setVariantId(101L);
+        request.setQuantity(1);
+
+        // Cart A is PENDING_PAYMENT
+        Cart cartA = createCart(10L, mockCustomer);
+        cartA.setStatus("PENDING_PAYMENT");
+
+        // Cart B is the newly created active cart
+        Cart cartB = createCart(200L, mockCustomer);
+        cartB.setStatus("ACTIVE");
+        CartItem cartBItem = createCartItem(50L, cartB, mockVariant, 1);
+
+        when(variantRepository.findById(101L)).thenReturn(Optional.of(mockVariant));
+        when(inventoryRepository.findByVariantVariantId(101L)).thenReturn(Optional.of(mockInventory));
+        // Active cart lookup returns empty because Cart A is PENDING_PAYMENT
+        when(cartRepository.findByCustomerCustomerIdAndStatus(customerId, "ACTIVE")).thenReturn(Optional.empty());
+        when(customerRepository.findById(customerId)).thenReturn(Optional.of(mockCustomer));
+        when(cartRepository.save(any(Cart.class))).thenReturn(cartB);
+        when(cartItemRepository.findByCartCartIdAndVariantVariantId(200L, 101L)).thenReturn(Optional.empty());
+        when(cartItemRepository.save(any(CartItem.class))).thenReturn(cartBItem);
+
+        // Act
+        AddToCartResponse response = cartService.addItem(customerId, request);
+
+        // Assert
+        assertNotNull(response);
+        assertEquals(200L, response.getCartId(), "Item should be added to new Cart B");
+        assertEquals(50L, response.getCartItemId());
+        assertEquals(1, response.getQuantity());
+
+        ArgumentCaptor<Cart> cartCaptor = ArgumentCaptor.forClass(Cart.class);
+        verify(cartRepository, atLeastOnce()).save(cartCaptor.capture());
+        Cart newlyCreatedCart = cartCaptor.getAllValues().get(0);
+        assertEquals("ACTIVE", newlyCreatedCart.getStatus(), "Newly created Cart B must be ACTIVE");
+        assertEquals(mockCustomer, newlyCreatedCart.getCustomer());
+    }
+
+    @Test
     @DisplayName("P0 - TEST 2: addItem - combines quantity when adding same variant to existing cart")
     void addItem_sameVariant_combinesQuantity() {
         // Arrange
@@ -168,6 +256,7 @@ class CartServiceImplTest {
 
         when(variantRepository.findById(101L)).thenReturn(Optional.of(mockVariant));
         when(inventoryRepository.findByVariantVariantId(101L)).thenReturn(Optional.of(lowStockInventory));
+        when(reservationService.getAvailableStock(101L)).thenReturn(2);
 
         // Act & Assert
         InvalidRequestException ex = assertThrows(InvalidRequestException.class, () ->
@@ -193,6 +282,7 @@ class CartServiceImplTest {
 
         when(variantRepository.findById(101L)).thenReturn(Optional.of(mockVariant));
         when(inventoryRepository.findByVariantVariantId(101L)).thenReturn(Optional.of(fourStockInventory));
+        when(reservationService.getAvailableStock(101L)).thenReturn(4);
         when(cartRepository.findByCustomerCustomerIdAndStatus(customerId, "ACTIVE")).thenReturn(Optional.of(activeCart));
         when(cartItemRepository.findByCartCartIdAndVariantVariantId(10L, 101L)).thenReturn(Optional.of(existingItem));
 
@@ -304,6 +394,7 @@ class CartServiceImplTest {
         when(cartItemRepository.findByCartItemIdAndCartCustomerCustomerId(cartItemId, customerId))
                 .thenReturn(Optional.of(cartItem));
         when(inventoryRepository.findByVariantVariantId(101L)).thenReturn(Optional.of(stockThree));
+        when(reservationService.getAvailableStock(101L)).thenReturn(3);
 
         // Act & Assert
         InvalidRequestException ex = assertThrows(InvalidRequestException.class, () ->
@@ -830,5 +921,478 @@ class CartServiceImplTest {
                 .quantity(quantity)
                 .createdAt(LocalDateTime.now())
                 .build();
+    }
+
+    private Order createMockOrder(Long orderId, Customer customer, Cart cart, String checkoutType, String paymentStatus, String orderStatus) {
+        return Order.builder()
+                .orderId(orderId)
+                .orderNo("ORD-" + orderId)
+                .customer(customer)
+                .cart(cart)
+                .checkoutType(checkoutType)
+                .paymentStatus(paymentStatus)
+                .orderStatus(orderStatus)
+                .subtotalAmount(BigDecimal.valueOf(10000))
+                .discountAmount(BigDecimal.ZERO)
+                .taxAmount(BigDecimal.ZERO)
+                .shippingFee(BigDecimal.ZERO)
+                .totalAmount(BigDecimal.valueOf(10000))
+                .createdAt(LocalDateTime.now())
+                .build();
+    }
+
+    // =========================================================================
+    // PHASE 6 TESTS: Failed Cart Order -> Safe Restore to Active Cart
+    // =========================================================================
+
+    @Test
+    @DisplayName("Phase 6 - Test 1: Failed CART order restores items into existing Cart B")
+    void restoreFailedCartOrder_success_mergesIntoExistingCartB() {
+        Long customerId = 1L;
+        Long orderId = 500L;
+        Cart cartA = createCart(10L, mockCustomer);
+        cartA.setStatus("PENDING_PAYMENT");
+        Cart cartB = createCart(20L, mockCustomer);
+        cartB.setStatus("ACTIVE");
+
+        Order order = createMockOrder(orderId, mockCustomer, cartA, "CART", "FAILED", "PENDING");
+        CartItem cartItemA = createCartItem(100L, cartA, mockVariant, 2);
+
+        when(orderRepository.findByIdWithLock(orderId)).thenReturn(Optional.of(order));
+        when(cartItemRepository.findByCartCartId(10L)).thenReturn(List.of(cartItemA));
+        when(cartRepository.findByCustomerCustomerIdAndStatus(customerId, "ACTIVE")).thenReturn(Optional.of(cartB));
+        when(variantRepository.findById(101L)).thenReturn(Optional.of(mockVariant));
+        when(inventoryRepository.findByVariantVariantId(101L)).thenReturn(Optional.of(mockInventory));
+        when(cartItemRepository.findByCartCartIdAndVariantVariantId(20L, 101L)).thenReturn(Optional.empty());
+
+        RestoreToCartResponse response = cartService.restoreFailedCartOrder(customerId, orderId);
+
+        assertNotNull(response);
+        assertEquals(orderId, response.getOrderId());
+        assertEquals(20L, response.getActiveCartId());
+        assertEquals(1, response.getRestoredItemCount());
+        assertEquals(0, response.getSkippedItemCount());
+        assertEquals("RESTORED", cartA.getStatus());
+        assertEquals("ACTIVE", cartB.getStatus());
+        verify(cartRepository).save(cartA);
+        verify(cartRepository).save(cartB);
+        verify(cartItemRepository).save(any(CartItem.class));
+    }
+
+    @Test
+    @DisplayName("Phase 6 - Test 2: Failed CART order creates Cart B if no ACTIVE cart exists")
+    void restoreFailedCartOrder_success_createsNewCartBIfNoneExists() {
+        Long customerId = 1L;
+        Long orderId = 500L;
+        Cart cartA = createCart(10L, mockCustomer);
+        cartA.setStatus("PENDING_PAYMENT");
+        Cart newlyCreatedCartB = createCart(25L, mockCustomer);
+        newlyCreatedCartB.setStatus("ACTIVE");
+
+        Order order = createMockOrder(orderId, mockCustomer, cartA, "CART", "FAILED", "PENDING");
+        CartItem cartItemA = createCartItem(100L, cartA, mockVariant, 2);
+
+        when(orderRepository.findByIdWithLock(orderId)).thenReturn(Optional.of(order));
+        when(cartItemRepository.findByCartCartId(10L)).thenReturn(List.of(cartItemA));
+        when(cartRepository.findByCustomerCustomerIdAndStatus(customerId, "ACTIVE")).thenReturn(Optional.empty());
+        when(customerRepository.findById(customerId)).thenReturn(Optional.of(mockCustomer));
+        when(cartRepository.save(any(Cart.class))).thenAnswer(invocation -> {
+            Cart c = invocation.getArgument(0);
+            if ("ACTIVE".equals(c.getStatus())) {
+                c.setCartId(25L);
+            }
+            return c;
+        });
+        when(variantRepository.findById(101L)).thenReturn(Optional.of(mockVariant));
+        when(inventoryRepository.findByVariantVariantId(101L)).thenReturn(Optional.of(mockInventory));
+        when(cartItemRepository.findByCartCartIdAndVariantVariantId(25L, 101L)).thenReturn(Optional.empty());
+
+        RestoreToCartResponse response = cartService.restoreFailedCartOrder(customerId, orderId);
+
+        assertNotNull(response);
+        assertEquals(25L, response.getActiveCartId());
+        assertEquals(1, response.getRestoredItemCount());
+        assertEquals("RESTORED", cartA.getStatus());
+    }
+
+    @Test
+    @DisplayName("Phase 6 - Test 3: Same variant merges quantities in Cart B")
+    void restoreFailedCartOrder_mergesQuantities_whenSameVariantAlreadyInCartB() {
+        Long customerId = 1L;
+        Long orderId = 500L;
+        Cart cartA = createCart(10L, mockCustomer);
+        cartA.setStatus("PENDING_PAYMENT");
+        Cart cartB = createCart(20L, mockCustomer);
+        cartB.setStatus("ACTIVE");
+
+        Order order = createMockOrder(orderId, mockCustomer, cartA, "CART", "FAILED", "PENDING");
+        CartItem cartItemA = createCartItem(100L, cartA, mockVariant, 2);
+        CartItem existingCartItemB = createCartItem(200L, cartB, mockVariant, 3);
+
+        when(orderRepository.findByIdWithLock(orderId)).thenReturn(Optional.of(order));
+        when(cartItemRepository.findByCartCartId(10L)).thenReturn(List.of(cartItemA));
+        when(cartRepository.findByCustomerCustomerIdAndStatus(customerId, "ACTIVE")).thenReturn(Optional.of(cartB));
+        when(variantRepository.findById(101L)).thenReturn(Optional.of(mockVariant));
+        when(inventoryRepository.findByVariantVariantId(101L)).thenReturn(Optional.of(mockInventory)); // stock = 10
+        when(cartItemRepository.findByCartCartIdAndVariantVariantId(20L, 101L)).thenReturn(Optional.of(existingCartItemB));
+
+        RestoreToCartResponse response = cartService.restoreFailedCartOrder(customerId, orderId);
+
+        assertNotNull(response);
+        assertEquals(1, response.getRestoredItemCount());
+        assertEquals(5, existingCartItemB.getQuantity()); // 3 + 2 = 5
+        assertEquals("RESTORED", response.getItems().get(0).getStatus());
+    }
+
+    @Test
+    @DisplayName("Phase 6 - Test 4: Stock limit is respected and clamped when combined exceeds stock")
+    void restoreFailedCartOrder_clampsQuantity_whenCombinedExceedsStock() {
+        Long customerId = 1L;
+        Long orderId = 500L;
+        Cart cartA = createCart(10L, mockCustomer);
+        cartA.setStatus("PENDING_PAYMENT");
+        Cart cartB = createCart(20L, mockCustomer);
+        cartB.setStatus("ACTIVE");
+
+        Order order = createMockOrder(orderId, mockCustomer, cartA, "CART", "FAILED", "PENDING");
+        CartItem cartItemA = createCartItem(100L, cartA, mockVariant, 5);
+        CartItem existingCartItemB = createCartItem(200L, cartB, mockVariant, 3);
+
+        Inventory limitedInventory = createInventory(1L, mockVariant, 6); // stock = 6
+
+        when(orderRepository.findByIdWithLock(orderId)).thenReturn(Optional.of(order));
+        when(cartItemRepository.findByCartCartId(10L)).thenReturn(List.of(cartItemA));
+        when(cartRepository.findByCustomerCustomerIdAndStatus(customerId, "ACTIVE")).thenReturn(Optional.of(cartB));
+        when(variantRepository.findById(101L)).thenReturn(Optional.of(mockVariant));
+        when(inventoryRepository.findByVariantVariantId(101L)).thenReturn(Optional.of(limitedInventory));
+        when(reservationService.getAvailableStock(101L)).thenReturn(6);
+        when(cartItemRepository.findByCartCartIdAndVariantVariantId(20L, 101L)).thenReturn(Optional.of(existingCartItemB));
+
+        RestoreToCartResponse response = cartService.restoreFailedCartOrder(customerId, orderId);
+
+        assertNotNull(response);
+        assertEquals(1, response.getRestoredItemCount());
+        assertEquals(6, existingCartItemB.getQuantity()); // Clamped to available stock 6
+        assertEquals("CLAMPED", response.getItems().get(0).getStatus());
+        assertEquals(3, response.getItems().get(0).getRestoredQuantity()); // added 3
+    }
+
+    @Test
+    @DisplayName("Phase 6 - Test 5: Clamps new item quantity when requested exceeds available stock")
+    void restoreFailedCartOrder_respectsStockLimit_whenNewItemExceedsStock() {
+        Long customerId = 1L;
+        Long orderId = 500L;
+        Cart cartA = createCart(10L, mockCustomer);
+        cartA.setStatus("PENDING_PAYMENT");
+        Cart cartB = createCart(20L, mockCustomer);
+        cartB.setStatus("ACTIVE");
+
+        Order order = createMockOrder(orderId, mockCustomer, cartA, "CART", "FAILED", "PENDING");
+        CartItem cartItemA = createCartItem(100L, cartA, mockVariant, 10);
+        Inventory limitedInventory = createInventory(1L, mockVariant, 4); // stock = 4
+
+        when(orderRepository.findByIdWithLock(orderId)).thenReturn(Optional.of(order));
+        when(cartItemRepository.findByCartCartId(10L)).thenReturn(List.of(cartItemA));
+        when(cartRepository.findByCustomerCustomerIdAndStatus(customerId, "ACTIVE")).thenReturn(Optional.of(cartB));
+        when(variantRepository.findById(101L)).thenReturn(Optional.of(mockVariant));
+        when(inventoryRepository.findByVariantVariantId(101L)).thenReturn(Optional.of(limitedInventory));
+        when(reservationService.getAvailableStock(101L)).thenReturn(4);
+        when(cartItemRepository.findByCartCartIdAndVariantVariantId(20L, 101L)).thenReturn(Optional.empty());
+
+        RestoreToCartResponse response = cartService.restoreFailedCartOrder(customerId, orderId);
+
+        assertNotNull(response);
+        assertEquals(1, response.getRestoredItemCount());
+        assertEquals("CLAMPED", response.getItems().get(0).getStatus());
+        assertEquals(4, response.getItems().get(0).getRestoredQuantity());
+
+        ArgumentCaptor<CartItem> itemCaptor = ArgumentCaptor.forClass(CartItem.class);
+        verify(cartItemRepository).save(itemCaptor.capture());
+        assertEquals(4, itemCaptor.getValue().getQuantity());
+    }
+
+    @Test
+    @DisplayName("Phase 6 - Test 6: Restored cart references current catalog variant price while historical OrderItem is unchanged")
+    void restoreFailedCartOrder_currentPriceUsed_historicalOrderItemUnchanged() {
+        Long customerId = 1L;
+        Long orderId = 500L;
+        Cart cartA = createCart(10L, mockCustomer);
+        cartA.setStatus("PENDING_PAYMENT");
+        Cart cartB = createCart(20L, mockCustomer);
+        cartB.setStatus("ACTIVE");
+
+        BigDecimal currentCatalogPrice = BigDecimal.valueOf(8000);
+        mockVariant.setSellingPrice(currentCatalogPrice);
+
+        BigDecimal historicalOrderPrice = BigDecimal.valueOf(5000);
+        OrderItem historicalOrderItem = OrderItem.builder()
+                .orderItemId(1001L)
+                .variant(mockVariant)
+                .qty(2)
+                .unitPrice(historicalOrderPrice)
+                .costPrice(BigDecimal.valueOf(4000))
+                .subtotal(BigDecimal.valueOf(10000))
+                .productName("Test Product")
+                .build();
+
+        Order order = createMockOrder(orderId, mockCustomer, cartA, "CART", "FAILED", "PENDING");
+        order.setOrderItems(List.of(historicalOrderItem));
+        historicalOrderItem.setOrder(order);
+
+        when(orderRepository.findByIdWithLock(orderId)).thenReturn(Optional.of(order));
+        when(cartItemRepository.findByCartCartId(10L)).thenReturn(Collections.emptyList()); // test order fallback
+        when(cartRepository.findByCustomerCustomerIdAndStatus(customerId, "ACTIVE")).thenReturn(Optional.of(cartB));
+        when(variantRepository.findById(101L)).thenReturn(Optional.of(mockVariant));
+        when(inventoryRepository.findByVariantVariantId(101L)).thenReturn(Optional.of(mockInventory));
+        when(cartItemRepository.findByCartCartIdAndVariantVariantId(20L, 101L)).thenReturn(Optional.empty());
+
+        RestoreToCartResponse response = cartService.restoreFailedCartOrder(customerId, orderId);
+
+        assertNotNull(response);
+        assertEquals(1, response.getRestoredItemCount());
+        // Verify historical OrderItem is 100% untouched
+        assertEquals(historicalOrderPrice, historicalOrderItem.getUnitPrice());
+        assertEquals(BigDecimal.valueOf(10000), historicalOrderItem.getSubtotal());
+        // Current catalog price is active on variant
+        assertEquals(currentCatalogPrice, mockVariant.getSellingPrice());
+    }
+
+    @Test
+    @DisplayName("Phase 6 - Test 7: BUY_NOW cannot restore")
+    void restoreFailedCartOrder_rejectsBuyNow() {
+        Long customerId = 1L;
+        Long orderId = 500L;
+        Cart cartA = createCart(10L, mockCustomer);
+        Order order = createMockOrder(orderId, mockCustomer, cartA, "BUY_NOW", "FAILED", "PENDING");
+
+        when(orderRepository.findByIdWithLock(orderId)).thenReturn(Optional.of(order));
+
+        InvalidRequestException ex = assertThrows(InvalidRequestException.class, () ->
+                cartService.restoreFailedCartOrder(customerId, orderId));
+        assertTrue(ex.getMessage().contains("Only CART orders"));
+    }
+
+    @Test
+    @DisplayName("Phase 6 - Test 8: PENDING order cannot restore")
+    void restoreFailedCartOrder_rejectsPendingOrder() {
+        Long customerId = 1L;
+        Long orderId = 500L;
+        Cart cartA = createCart(10L, mockCustomer);
+        Order order = createMockOrder(orderId, mockCustomer, cartA, "CART", "PENDING", "PENDING");
+
+        when(orderRepository.findByIdWithLock(orderId)).thenReturn(Optional.of(order));
+
+        InvalidRequestException ex = assertThrows(InvalidRequestException.class, () ->
+                cartService.restoreFailedCartOrder(customerId, orderId));
+        assertTrue(ex.getMessage().contains("payment still pending"));
+    }
+
+    @Test
+    @DisplayName("Phase 6 - Test 9: SUCCESS/PAID order cannot restore")
+    void restoreFailedCartOrder_rejectsSuccessOrPaidOrder() {
+        Long customerId = 1L;
+        Long orderId = 500L;
+        Cart cartA = createCart(10L, mockCustomer);
+        Order order = createMockOrder(orderId, mockCustomer, cartA, "CART", "SUCCESS", "PAID");
+
+        when(orderRepository.findByIdWithLock(orderId)).thenReturn(Optional.of(order));
+
+        ConflictException ex = assertThrows(ConflictException.class, () ->
+                cartService.restoreFailedCartOrder(customerId, orderId));
+        assertTrue(ex.getMessage().contains("already paid or successful"));
+    }
+
+    @Test
+    @DisplayName("Phase 6 - Test 10: Another customer's order cannot restore (IDOR defense)")
+    void restoreFailedCartOrder_rejectsDifferentCustomer() {
+        Long callerCustomerId = 1L;
+        Customer victimCustomer = createCustomer(999L);
+        Long orderId = 500L;
+        Cart cartA = createCart(10L, victimCustomer);
+        Order order = createMockOrder(orderId, victimCustomer, cartA, "CART", "FAILED", "PENDING");
+
+        when(orderRepository.findByIdWithLock(orderId)).thenReturn(Optional.of(order));
+
+        AccessDeniedException ex = assertThrows(AccessDeniedException.class, () ->
+                cartService.restoreFailedCartOrder(callerCustomerId, orderId));
+        assertTrue(ex.getMessage().contains("permission"));
+    }
+
+    @Test
+    @DisplayName("Phase 6 - Test 11: Second restore request rejected (idempotency)")
+    void restoreFailedCartOrder_rejectsAlreadyRestoredCart() {
+        Long customerId = 1L;
+        Long orderId = 500L;
+        Cart cartA = createCart(10L, mockCustomer);
+        cartA.setStatus("RESTORED"); // Already restored
+        Order order = createMockOrder(orderId, mockCustomer, cartA, "CART", "FAILED", "PENDING");
+
+        when(orderRepository.findByIdWithLock(orderId)).thenReturn(Optional.of(order));
+
+        ConflictException ex = assertThrows(ConflictException.class, () ->
+                cartService.restoreFailedCartOrder(customerId, orderId));
+        assertTrue(ex.getMessage().contains("already been restored"));
+    }
+
+    @Test
+    @DisplayName("Phase 6 - Test 12: Concurrent restore protected by pessimistic write lock")
+    void restoreFailedCartOrder_usesPessimisticWriteLock() {
+        Long customerId = 1L;
+        Long orderId = 500L;
+        Cart cartA = createCart(10L, mockCustomer);
+        cartA.setStatus("PENDING_PAYMENT");
+        Cart cartB = createCart(20L, mockCustomer);
+        cartB.setStatus("ACTIVE");
+
+        Order order = createMockOrder(orderId, mockCustomer, cartA, "CART", "FAILED", "PENDING");
+        CartItem cartItemA = createCartItem(100L, cartA, mockVariant, 1);
+
+        when(orderRepository.findByIdWithLock(orderId)).thenReturn(Optional.of(order));
+        when(cartItemRepository.findByCartCartId(10L)).thenReturn(List.of(cartItemA));
+        when(cartRepository.findByCustomerCustomerIdAndStatus(customerId, "ACTIVE")).thenReturn(Optional.of(cartB));
+        when(variantRepository.findById(101L)).thenReturn(Optional.of(mockVariant));
+        when(inventoryRepository.findByVariantVariantId(101L)).thenReturn(Optional.of(mockInventory));
+        when(cartItemRepository.findByCartCartIdAndVariantVariantId(20L, 101L)).thenReturn(Optional.empty());
+
+        cartService.restoreFailedCartOrder(customerId, orderId);
+
+        // Verify that findByIdWithLock was explicitly invoked for concurrency safety
+        verify(orderRepository).findByIdWithLock(orderId);
+    }
+
+    @Test
+    @DisplayName("Phase 6 - Test 13: Missing/discontinued variant handled safely without breaking other items")
+    void restoreFailedCartOrder_handlesDiscontinuedVariant_safely() {
+        Long customerId = 1L;
+        Long orderId = 500L;
+        Cart cartA = createCart(10L, mockCustomer);
+        cartA.setStatus("PENDING_PAYMENT");
+        Cart cartB = createCart(20L, mockCustomer);
+        cartB.setStatus("ACTIVE");
+
+        Product discontinuedProduct = createProduct(2L, ProductStatus.INACTIVE);
+        ProductVariant discontinuedVariant = createVariant(102L, discontinuedProduct, BigDecimal.valueOf(3000), ProductVariantStatus.INACTIVE);
+
+        Order order = createMockOrder(orderId, mockCustomer, cartA, "CART", "FAILED", "PENDING");
+        CartItem validItem = createCartItem(100L, cartA, mockVariant, 2);
+        CartItem discontinuedItem = createCartItem(101L, cartA, discontinuedVariant, 1);
+
+        when(orderRepository.findByIdWithLock(orderId)).thenReturn(Optional.of(order));
+        when(cartItemRepository.findByCartCartId(10L)).thenReturn(List.of(validItem, discontinuedItem));
+        when(cartRepository.findByCustomerCustomerIdAndStatus(customerId, "ACTIVE")).thenReturn(Optional.of(cartB));
+        when(variantRepository.findById(101L)).thenReturn(Optional.of(mockVariant));
+        when(variantRepository.findById(102L)).thenReturn(Optional.of(discontinuedVariant));
+        when(inventoryRepository.findByVariantVariantId(101L)).thenReturn(Optional.of(mockInventory));
+        when(cartItemRepository.findByCartCartIdAndVariantVariantId(20L, 101L)).thenReturn(Optional.empty());
+
+        RestoreToCartResponse response = cartService.restoreFailedCartOrder(customerId, orderId);
+
+        assertNotNull(response);
+        assertEquals(1, response.getRestoredItemCount());
+        assertEquals(1, response.getSkippedItemCount());
+        assertEquals("RESTORED", response.getItems().get(0).getStatus());
+        assertEquals("UNAVAILABLE", response.getItems().get(1).getStatus());
+        assertEquals("RESTORED", cartA.getStatus());
+    }
+
+    @Test
+    @DisplayName("Phase 6 - Test 14: Transaction rolls back on restore failure when all items are unavailable")
+    void restoreFailedCartOrder_throwsException_whenAllItemsUnavailable() {
+        Long customerId = 1L;
+        Long orderId = 500L;
+        Cart cartA = createCart(10L, mockCustomer);
+        cartA.setStatus("PENDING_PAYMENT");
+        Cart cartB = createCart(20L, mockCustomer);
+        cartB.setStatus("ACTIVE");
+
+        Order order = createMockOrder(orderId, mockCustomer, cartA, "CART", "FAILED", "PENDING");
+        CartItem cartItemA = createCartItem(100L, cartA, mockVariant, 2);
+        Inventory outOfStockInventory = createInventory(1L, mockVariant, 0);
+
+        when(orderRepository.findByIdWithLock(orderId)).thenReturn(Optional.of(order));
+        when(cartItemRepository.findByCartCartId(10L)).thenReturn(List.of(cartItemA));
+        when(cartRepository.findByCustomerCustomerIdAndStatus(customerId, "ACTIVE")).thenReturn(Optional.of(cartB));
+        when(variantRepository.findById(101L)).thenReturn(Optional.of(mockVariant));
+        when(inventoryRepository.findByVariantVariantId(101L)).thenReturn(Optional.of(outOfStockInventory));
+
+        InvalidRequestException ex = assertThrows(InvalidRequestException.class, () ->
+                cartService.restoreFailedCartOrder(customerId, orderId));
+        assertTrue(ex.getMessage().contains("out of stock or unavailable"));
+        // Cart A must NOT be transitioned to RESTORED on rollback
+        assertEquals("PENDING_PAYMENT", cartA.getStatus());
+    }
+
+    @Test
+    @DisplayName("Phase 6 - Test 15: Original Cart A is never reactivated as ACTIVE")
+    void restoreFailedCartOrder_cartANeverReactivatedToActive() {
+        Long customerId = 1L;
+        Long orderId = 500L;
+        Cart cartA = createCart(10L, mockCustomer);
+        cartA.setStatus("PENDING_PAYMENT");
+        Cart cartB = createCart(20L, mockCustomer);
+        cartB.setStatus("ACTIVE");
+
+        Order order = createMockOrder(orderId, mockCustomer, cartA, "CART", "FAILED", "PENDING");
+        CartItem cartItemA = createCartItem(100L, cartA, mockVariant, 2);
+
+        when(orderRepository.findByIdWithLock(orderId)).thenReturn(Optional.of(order));
+        when(cartItemRepository.findByCartCartId(10L)).thenReturn(List.of(cartItemA));
+        when(cartRepository.findByCustomerCustomerIdAndStatus(customerId, "ACTIVE")).thenReturn(Optional.of(cartB));
+        when(variantRepository.findById(101L)).thenReturn(Optional.of(mockVariant));
+        when(inventoryRepository.findByVariantVariantId(101L)).thenReturn(Optional.of(mockInventory));
+        when(cartItemRepository.findByCartCartIdAndVariantVariantId(20L, 101L)).thenReturn(Optional.empty());
+
+        cartService.restoreFailedCartOrder(customerId, orderId);
+
+        assertNotEquals("ACTIVE", cartA.getStatus());
+        assertEquals("RESTORED", cartA.getStatus());
+    }
+
+    @Test
+    @DisplayName("Phase 6 - Test 16: Cart B remains the only ACTIVE cart")
+    void restoreFailedCartOrder_cartBRemainsOnlyActiveCart() {
+        Long customerId = 1L;
+        Long orderId = 500L;
+        Cart cartA = createCart(10L, mockCustomer);
+        cartA.setStatus("PENDING_PAYMENT");
+        Cart cartB = createCart(20L, mockCustomer);
+        cartB.setStatus("ACTIVE");
+
+        Order order = createMockOrder(orderId, mockCustomer, cartA, "CART", "FAILED", "PENDING");
+        CartItem cartItemA = createCartItem(100L, cartA, mockVariant, 2);
+
+        when(orderRepository.findByIdWithLock(orderId)).thenReturn(Optional.of(order));
+        when(cartItemRepository.findByCartCartId(10L)).thenReturn(List.of(cartItemA));
+        when(cartRepository.findByCustomerCustomerIdAndStatus(customerId, "ACTIVE")).thenReturn(Optional.of(cartB));
+        when(variantRepository.findById(101L)).thenReturn(Optional.of(mockVariant));
+        when(inventoryRepository.findByVariantVariantId(101L)).thenReturn(Optional.of(mockInventory));
+        when(cartItemRepository.findByCartCartIdAndVariantVariantId(20L, 101L)).thenReturn(Optional.empty());
+
+        RestoreToCartResponse response = cartService.restoreFailedCartOrder(customerId, orderId);
+
+        assertEquals(20L, response.getActiveCartId());
+        assertEquals("ACTIVE", cartB.getStatus());
+        assertEquals("RESTORED", cartA.getStatus());
+    }
+
+    @Test
+    @DisplayName("Revised UX: restoreFailedCartOrder throws InvalidRequestException when order is expired")
+    void restoreFailedCartOrder_throwsException_whenOrderIsExpired() {
+        Long customerId = 1L;
+        Long orderId = 500L;
+        Cart cartA = createCart(10L, mockCustomer);
+        cartA.setStatus("PENDING_PAYMENT");
+
+        Order order = createMockOrder(orderId, mockCustomer, cartA, "CART", "FAILED", "CANCELLED");
+
+        when(orderRepository.findByIdWithLock(orderId)).thenReturn(Optional.of(order));
+        when(reservationService.isOrderExpired(orderId)).thenReturn(true);
+
+        InvalidRequestException ex = assertThrows(InvalidRequestException.class, () ->
+                cartService.restoreFailedCartOrder(customerId, orderId));
+
+        assertEquals("Cannot restore items from an expired order", ex.getMessage());
+        assertEquals("PENDING_PAYMENT", cartA.getStatus());
+        verify(cartItemRepository, never()).findByCartCartId(anyLong());
     }
 }

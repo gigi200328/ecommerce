@@ -22,4 +22,6 @@ public class OrderResponse {
     private String paymentStatus;
     private String createdAt;
     private String checkoutType;
+    private String reservationExpiresAt;
+    private Boolean reservationActive;
 }

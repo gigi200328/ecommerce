@@ -9,7 +9,10 @@ import org.springframework.scheduling.annotation.EnableAsync;
 @EnableAsync
 @SpringBootApplication
 @EnableJpaRepositories(basePackages = "com.ojt.ecommerce")
-@EntityScan(basePackages = "com.ojt.ecommerce.entity")
+@EntityScan(basePackages = {
+		"com.ojt.ecommerce.entity",
+		"com.ojt.ecommerce.storefront.reservation.entity"
+})
 public class EcommerceApplication {
 
 	public static void main(String[] args) {

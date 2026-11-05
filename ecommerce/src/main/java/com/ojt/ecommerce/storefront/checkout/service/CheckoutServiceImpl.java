@@ -9,6 +9,8 @@ import com.ojt.ecommerce.storefront.catalog.repository.*;
 import com.ojt.ecommerce.storefront.checkout.dto.*;
 import com.ojt.ecommerce.storefront.checkout.repository.*;
 import com.ojt.ecommerce.storefront.profile.repository.CustomerAddressRepository;
+import com.ojt.ecommerce.storefront.reservation.dto.ReservationItem;
+import com.ojt.ecommerce.storefront.reservation.service.InventoryReservationService;
 import com.ojt.ecommerce.storefront.shipping.service.ShippingService;
 import lombok.RequiredArgsConstructor;
 import org.springframework.stereotype.Service;
@@ -16,6 +18,7 @@ import org.springframework.transaction.annotation.Transactional;
 
 import java.math.BigDecimal;
 import java.time.LocalDateTime;
+import java.time.ZoneId;
 import java.time.format.DateTimeFormatter;
 import java.util.*;
 
@@ -37,6 +40,7 @@ public class CheckoutServiceImpl implements CheckoutService {
     private final G5ProductVariantRepository variantRepository;
     
     private final ShippingService shippingService;
+    private final InventoryReservationService reservationService;
 
     private String buildJson(java.util.Map<String, String> map) {
         StringBuilder sb = new StringBuilder("{");
@@ -104,6 +108,7 @@ public class CheckoutServiceImpl implements CheckoutService {
 
         BigDecimal subtotal = BigDecimal.ZERO;
         List<CartItem> cartItems = null;
+        Cart cart = null;
         ProductVariant buyNowVariant = null;
         int buyNowQuantity = 0;
         BigDecimal buyNowUnitPrice = BigDecimal.ZERO;
@@ -127,8 +132,7 @@ public class CheckoutServiceImpl implements CheckoutService {
                 throw new InvalidRequestException("Product or variant is no longer available: " + product.getProductName());
             }
 
-            Inventory inv = inventoryRepository.findByVariantVariantId(buyNowVariant.getVariantId()).orElse(null);
-            int available = inv != null ? inv.getQuantity() : 0;
+            int available = reservationService.getAvailableStock(buyNowVariant.getVariantId());
             buyNowQuantity = itemReq.getQuantity();
 
             if (available < buyNowQuantity) {
@@ -143,7 +147,7 @@ public class CheckoutServiceImpl implements CheckoutService {
                 throw new InvalidRequestException("buyNowItem must not be provided for CART checkout");
             }
 
-            Cart cart = cartRepository.findByCustomerCustomerIdAndStatus(customerId, "ACTIVE")
+            cart = cartRepository.findByCustomerCustomerIdAndStatus(customerId, "ACTIVE")
                     .orElseThrow(() -> new InvalidRequestException("Empty cart"));
                     
             cartItems = cartItemRepository.findByCartCartId(cart.getCartId());
@@ -158,8 +162,7 @@ public class CheckoutServiceImpl implements CheckoutService {
                     throw new InvalidRequestException("Product or variant is no longer available: " + p.getProductName());
                 }
                 
-                Inventory inv = inventoryRepository.findByVariantVariantId(v.getVariantId()).orElse(null);
-                int available = inv != null ? inv.getQuantity() : 0;
+                int available = reservationService.getAvailableStock(v.getVariantId());
                 
                 if (available < ci.getQuantity()) {
                     throw new InvalidRequestException("Insufficient stock for product: " + p.getProductName());
@@ -220,21 +223,36 @@ public class CheckoutServiceImpl implements CheckoutService {
         order.setPaymentStatus("PENDING");
         order.setCheckoutType(checkoutType);
         order.setCreatedAt(LocalDateTime.now());
+        if (!isBuyNow && cart != null) {
+            order.setCart(cart);
+        }
         
         order = orderRepository.save(order);
 
         address.setOrder(order);
         orderAddressRepository.save(address);
 
+        List<ReservationItem> reservationItems = new ArrayList<>();
         if (isBuyNow) {
             createOrderItem(order, buyNowVariant, buyNowQuantity, buyNowUnitPrice, subtotal);
+            reservationItems.add(new ReservationItem(buyNowVariant, buyNowQuantity));
         } else {
             for (CartItem ci : cartItems) {
                 ProductVariant v = ci.getVariant();
                 BigDecimal unitPrice = v.getSellingPrice();
                 BigDecimal itemSubtotal = unitPrice.multiply(BigDecimal.valueOf(ci.getQuantity()));
                 createOrderItem(order, v, ci.getQuantity(), unitPrice, itemSubtotal);
+                reservationItems.add(new ReservationItem(v, ci.getQuantity()));
             }
+        }
+
+        // Phase 7: Atomically reserve stock under row locks and synchronize reserved_quantity
+        reservationService.reserveStockForOrder(order, reservationItems);
+
+        if (!isBuyNow && cart != null) {
+            cart.setStatus("PENDING_PAYMENT");
+            cart.setModifiedAt(LocalDateTime.now());
+            cartRepository.save(cart);
         }
 
         OrderStatusHistory history = new OrderStatusHistory();
@@ -245,6 +263,12 @@ public class CheckoutServiceImpl implements CheckoutService {
         history.setRemark("Order created");
         
         orderStatusHistoryRepository.save(history);
+
+        Optional<LocalDateTime> expiryOpt = reservationService.getReservationExpiryForOrder(order.getOrderId());
+        String expiresAtIso = expiryOpt
+                .map(exp -> exp.atZone(ZoneId.systemDefault()).toInstant().toString())
+                .orElse(null);
+        boolean reservationActive = reservationService.isReservationActiveForOrder(order.getOrderId());
 
         return OrderResponse.builder()
                 .orderId(order.getOrderId())
@@ -258,6 +282,8 @@ public class CheckoutServiceImpl implements CheckoutService {
                 .paymentStatus(order.getPaymentStatus())
                 .createdAt(order.getCreatedAt().toString())
                 .checkoutType(order.getCheckoutType())
+                .reservationExpiresAt(expiresAtIso)
+                .reservationActive(reservationActive)
                 .build();
     }
 }

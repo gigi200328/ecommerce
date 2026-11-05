@@ -6,7 +6,9 @@ import com.ojt.ecommerce.storefront.auth.repository.CustomerRepository;
 import com.ojt.ecommerce.storefront.cart.repository.CartItemRepository;
 import com.ojt.ecommerce.storefront.cart.repository.CartRepository;
 import com.ojt.ecommerce.storefront.catalog.repository.G5InventoryRepository;
+import com.ojt.ecommerce.storefront.catalog.repository.G5ProductVariantRepository;
 import com.ojt.ecommerce.storefront.catalog.repository.G5VariantOptionValueRepository;
+import com.ojt.ecommerce.storefront.checkout.dto.BuyNowItemRequest;
 import com.ojt.ecommerce.storefront.checkout.dto.CreateOrderRequest;
 import com.ojt.ecommerce.storefront.checkout.dto.CustomShippingAddressRequest;
 import com.ojt.ecommerce.storefront.checkout.dto.OrderResponse;
@@ -18,14 +20,18 @@ import com.ojt.ecommerce.storefront.checkout.repository.G5OrderStatusHistoryRepo
 import com.ojt.ecommerce.storefront.exception.InvalidRequestException;
 import com.ojt.ecommerce.storefront.exception.ResourceNotFoundException;
 import com.ojt.ecommerce.storefront.profile.repository.CustomerAddressRepository;
+import com.ojt.ecommerce.storefront.reservation.service.InventoryReservationService;
 import com.ojt.ecommerce.storefront.shipping.service.ShippingService;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.extension.ExtendWith;
+import org.mockito.ArgumentCaptor;
 import org.mockito.InjectMocks;
 import org.mockito.Mock;
 import org.mockito.junit.jupiter.MockitoExtension;
+import org.mockito.junit.jupiter.MockitoSettings;
+import org.mockito.quality.Strictness;
 
 import java.math.BigDecimal;
 import java.util.Collections;
@@ -38,6 +44,7 @@ import static org.mockito.ArgumentMatchers.eq;
 import static org.mockito.Mockito.*;
 
 @ExtendWith(MockitoExtension.class)
+@MockitoSettings(strictness = Strictness.LENIENT)
 class CheckoutServiceImplTest {
 
     @Mock
@@ -71,7 +78,13 @@ class CheckoutServiceImplTest {
     private G5VariantOptionValueRepository optionValueRepository;
 
     @Mock
+    private G5ProductVariantRepository variantRepository;
+
+    @Mock
     private ShippingService shippingService;
+
+    @Mock
+    private InventoryReservationService reservationService;
 
     @InjectMocks
     private CheckoutServiceImpl checkoutService;
@@ -145,6 +158,8 @@ class CheckoutServiceImplTest {
                 .shippingFee(new BigDecimal("2500.00"))
                 .estimatedDays(2)
                 .build();
+
+        lenient().when(reservationService.getAvailableStock(anyLong())).thenReturn(10);
     }
 
     // =========================================================================
@@ -295,6 +310,7 @@ class CheckoutServiceImplTest {
     @DisplayName("Should throw InvalidRequestException when inventory is insufficient")
     void createOrder_ThrowsException_WhenStockInsufficient() {
         inventory.setQuantity(1); // Cart needs 2
+        when(reservationService.getAvailableStock(200L)).thenReturn(1);
 
         CreateOrderRequest request = new CreateOrderRequest();
         when(customerRepository.findById(1L)).thenReturn(Optional.of(customer));
@@ -342,5 +358,124 @@ class CheckoutServiceImplTest {
                 () -> checkoutService.createOrder(1L, request));
 
         assertEquals("Saved address not found", ex.getMessage());
+    }
+
+    // =========================================================================
+    // 3. Phase 2 Lifecycle Tests
+    // =========================================================================
+
+    @Test
+    @DisplayName("Phase 2 - Test 1, 2, 6: CART checkout links Order to Cart A, sets PENDING_PAYMENT, and creates correct OrderItem snapshot")
+    void createOrder_CartCheckout_LinksOrderToCartAndTransitionsStatusToPendingPayment() {
+        CreateOrderRequest request = new CreateOrderRequest();
+        request.setSavedAddressId(50L);
+
+        when(customerRepository.findById(1L)).thenReturn(Optional.of(customer));
+        when(cartRepository.findByCustomerCustomerIdAndStatus(1L, "ACTIVE")).thenReturn(Optional.of(cart));
+        when(cartItemRepository.findByCartCartId(10L)).thenReturn(List.of(cartItem));
+        when(inventoryRepository.findByVariantVariantId(200L)).thenReturn(Optional.of(inventory));
+        when(customerAddressRepository.findByAddressIdAndCustomerCustomerId(50L, 1L)).thenReturn(Optional.of(savedAddress));
+        when(shippingService.getShippingQuote(1L, 50L)).thenReturn(shippingQuote);
+        when(optionValueRepository.findByVariantVariantId(200L)).thenReturn(Collections.emptyList());
+
+        when(orderRepository.save(any(Order.class))).thenAnswer(invocation -> {
+            Order o = invocation.getArgument(0);
+            o.setOrderId(1001L);
+            return o;
+        });
+
+        OrderResponse response = checkoutService.createOrder(1L, request);
+
+        assertNotNull(response);
+
+        // Test 1: CART checkout links Order to Cart A
+        ArgumentCaptor<Order> orderCaptor = ArgumentCaptor.forClass(Order.class);
+        verify(orderRepository, atLeastOnce()).save(orderCaptor.capture());
+        Order capturedOrder = orderCaptor.getValue();
+        assertNotNull(capturedOrder.getCart(), "Order must link to Cart A");
+        assertEquals(10L, capturedOrder.getCart().getCartId(), "Order cart_id must match Cart A cart_id");
+        assertEquals("CART", capturedOrder.getCheckoutType());
+
+        // Test 2: CART checkout changes Cart A status to PENDING_PAYMENT and saves it
+        ArgumentCaptor<Cart> cartCaptor = ArgumentCaptor.forClass(Cart.class);
+        verify(cartRepository, times(1)).save(cartCaptor.capture());
+        Cart capturedCart = cartCaptor.getValue();
+        assertEquals("PENDING_PAYMENT", capturedCart.getStatus(), "Cart A status must transition to PENDING_PAYMENT");
+        assertEquals(cart, capturedCart);
+
+        // Test 6: OrderItem snapshot remains correct
+        ArgumentCaptor<OrderItem> itemCaptor = ArgumentCaptor.forClass(OrderItem.class);
+        verify(orderItemRepository, times(1)).save(itemCaptor.capture());
+        OrderItem capturedItem = itemCaptor.getValue();
+        assertEquals("Cotton T-Shirt", capturedItem.getProductName());
+        assertEquals(new BigDecimal("15000.00"), capturedItem.getUnitPrice());
+        assertEquals(2, capturedItem.getQty());
+        assertEquals(new BigDecimal("30000.00"), capturedItem.getSubtotal());
+    }
+
+    @Test
+    @DisplayName("Phase 2 - Test 3, 4: BUY_NOW order has cart = null and leaves active Cart untouched")
+    void createOrder_BuyNowCheckout_OrderCartIsNullAndActiveCartUntouched() {
+        BuyNowItemRequest buyNowItem = new BuyNowItemRequest();
+        buyNowItem.setVariantId(200L);
+        buyNowItem.setQuantity(1);
+
+        CreateOrderRequest request = new CreateOrderRequest();
+        request.setCheckoutType("BUY_NOW");
+        request.setBuyNowItem(buyNowItem);
+        request.setSavedAddressId(50L);
+
+        when(customerRepository.findById(1L)).thenReturn(Optional.of(customer));
+        when(variantRepository.findById(200L)).thenReturn(Optional.of(variant));
+        when(inventoryRepository.findByVariantVariantId(200L)).thenReturn(Optional.of(inventory));
+        when(customerAddressRepository.findByAddressIdAndCustomerCustomerId(50L, 1L)).thenReturn(Optional.of(savedAddress));
+        when(shippingService.getShippingQuote(1L, 50L)).thenReturn(shippingQuote);
+        when(optionValueRepository.findByVariantVariantId(200L)).thenReturn(Collections.emptyList());
+
+        when(orderRepository.save(any(Order.class))).thenAnswer(invocation -> {
+            Order o = invocation.getArgument(0);
+            o.setOrderId(2001L);
+            return o;
+        });
+
+        OrderResponse response = checkoutService.createOrder(1L, request);
+
+        assertNotNull(response);
+        assertEquals(2001L, response.getOrderId());
+        assertEquals("BUY_NOW", response.getCheckoutType());
+
+        // Test 3: BUY_NOW order has cart = null
+        ArgumentCaptor<Order> orderCaptor = ArgumentCaptor.forClass(Order.class);
+        verify(orderRepository).save(orderCaptor.capture());
+        Order capturedOrder = orderCaptor.getValue();
+        assertNull(capturedOrder.getCart(), "BUY_NOW order cart must be null");
+
+        // Test 4: BUY_NOW does not query or save active Cart
+        verify(cartRepository, never()).findByCustomerCustomerIdAndStatus(anyLong(), anyString());
+        verify(cartRepository, never()).save(any(Cart.class));
+        assertEquals("ACTIVE", cart.getStatus(), "Active cart must remain untouched");
+    }
+
+    @Test
+    @DisplayName("Phase 2 - Test 5: Checkout failure rolls back Cart status (Cart A remains ACTIVE and is never saved)")
+    void createOrder_CheckoutFailure_RollsBackCartStatus() {
+        CreateOrderRequest request = new CreateOrderRequest();
+        request.setSavedAddressId(50L);
+
+        // Simulate inventory failure
+        inventory.setQuantity(0);
+        when(reservationService.getAvailableStock(200L)).thenReturn(0);
+
+        when(customerRepository.findById(1L)).thenReturn(Optional.of(customer));
+        when(cartRepository.findByCustomerCustomerIdAndStatus(1L, "ACTIVE")).thenReturn(Optional.of(cart));
+        when(cartItemRepository.findByCartCartId(10L)).thenReturn(List.of(cartItem));
+        when(inventoryRepository.findByVariantVariantId(200L)).thenReturn(Optional.of(inventory));
+
+        assertThrows(InvalidRequestException.class, () -> checkoutService.createOrder(1L, request));
+
+        // Test 5: Cart status remains ACTIVE and save is never called
+        assertEquals("ACTIVE", cart.getStatus(), "Cart A status must remain ACTIVE upon failure");
+        verify(cartRepository, never()).save(any(Cart.class));
+        verify(orderRepository, never()).save(any(Order.class));
     }
 }

@@ -5,6 +5,7 @@ import com.ojt.ecommerce.backofficeinventory.service.InventoryService;
 import com.ojt.ecommerce.entity.Order;
 import com.ojt.ecommerce.entity.OrderItem;
 import com.ojt.ecommerce.storefront.checkout.repository.G5OrderRepository;
+import com.ojt.ecommerce.storefront.reservation.service.InventoryReservationService;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.extension.ExtendWith;
 import org.mockito.InjectMocks;
@@ -31,6 +32,9 @@ class OrderInventoryFinalizationServiceTest {
 
     @Mock
     private InventoryTransactionRepository inventoryTxnRepository;
+
+    @Mock
+    private InventoryReservationService reservationService;
 
     @InjectMocks
     private OrderInventoryFinalizationService finalizationService;
@@ -114,6 +118,7 @@ class OrderInventoryFinalizationServiceTest {
         boolean result = finalizationService.finalizeInventory(1L);
 
         assertThat(result).isTrue();
+        verify(reservationService).consumeReservationsForOrder(1L);
         verify(inventoryService).deductStockForOrder(1L);
     }
 }

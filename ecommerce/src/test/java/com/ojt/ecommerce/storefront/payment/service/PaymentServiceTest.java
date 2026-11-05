@@ -7,12 +7,16 @@ import com.ojt.ecommerce.entity.Order;
 import com.ojt.ecommerce.entity.OrderStatusHistory;
 import com.ojt.ecommerce.entity.Payment;
 import com.ojt.ecommerce.entity.PaymentCallback;
+import com.ojt.ecommerce.storefront.cart.dto.RestoreToCartResponse;
 import com.ojt.ecommerce.storefront.cart.repository.CartRepository;
+import com.ojt.ecommerce.storefront.cart.service.CartService;
 import com.ojt.ecommerce.storefront.checkout.repository.G5OrderRepository;
 import com.ojt.ecommerce.storefront.checkout.repository.G5OrderStatusHistoryRepository;
 import com.ojt.ecommerce.storefront.exception.AccessDeniedException;
+import com.ojt.ecommerce.storefront.exception.ConflictException;
 import com.ojt.ecommerce.storefront.exception.InvalidRequestException;
 import com.ojt.ecommerce.storefront.exception.ResourceNotFoundException;
+import com.ojt.ecommerce.storefront.payment.dto.PaymentCancelResponse;
 import com.ojt.ecommerce.storefront.payment.dto.MmspgInitiateResponse;
 import com.ojt.ecommerce.storefront.payment.dto.MockCallbackRequest;
 import com.ojt.ecommerce.storefront.payment.dto.MockCallbackResponse;
@@ -22,10 +26,12 @@ import com.ojt.ecommerce.storefront.payment.dto.PaymentInitiateResponse;
 import com.ojt.ecommerce.storefront.payment.event.OrderPaidEvent;
 import com.ojt.ecommerce.storefront.payment.repository.G5PaymentRepository;
 import com.ojt.ecommerce.storefront.payment.repository.PaymentCallbackRepository;
+import com.ojt.ecommerce.storefront.reservation.service.InventoryReservationService;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.extension.ExtendWith;
+import org.mockito.ArgumentCaptor;
 import org.mockito.InjectMocks;
 import org.mockito.Mock;
 import org.mockito.junit.jupiter.MockitoExtension;
@@ -68,6 +74,9 @@ public class PaymentServiceTest {
     private CartRepository cartRepository;
 
     @Mock
+    private CartService cartService;
+
+    @Mock
     private InventoryService inventoryService;
 
     @Mock
@@ -75,6 +84,9 @@ public class PaymentServiceTest {
 
     @Mock
     private RestTemplate restTemplate;
+
+    @Mock
+    private InventoryReservationService reservationService;
 
     @InjectMocks
     private PaymentServiceImpl paymentService;
@@ -227,6 +239,43 @@ public class PaymentServiceTest {
 
         verify(orderRepository).findByIdWithLock(100L);
         verify(paymentRepository).save(any(Payment.class));
+    }
+
+    @Test
+    @DisplayName("initiatePayment: Reuses existing Payment row when MMSPG returns the same transaction reference")
+    void initiatePayment_WhenSameTransactionRef_ShouldReuseExistingPaymentRow() {
+        when(orderRepository.findByIdWithLock(100L)).thenReturn(Optional.of(mockOrder));
+
+        MmspgInitiateResponse mockGatewayResponse = new MmspgInitiateResponse();
+        mockGatewayResponse.setTransactionReference("TXN-EXISTING-001");
+        mockGatewayResponse.setPaymentUrl("http://localhost:8004/checkout?token=xyz");
+
+        when(restTemplate.postForEntity(anyString(), any(HttpEntity.class), eq(MmspgInitiateResponse.class)))
+                .thenReturn(new ResponseEntity<>(mockGatewayResponse, HttpStatus.OK));
+
+        Payment existingPayment = new Payment();
+        existingPayment.setPaymentId(50L);
+        existingPayment.setOrder(mockOrder);
+        existingPayment.setTransactionRef("TXN-EXISTING-001");
+        existingPayment.setPaymentStatus("PENDING");
+
+        when(paymentRepository.findByTransactionRef("TXN-EXISTING-001")).thenReturn(Optional.of(existingPayment));
+        when(paymentRepository.save(any(Payment.class))).thenAnswer(invocation -> invocation.getArgument(0));
+
+        PaymentInitiateRequest request = new PaymentInitiateRequest();
+        request.setPaymentMethod("MINI_BANKING");
+
+        PaymentInitiateResponse response = paymentService.initiatePayment(1L, 100L, request);
+
+        assertThat(response).isNotNull();
+        assertThat(response.getPaymentId()).isEqualTo(50L);
+        assertThat(response.getPaymentStatus()).isEqualTo("PENDING");
+
+        // Verify save was called on existing payment object
+        ArgumentCaptor<Payment> paymentCaptor = ArgumentCaptor.forClass(Payment.class);
+        verify(paymentRepository).save(paymentCaptor.capture());
+        assertThat(paymentCaptor.getValue().getPaymentId()).isEqualTo(50L);
+        assertThat(paymentCaptor.getValue().getTransactionRef()).isEqualTo("TXN-EXISTING-001");
     }
 
     // =========================================================================
@@ -411,12 +460,13 @@ public class PaymentServiceTest {
     }
 
     @Test
-    @DisplayName("processMockCallback: SUCCESS callback on CART order updates order, history, cleans cart, and publishes event")
+    @DisplayName("processMockCallback: SUCCESS callback on CART order updates order, history, checks out linked Cart A, and publishes event")
     void processMockCallback_WhenSuccessStatusAndCartOrder_ShouldUpdateOrderSaveHistoryCheckoutCartAndPublishEvent() {
+        mockCart.setStatus("PENDING_PAYMENT");
+        mockOrder.setCart(mockCart);
         when(paymentRepository.findByTransactionRef("TXN-TEST-001")).thenReturn(Optional.of(mockPayment));
         when(orderRepository.findByIdWithLock(100L)).thenReturn(Optional.of(mockOrder));
         when(paymentCallbackRepository.existsByExternalEventId("EVT-CART-1")).thenReturn(false);
-        when(cartRepository.findByCustomerCustomerIdAndStatus(1L, "ACTIVE")).thenReturn(Optional.of(mockCart));
 
         MockCallbackRequest request = new MockCallbackRequest();
         request.setExternalEventId("EVT-CART-1");
@@ -440,6 +490,7 @@ public class PaymentServiceTest {
         verify(orderStatusHistoryRepository).save(any(OrderStatusHistory.class));
         assertThat(mockCart.getStatus()).isEqualTo("CHECKED_OUT");
         verify(cartRepository).save(mockCart);
+        verify(cartRepository, never()).findByCustomerCustomerIdAndStatus(anyLong(), anyString());
 
         verify(eventPublisher).publishEvent(any(OrderPaidEvent.class));
         verify(paymentCallbackRepository).save(any(PaymentCallback.class));
@@ -597,5 +648,334 @@ public class PaymentServiceTest {
         verify(orderRepository, never()).save(any());
         verify(eventPublisher, never()).publishEvent(any());
         verify(paymentCallbackRepository, never()).save(any());
+    }
+
+    // =========================================================================
+    // Phase 3 - Exact Cart Finalization & Failure Isolation Tests
+    // =========================================================================
+
+    @Test
+    @DisplayName("Phase 3 - Test 3: Late success on Order A finalizes linked Cart A while active Cart B remains ACTIVE")
+    void processMockCallback_WhenLateSuccessOnOrderA_ShouldCheckoutCartAAndLeaveCartBUntouched() {
+        Cart cartA = Cart.builder()
+                .cartId(10L)
+                .customer(mockCustomer)
+                .status("PENDING_PAYMENT")
+                .build();
+        Cart cartB = Cart.builder()
+                .cartId(20L)
+                .customer(mockCustomer)
+                .status("ACTIVE")
+                .build();
+
+        mockOrder.setCart(cartA);
+
+        when(paymentRepository.findByTransactionRef("TXN-TEST-001")).thenReturn(Optional.of(mockPayment));
+        when(orderRepository.findByIdWithLock(100L)).thenReturn(Optional.of(mockOrder));
+        when(paymentCallbackRepository.existsByExternalEventId("EVT-LATE-CART-A")).thenReturn(false);
+
+        MockCallbackRequest request = new MockCallbackRequest();
+        request.setExternalEventId("EVT-LATE-CART-A");
+        request.setTransactionRef("TXN-TEST-001");
+        request.setStatus("SUCCESS");
+
+        MockCallbackResponse response = paymentService.processMockCallback(request);
+
+        assertThat(response.getPaymentStatus()).isEqualTo("SUCCESS");
+        assertThat(cartA.getStatus()).isEqualTo("CHECKED_OUT");
+        verify(cartRepository).save(cartA);
+
+        // Cart B is completely untouched
+        assertThat(cartB.getStatus()).isEqualTo("ACTIVE");
+        verify(cartRepository, never()).save(cartB);
+        verify(cartRepository, never()).findByCustomerCustomerIdAndStatus(anyLong(), anyString());
+    }
+
+    @Test
+    @DisplayName("Phase 3 - Test 4: Multiple pending orders remain isolated; Payment A success only affects Cart A")
+    void processMockCallback_WhenMultiplePendingOrders_PaymentASuccessOnlyAffectsCartA() {
+        Cart cartA = Cart.builder().cartId(10L).customer(mockCustomer).status("PENDING_PAYMENT").build();
+        Cart cartB = Cart.builder().cartId(20L).customer(mockCustomer).status("PENDING_PAYMENT").build();
+        Cart cartC = Cart.builder().cartId(30L).customer(mockCustomer).status("ACTIVE").build();
+
+        mockOrder.setCart(cartA);
+
+        when(paymentRepository.findByTransactionRef("TXN-TEST-001")).thenReturn(Optional.of(mockPayment));
+        when(orderRepository.findByIdWithLock(100L)).thenReturn(Optional.of(mockOrder));
+        when(paymentCallbackRepository.existsByExternalEventId("EVT-MULTI-1")).thenReturn(false);
+
+        MockCallbackRequest request = new MockCallbackRequest();
+        request.setExternalEventId("EVT-MULTI-1");
+        request.setTransactionRef("TXN-TEST-001");
+        request.setStatus("SUCCESS");
+
+        MockCallbackResponse response = paymentService.processMockCallback(request);
+
+        assertThat(response.getPaymentStatus()).isEqualTo("SUCCESS");
+        assertThat(cartA.getStatus()).isEqualTo("CHECKED_OUT");
+        verify(cartRepository).save(cartA);
+
+        // Other carts remain completely untouched
+        assertThat(cartB.getStatus()).isEqualTo("PENDING_PAYMENT");
+        assertThat(cartC.getStatus()).isEqualTo("ACTIVE");
+        verify(cartRepository, never()).save(cartB);
+        verify(cartRepository, never()).save(cartC);
+        verify(cartRepository, never()).findByCustomerCustomerIdAndStatus(anyLong(), anyString());
+    }
+
+    @Test
+    @DisplayName("Phase 3 - Test 6: Legacy CART order with cart = null does not corrupt active Cart B")
+    void processMockCallback_WhenLegacyCartOrderWithNullCart_ShouldNotTouchAnyCart() {
+        mockOrder.setCart(null);
+        mockOrder.setCheckoutType("CART");
+
+        Cart activeCartB = Cart.builder().cartId(99L).customer(mockCustomer).status("ACTIVE").build();
+
+        when(paymentRepository.findByTransactionRef("TXN-TEST-001")).thenReturn(Optional.of(mockPayment));
+        when(orderRepository.findByIdWithLock(100L)).thenReturn(Optional.of(mockOrder));
+        when(paymentCallbackRepository.existsByExternalEventId("EVT-LEGACY-1")).thenReturn(false);
+
+        MockCallbackRequest request = new MockCallbackRequest();
+        request.setExternalEventId("EVT-LEGACY-1");
+        request.setTransactionRef("TXN-TEST-001");
+        request.setStatus("SUCCESS");
+
+        MockCallbackResponse response = paymentService.processMockCallback(request);
+
+        assertThat(response.getPaymentStatus()).isEqualTo("SUCCESS");
+        assertThat(mockOrder.getOrderStatus()).isEqualTo("PAID");
+        assertThat(mockOrder.getPaymentStatus()).isEqualTo("SUCCESS");
+
+        // Active cart B is never touched and no cart is saved
+        assertThat(activeCartB.getStatus()).isEqualTo("ACTIVE");
+        verify(cartRepository, never()).save(any());
+        verify(cartRepository, never()).findByCustomerCustomerIdAndStatus(anyLong(), anyString());
+        verify(eventPublisher).publishEvent(any(OrderPaidEvent.class));
+    }
+
+    @Test
+    @DisplayName("Phase 3 - Test 8: FAILED callback does not modify Cart B and preserves Cart A in PENDING_PAYMENT")
+    void processMockCallback_WhenFailedCallback_DoesNotModifyCartBAndPreservesCartA() {
+        Cart cartA = Cart.builder().cartId(10L).customer(mockCustomer).status("PENDING_PAYMENT").build();
+        Cart cartB = Cart.builder().cartId(20L).customer(mockCustomer).status("ACTIVE").build();
+
+        mockOrder.setCart(cartA);
+
+        when(paymentRepository.findByTransactionRef("TXN-TEST-001")).thenReturn(Optional.of(mockPayment));
+        when(orderRepository.findByIdWithLock(100L)).thenReturn(Optional.of(mockOrder));
+        when(paymentCallbackRepository.existsByExternalEventId("EVT-FAIL-CART")).thenReturn(false);
+
+        MockCallbackRequest request = new MockCallbackRequest();
+        request.setExternalEventId("EVT-FAIL-CART");
+        request.setTransactionRef("TXN-TEST-001");
+        request.setStatus("FAILED");
+
+        MockCallbackResponse response = paymentService.processMockCallback(request);
+
+        assertThat(response.getPaymentStatus()).isEqualTo("FAILED");
+        assertThat(mockOrder.getPaymentStatus()).isEqualTo("FAILED");
+
+        // Cart A is not restored to ACTIVE, Cart B is untouched
+        assertThat(cartA.getStatus()).isEqualTo("PENDING_PAYMENT");
+        assertThat(cartB.getStatus()).isEqualTo("ACTIVE");
+        verify(cartRepository, never()).save(any());
+        verify(cartRepository, never()).findByCustomerCustomerIdAndStatus(anyLong(), anyString());
+    }
+
+    // ==========================================
+    // PHASE 10: CANCEL PAYMENT & CART RESTORE TESTS
+    // ==========================================
+
+    @Test
+    @DisplayName("Phase 10: cancelPayment marks order CANCELLED, releases reservation, and auto-restores Cart A")
+    void cancelPayment_success_marksOrderCancelled_releasesReservation_autoRestoresCart() {
+        Cart cartA = Cart.builder().cartId(10L).customer(mockCustomer).status("PENDING_PAYMENT").build();
+        mockOrder.setCart(cartA);
+        mockOrder.setCheckoutType("CART");
+
+        when(orderRepository.findByIdWithLock(100L)).thenReturn(Optional.of(mockOrder));
+        when(paymentRepository.findFirstByOrderOrderIdOrderByCreatedAtDesc(100L)).thenReturn(Optional.of(mockPayment));
+        when(cartService.restoreFailedCartOrder(1L, 100L)).thenReturn(RestoreToCartResponse.builder().orderId(100L).restoredItemCount(2).build());
+
+        PaymentCancelResponse response = paymentService.cancelPayment(1L, 100L);
+
+        assertThat(response.getOrderStatus()).isEqualTo("CANCELLED");
+        assertThat(response.getPaymentStatus()).isEqualTo("CANCELLED");
+        assertThat(response.isItemsRestored()).isTrue();
+        assertThat(mockOrder.getOrderStatus()).isEqualTo("CANCELLED");
+        assertThat(mockOrder.getPaymentStatus()).isEqualTo("FAILED");
+        assertThat(mockPayment.getPaymentStatus()).isEqualTo("FAILED");
+
+        verify(orderRepository).save(mockOrder);
+        verify(paymentRepository).save(mockPayment);
+        verify(reservationService).releaseReservationsForOrder(100L);
+        verify(cartService).restoreFailedCartOrder(1L, 100L);
+        verify(orderStatusHistoryRepository).save(any(OrderStatusHistory.class));
+    }
+
+    @Test
+    @DisplayName("Phase 10: cancelPayment for BUY_NOW releases reservation and cancels order without cart restore")
+    void cancelPayment_buyNowOrder_doesNotRestoreToCart() {
+        mockOrder.setCart(null);
+        mockOrder.setCheckoutType("BUY_NOW");
+
+        when(orderRepository.findByIdWithLock(100L)).thenReturn(Optional.of(mockOrder));
+        when(paymentRepository.findFirstByOrderOrderIdOrderByCreatedAtDesc(100L)).thenReturn(Optional.of(mockPayment));
+
+        PaymentCancelResponse response = paymentService.cancelPayment(1L, 100L);
+
+        assertThat(response.getOrderStatus()).isEqualTo("CANCELLED");
+        assertThat(response.isItemsRestored()).isFalse();
+        assertThat(mockOrder.getOrderStatus()).isEqualTo("CANCELLED");
+
+        verify(reservationService).releaseReservationsForOrder(100L);
+        verify(cartService, never()).restoreFailedCartOrder(anyLong(), anyLong());
+    }
+
+    @Test
+    @DisplayName("Phase 10: cancelPayment throws ConflictException when order is already PAID")
+    void cancelPayment_alreadyPaid_throwsConflictException() {
+        mockOrder.setOrderStatus("PAID");
+        mockOrder.setPaymentStatus("SUCCESS");
+        when(orderRepository.findByIdWithLock(100L)).thenReturn(Optional.of(mockOrder));
+
+        assertThatThrownBy(() -> paymentService.cancelPayment(1L, 100L))
+                .isInstanceOf(ConflictException.class)
+                .hasMessageContaining("already paid");
+
+        verify(reservationService, never()).releaseReservationsForOrder(anyLong());
+        verify(cartService, never()).restoreFailedCartOrder(anyLong(), anyLong());
+    }
+
+    @Test
+    @DisplayName("Phase 10: cancelPayment throws AccessDeniedException when customer does not own order")
+    void cancelPayment_differentCustomer_throwsAccessDenied() {
+        when(orderRepository.findByIdWithLock(100L)).thenReturn(Optional.of(mockOrder));
+
+        assertThatThrownBy(() -> paymentService.cancelPayment(999L, 100L))
+                .isInstanceOf(AccessDeniedException.class)
+                .hasMessageContaining("belongs to a different customer");
+    }
+
+    @Test
+    @DisplayName("Phase 10: cancelPayment when already CANCELLED is idempotent")
+    void cancelPayment_alreadyCancelled_isIdempotent() {
+        Cart cartA = Cart.builder().cartId(10L).customer(mockCustomer).status("RESTORED").build();
+        mockOrder.setCart(cartA);
+        mockOrder.setOrderStatus("CANCELLED");
+        mockOrder.setPaymentStatus("FAILED");
+
+        when(orderRepository.findByIdWithLock(100L)).thenReturn(Optional.of(mockOrder));
+
+        PaymentCancelResponse response = paymentService.cancelPayment(1L, 100L);
+
+        assertThat(response.getOrderStatus()).isEqualTo("CANCELLED");
+        assertThat(response.getMessage()).contains("already cancelled");
+        verify(orderRepository, never()).save(any());
+        verify(cartService, never()).restoreFailedCartOrder(anyLong(), anyLong());
+    }
+
+    @Test
+    @DisplayName("Phase 10: processMockCallback with CANCELLED status marks order CANCELLED and auto-restores cart")
+    void processMockCallback_withCancelledStatus_marksOrderCancelled_andRestoresCart() {
+        Cart cartA = Cart.builder().cartId(10L).customer(mockCustomer).status("PENDING_PAYMENT").build();
+        mockOrder.setCart(cartA);
+        mockOrder.setCheckoutType("CART");
+
+        when(paymentRepository.findByTransactionRef("TXN-TEST-001")).thenReturn(Optional.of(mockPayment));
+        when(orderRepository.findByIdWithLock(100L)).thenReturn(Optional.of(mockOrder));
+        when(paymentCallbackRepository.existsByExternalEventId("EVT-CANCEL-001")).thenReturn(false);
+
+        MockCallbackRequest request = new MockCallbackRequest();
+        request.setExternalEventId("EVT-CANCEL-001");
+        request.setTransactionRef("TXN-TEST-001");
+        request.setStatus("CANCELLED");
+
+        MockCallbackResponse response = paymentService.processMockCallback(request);
+
+        assertThat(response.getPaymentStatus()).isEqualTo("CANCELLED");
+        assertThat(mockOrder.getOrderStatus()).isEqualTo("CANCELLED");
+        assertThat(mockOrder.getPaymentStatus()).isEqualTo("FAILED");
+
+        verify(reservationService).releaseReservationsForOrder(100L);
+        verify(cartService).restoreFailedCartOrder(1L, 100L);
+    }
+
+    @Test
+    @DisplayName("Phase 10: processMockCallback with FAILED and cancel failureReason marks order CANCELLED and auto-restores")
+    void processMockCallback_withFailureReasonCancel_marksOrderCancelled_andRestoresCart() {
+        Cart cartA = Cart.builder().cartId(10L).customer(mockCustomer).status("PENDING_PAYMENT").build();
+        mockOrder.setCart(cartA);
+        mockOrder.setCheckoutType("CART");
+
+        when(paymentRepository.findByTransactionRef("TXN-TEST-001")).thenReturn(Optional.of(mockPayment));
+        when(orderRepository.findByIdWithLock(100L)).thenReturn(Optional.of(mockOrder));
+        when(paymentCallbackRepository.existsByExternalEventId("EVT-CANCEL-002")).thenReturn(false);
+
+        MockCallbackRequest request = new MockCallbackRequest();
+        request.setExternalEventId("EVT-CANCEL-002");
+        request.setTransactionRef("TXN-TEST-001");
+        request.setStatus("FAILED");
+        request.setFailureReason("User cancelled payment on customer portal");
+
+        MockCallbackResponse response = paymentService.processMockCallback(request);
+
+        assertThat(response.getPaymentStatus()).isEqualTo("CANCELLED");
+        assertThat(mockOrder.getOrderStatus()).isEqualTo("CANCELLED");
+        assertThat(mockOrder.getPaymentStatus()).isEqualTo("FAILED");
+
+        verify(reservationService).releaseReservationsForOrder(100L);
+        verify(cartService).restoreFailedCartOrder(1L, 100L);
+    }
+
+    @Test
+    @DisplayName("Final UX Alignment: processMockCallback with FAILED status releases reservation and auto-restores cart")
+    void processMockCallback_withFailedStatus_marksOrderCancelled_andAutoRestoresCart() {
+        Cart cartA = Cart.builder().cartId(10L).customer(mockCustomer).status("PENDING_PAYMENT").build();
+        mockOrder.setCart(cartA);
+        mockOrder.setCheckoutType("CART");
+
+        when(paymentRepository.findByTransactionRef("TXN-TEST-001")).thenReturn(Optional.of(mockPayment));
+        when(orderRepository.findByIdWithLock(100L)).thenReturn(Optional.of(mockOrder));
+        when(paymentCallbackRepository.existsByExternalEventId("EVT-FAIL-001")).thenReturn(false);
+
+        MockCallbackRequest request = new MockCallbackRequest();
+        request.setExternalEventId("EVT-FAIL-001");
+        request.setTransactionRef("TXN-TEST-001");
+        request.setStatus("FAILED");
+
+        MockCallbackResponse response = paymentService.processMockCallback(request);
+
+        assertThat(response.getPaymentStatus()).isEqualTo("FAILED");
+        assertThat(mockOrder.getPaymentStatus()).isEqualTo("FAILED");
+
+        verify(reservationService).releaseReservationsForOrder(100L);
+        verify(cartService).restoreFailedCartOrder(1L, 100L);
+    }
+
+    @Test
+    @DisplayName("Phase 10: processMockCallback when order already PAID ignores CANCEL and preserves SUCCESS")
+    void processMockCallback_cancelled_whenOrderAlreadyPaid_preservesSuccess() {
+        mockOrder.setOrderStatus("PAID");
+        mockOrder.setPaymentStatus("SUCCESS");
+        mockPayment.setPaymentStatus("SUCCESS");
+
+        when(paymentRepository.findByTransactionRef("TXN-TEST-001")).thenReturn(Optional.of(mockPayment));
+        when(orderRepository.findByIdWithLock(100L)).thenReturn(Optional.of(mockOrder));
+        when(paymentCallbackRepository.existsByExternalEventId("EVT-CANCEL-PAID")).thenReturn(false);
+
+        MockCallbackRequest request = new MockCallbackRequest();
+        request.setExternalEventId("EVT-CANCEL-PAID");
+        request.setTransactionRef("TXN-TEST-001");
+        request.setStatus("CANCELLED");
+
+        MockCallbackResponse response = paymentService.processMockCallback(request);
+
+        assertThat(response.getPaymentStatus()).isEqualTo("SUCCESS");
+        assertThat(mockOrder.getOrderStatus()).isEqualTo("PAID");
+        assertThat(mockOrder.getPaymentStatus()).isEqualTo("SUCCESS");
+
+        verify(reservationService, never()).releaseReservationsForOrder(anyLong());
+        verify(cartService, never()).restoreFailedCartOrder(anyLong(), anyLong());
     }
 }

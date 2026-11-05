@@ -5,4 +5,5 @@ import java.util.Optional;
 public interface G5PaymentRepository extends JpaRepository<Payment, Long> {
     Optional<Payment> findFirstByOrderOrderIdOrderByCreatedAtDesc(Long orderId);
     Optional<Payment> findByTransactionRef(String transactionRef);
+    boolean existsByOrderOrderId(Long orderId);
 }
