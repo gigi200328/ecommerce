@@ -94,25 +94,23 @@ class PaymentControllerTest {
         verify(paymentService).getLatestPayment(1L, 100L);
     }
 
-	/*
-	 * @Test
-	 * 
-	 * void processMockCallback_returnsOkAndDelegatesRequest() { MockCallbackRequest
-	 * request = new MockCallbackRequest(); request.setExternalEventId("EVT-001");
-	 * request.setTransactionRef("TXN-001"); request.setStatus("SUCCESS");
-	 * MockCallbackResponse serviceResponse = MockCallbackResponse.builder()
-	 * .orderId(100L) .paymentStatus("SUCCESS") .build();
-	 * when(paymentService.processMockCallback(request)).thenReturn(serviceResponse)
-	 * ;
-	 * 
-	 * ResponseEntity<MockCallbackResponse> response =
-	 * paymentController.processMockCallback(request);
-	 * 
-	 * assertEquals(HttpStatus.OK, response.getStatusCode());
-	 * assertSame(serviceResponse, response.getBody());
-	 * verify(paymentService).processMockCallback(request); }
-	 * 
-	 */
+    @Test
+    void processMockCallback_returnsOkAndDelegatesSignatureAndPayload() {
+        String signature = "test-signature";
+        String rawPayload = "{\"externalEventId\":\"EVT-001\",\"transactionRef\":\"TXN-001\",\"status\":\"SUCCESS\"}";
+        MockCallbackResponse serviceResponse = MockCallbackResponse.builder()
+                .orderId(100L)
+                .paymentStatus("SUCCESS")
+                .build();
+        when(paymentService.processMockCallback(rawPayload, signature)).thenReturn(serviceResponse);
+
+        ResponseEntity<MockCallbackResponse> response =
+                paymentController.processMockCallback(signature, rawPayload);
+
+        assertEquals(HttpStatus.OK, response.getStatusCode());
+        assertSame(serviceResponse, response.getBody());
+        verify(paymentService).processMockCallback(rawPayload, signature);
+    }
     @Test
     void initiatePayment_propagatesServiceException() {
         PaymentInitiateRequest request = new PaymentInitiateRequest();
