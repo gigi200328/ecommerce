@@ -49,7 +49,7 @@ public class SecurityConfig {
 	@Order(0)
 	public SecurityFilterChain swaggerSecurityFilterChain(HttpSecurity http) throws Exception {
 		http.securityMatcher("/v3/api-docs/**", "/swagger-ui/**", "/swagger-ui.html", "/swagger-resources/**",
-				"/webjars/**", "/uploads/**").cors(cors -> cors.configurationSource(corsConfigurationSource()))
+				"/webjars/**", "/uploads/**", "/ws/**", "/ws/notifications/**").cors(cors -> cors.configurationSource(corsConfigurationSource()))
 				.csrf(AbstractHttpConfigurer::disable).authorizeHttpRequests(auth -> auth.anyRequest().permitAll());
 
 		return http.build();
