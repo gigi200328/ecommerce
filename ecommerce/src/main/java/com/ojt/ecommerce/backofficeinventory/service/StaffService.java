@@ -284,15 +284,10 @@ public class StaffService {
             throw new RuntimeException("You cannot deactivate or suspend your own account.");
         }
 
-        // 3. Regular admins cannot suspend fellow admins
+        // 3. Regular admins cannot suspend fellow admins (Only Super Admin can suspend another administrator)
         if (targetStaff.getUserRole() != null && "ADMIN".equalsIgnoreCase(targetStaff.getUserRole().getRoleName())) {
             if (currentUser != null && !isSuperAdmin(currentUser)) {
                 throw new RuntimeException("Only the primary Super Administrator can suspend another administrator.");
-            }
-
-            long activeAdminCount = userRepository.countByRoleNameAndStatus("ADMIN", "ACTIVE");
-            if (activeAdminCount <= 1) {
-                throw new RuntimeException("Cannot suspend the last remaining active Administrator.");
             }
         }
     }
@@ -304,8 +299,13 @@ public class StaffService {
 
     private User getCurrentUser() {
         Authentication auth = SecurityContextHolder.getContext().getAuthentication();
-        if (auth != null && auth.getPrincipal() instanceof CustomUserDetails userDetails) {
-            return userDetails.getUser();
+        if (auth != null) {
+            if (auth.getPrincipal() instanceof CustomUserDetails userDetails) {
+                return userDetails.getUser();
+            }
+            if (auth.getName() != null) {
+                return userRepository.findByEmail(auth.getName()).orElse(null);
+            }
         }
         return null;
     }
