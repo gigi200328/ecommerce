@@ -7,4 +7,5 @@ public interface CartService {
     void removeItem(Long customerId, Long cartItemId);
     GuestCartResolveResponse resolveGuestCart(GuestCartResolveRequest request);
     CartMergeResponse mergeGuestCart(Long customerId, CartMergeRequest request);
+    RestoreToCartResponse restoreFailedCartOrder(Long customerId, Long orderId);
 }

@@ -8,6 +8,7 @@ import org.springframework.http.ResponseEntity;
 import org.springframework.security.core.annotation.AuthenticationPrincipal;
 import org.springframework.web.bind.annotation.GetMapping;
 import org.springframework.web.bind.annotation.PathVariable;
+import org.springframework.web.bind.annotation.PostMapping;
 import org.springframework.web.bind.annotation.RequestMapping;
 import org.springframework.web.bind.annotation.RequestParam;
 import org.springframework.web.bind.annotation.RestController;
@@ -41,5 +42,12 @@ public class OrderHistoryController {
 			@PathVariable Long orderId) {
 
 		return ResponseEntity.ok(orderHistoryService.getOrderById(principal.getCustomerId(), orderId));
+	}
+
+	@PostMapping("/{orderId}/resume-payment")
+	public ResponseEntity<OrderDetailResponse> resumePayment(@AuthenticationPrincipal CustomerPrincipal principal,
+			@PathVariable Long orderId) {
+
+		return ResponseEntity.ok(orderHistoryService.resumePayment(principal.getCustomerId(), orderId));
 	}
 }

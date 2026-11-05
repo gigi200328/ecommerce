@@ -1,8 +1,12 @@
 package com.ojt.ecommerce.storefront.cart.service;
 
 import com.ojt.ecommerce.entity.*;
+import com.ojt.ecommerce.storefront.checkout.repository.G5OrderRepository;
+import com.ojt.ecommerce.storefront.exception.AccessDeniedException;
+import com.ojt.ecommerce.storefront.exception.ConflictException;
 import com.ojt.ecommerce.storefront.exception.InvalidRequestException;
 import com.ojt.ecommerce.storefront.exception.ResourceNotFoundException;
+import com.ojt.ecommerce.storefront.reservation.service.InventoryReservationService;
 import com.ojt.ecommerce.storefront.auth.repository.CustomerRepository;
 import com.ojt.ecommerce.storefront.cart.dto.*;
 import com.ojt.ecommerce.storefront.cart.repository.CartItemRepository;
@@ -29,6 +33,8 @@ public class CartServiceImpl implements CartService {
     private final G5ProductVariantImageRepository variantImageRepository;
     private final G5InventoryRepository inventoryRepository;
     private final G5VariantOptionValueRepository optionValueRepository;
+    private final G5OrderRepository orderRepository;
+    private final InventoryReservationService reservationService;
 
     private Cart getActiveCartOrCreate(Long customerId) {
         return cartRepository.findByCustomerCustomerIdAndStatus(customerId, "ACTIVE")
@@ -45,9 +51,7 @@ public class CartServiceImpl implements CartService {
     }
 
     private int getAvailableQuantity(Long variantId) {
-        return inventoryRepository.findByVariantVariantId(variantId)
-                .map(Inventory::getQuantity)
-                .orElse(0);
+        return reservationService.getAvailableStock(variantId);
     }
 
     @Override
@@ -127,8 +131,7 @@ public class CartServiceImpl implements CartService {
         List<Long> variantIds = cartItems.stream().map(ci -> ci.getVariant().getVariantId()).collect(Collectors.toList());
         List<Long> productIds = cartItems.stream().map(ci -> ci.getVariant().getProduct().getProductId()).distinct().collect(Collectors.toList());
         
-        Map<Long, Integer> inventoryMap = inventoryRepository.findByVariantVariantIdIn(variantIds).stream()
-                .collect(Collectors.toMap(i -> i.getVariant().getVariantId(), Inventory::getQuantity, (a, b) -> a));
+        Map<Long, Integer> inventoryMap = reservationService.getAvailableStockForVariants(variantIds);
         
         List<ProductVariantImage> variantImages = (variantImageRepository != null && !variantIds.isEmpty())
                 ? variantImageRepository.findByProductVariantVariantIdIn(variantIds)
@@ -252,8 +255,7 @@ public class CartServiceImpl implements CartService {
         
         Map<Long, ProductVariant> variantMap = variants.stream().collect(Collectors.toMap(ProductVariant::getVariantId, v -> v));
         
-        Map<Long, Integer> inventoryMap = inventoryRepository.findByVariantVariantIdIn(variantIds).stream()
-                .collect(Collectors.toMap(i -> i.getVariant().getVariantId(), Inventory::getQuantity, (a, b) -> a));
+        Map<Long, Integer> inventoryMap = reservationService.getAvailableStockForVariants(variantIds);
                 
         List<ProductVariantImage> variantImages = (variantImageRepository != null && !variantIds.isEmpty())
                 ? variantImageRepository.findByProductVariantVariantIdIn(variantIds)
@@ -448,5 +450,265 @@ public class CartServiceImpl implements CartService {
 
         // 5. Null if no images exist
         return null;
+    }
+
+    @Override
+    @Transactional
+    public RestoreToCartResponse restoreFailedCartOrder(Long customerId, Long orderId) {
+        // 1. Fetch order with pessimistic write lock for concurrency protection
+        Order order = orderRepository.findByIdWithLock(orderId)
+                .orElseThrow(() -> new ResourceNotFoundException("Order not found with id: " + orderId));
+
+        // 2. Ownership check: customer must own the order
+        if (order.getCustomer() == null || !order.getCustomer().getCustomerId().equals(customerId)) {
+            throw new AccessDeniedException("You do not have permission to restore this order");
+        }
+
+        // 3. Checkout type check: must be CART
+        if (!"CART".equalsIgnoreCase(order.getCheckoutType())) {
+            throw new InvalidRequestException("Only CART orders can be restored to active cart");
+        }
+
+        // 4. Linked cart check
+        Cart cartA = order.getCart();
+        if (cartA == null) {
+            throw new InvalidRequestException("Order does not have a linked cart to restore");
+        }
+
+        // 5. Payment / Order terminal failure check
+        // Check if SUCCESS or PAID
+        if ("PAID".equalsIgnoreCase(order.getOrderStatus()) || "SUCCESS".equalsIgnoreCase(order.getPaymentStatus())) {
+            throw new ConflictException("Cannot restore an order that is already paid or successful");
+        }
+
+        // Check if PENDING (payment in progress, not terminal failure)
+        if ("PENDING".equalsIgnoreCase(order.getPaymentStatus()) && !"CANCELLED".equalsIgnoreCase(order.getOrderStatus())) {
+            throw new InvalidRequestException("Cannot restore an order with payment still pending");
+        }
+
+        // Must be in a terminal failed/cancelled state
+        boolean isFailedOrCancelled = "FAILED".equalsIgnoreCase(order.getPaymentStatus())
+                || "CANCELLED".equalsIgnoreCase(order.getOrderStatus());
+        if (!isFailedOrCancelled) {
+            throw new InvalidRequestException("Order is not in a failed or cancelled payment state");
+        }
+
+        // 6. Idempotency / Already restored check
+        if ("RESTORED".equalsIgnoreCase(cartA.getStatus())) {
+            throw new ConflictException("This cart order has already been restored");
+        }
+        if ("CHECKED_OUT".equalsIgnoreCase(cartA.getStatus())) {
+            throw new ConflictException("This cart order was already completed and checked out");
+        }
+
+        // 7. Load original items from Cart A (with fallback to Order items if cart items were cleared)
+        List<CartItem> cartAItems = cartItemRepository.findByCartCartId(cartA.getCartId());
+
+        class SourceItem {
+            final ProductVariant variant;
+            final int quantity;
+            final String productName;
+
+            SourceItem(ProductVariant variant, int quantity, String productName) {
+                this.variant = variant;
+                this.quantity = quantity;
+                this.productName = productName;
+            }
+        }
+
+        List<SourceItem> sourceItems = new ArrayList<>();
+        if (!cartAItems.isEmpty()) {
+            for (CartItem ci : cartAItems) {
+                String pName = (ci.getVariant() != null && ci.getVariant().getProduct() != null)
+                        ? ci.getVariant().getProduct().getProductName()
+                        : "Unknown Product";
+                sourceItems.add(new SourceItem(ci.getVariant(), ci.getQuantity(), pName));
+            }
+        } else if (order.getOrderItems() != null && !order.getOrderItems().isEmpty()) {
+            for (OrderItem oi : order.getOrderItems()) {
+                String pName = oi.getProductName() != null
+                        ? oi.getProductName()
+                        : (oi.getVariant() != null && oi.getVariant().getProduct() != null
+                                ? oi.getVariant().getProduct().getProductName()
+                                : "Unknown Product");
+                sourceItems.add(new SourceItem(oi.getVariant(), oi.getQty(), pName));
+            }
+        }
+
+        if (sourceItems.isEmpty()) {
+            throw new InvalidRequestException("No items found to restore from this order");
+        }
+
+        // 8. Resolve or lazily create current ACTIVE Cart B
+        // Note: Cart A is NEVER reactivated as ACTIVE. Cart B is the only active cart.
+        Cart cartB = getActiveCartOrCreate(customerId);
+
+        // Sanity check: Cart B must not be Cart A
+        if (cartB.getCartId().equals(cartA.getCartId())) {
+            throw new ConflictException("Cart conflict: active cart cannot be the original checkout cart");
+        }
+
+        // 9. Process each item: validate variant, check stock, clamp/merge into Cart B
+        List<RestoreToCartResponse.RestoredItemDetail> itemDetails = new ArrayList<>();
+        int restoredCount = 0;
+        int skippedCount = 0;
+
+        for (SourceItem item : sourceItems) {
+            ProductVariant variant = item.variant;
+            int requestedQty = item.quantity;
+            String prodName = item.productName;
+
+            if (variant == null) {
+                itemDetails.add(RestoreToCartResponse.RestoredItemDetail.builder()
+                        .variantId(null)
+                        .productName(prodName)
+                        .requestedQuantity(requestedQty)
+                        .restoredQuantity(0)
+                        .status("UNAVAILABLE")
+                        .message("Variant reference no longer exists")
+                        .build());
+                skippedCount++;
+                continue;
+            }
+
+            // Fresh check from database for variant and product active status
+            ProductVariant currentVariant = variantRepository.findById(variant.getVariantId()).orElse(null);
+            boolean isVariantAvailable = currentVariant != null
+                    && currentVariant.getStatus() != null
+                    && "ACTIVE".equalsIgnoreCase(currentVariant.getStatus().name())
+                    && currentVariant.getProduct() != null
+                    && currentVariant.getProduct().getStatus() != null
+                    && "ACTIVE".equalsIgnoreCase(currentVariant.getProduct().getStatus().name());
+
+            if (!isVariantAvailable) {
+                itemDetails.add(RestoreToCartResponse.RestoredItemDetail.builder()
+                        .variantId(variant.getVariantId())
+                        .productName(prodName)
+                        .requestedQuantity(requestedQty)
+                        .restoredQuantity(0)
+                        .status("UNAVAILABLE")
+                        .message("Product or variant is no longer available")
+                        .build());
+                skippedCount++;
+                continue;
+            }
+
+            int availableStock = getAvailableQuantity(currentVariant.getVariantId());
+            if (availableStock <= 0) {
+                itemDetails.add(RestoreToCartResponse.RestoredItemDetail.builder()
+                        .variantId(currentVariant.getVariantId())
+                        .productName(prodName)
+                        .requestedQuantity(requestedQty)
+                        .restoredQuantity(0)
+                        .status("OUT_OF_STOCK")
+                        .message("Item is out of stock")
+                        .build());
+                skippedCount++;
+                continue;
+            }
+
+            // Check if Cart B already contains this variant
+            Optional<CartItem> existingItemOpt = cartItemRepository.findByCartCartIdAndVariantVariantId(
+                    cartB.getCartId(), currentVariant.getVariantId());
+
+            if (existingItemOpt.isPresent()) {
+                CartItem existingItem = existingItemOpt.get();
+                int currentQtyInCart = existingItem.getQuantity();
+                int combinedQty = currentQtyInCart + requestedQty;
+
+                if (combinedQty > availableStock) {
+                    if (currentQtyInCart >= availableStock) {
+                        itemDetails.add(RestoreToCartResponse.RestoredItemDetail.builder()
+                                .variantId(currentVariant.getVariantId())
+                                .productName(prodName)
+                                .requestedQuantity(requestedQty)
+                                .restoredQuantity(0)
+                                .status("SKIPPED")
+                                .message("Cart already has maximum available stock (" + availableStock + ")")
+                                .build());
+                        skippedCount++;
+                    } else {
+                        int addedQty = availableStock - currentQtyInCart;
+                        existingItem.setQuantity(availableStock);
+                        existingItem.setModifiedAt(LocalDateTime.now());
+                        cartItemRepository.save(existingItem);
+                        itemDetails.add(RestoreToCartResponse.RestoredItemDetail.builder()
+                                .variantId(currentVariant.getVariantId())
+                                .productName(prodName)
+                                .requestedQuantity(requestedQty)
+                                .restoredQuantity(addedQty)
+                                .status("CLAMPED")
+                                .message("Quantity clamped to available stock (added " + addedQty + ", total " + availableStock + ")")
+                                .build());
+                        restoredCount++;
+                    }
+                } else {
+                    existingItem.setQuantity(combinedQty);
+                    existingItem.setModifiedAt(LocalDateTime.now());
+                    cartItemRepository.save(existingItem);
+                    itemDetails.add(RestoreToCartResponse.RestoredItemDetail.builder()
+                            .variantId(currentVariant.getVariantId())
+                            .productName(prodName)
+                            .requestedQuantity(requestedQty)
+                            .restoredQuantity(requestedQty)
+                            .status("RESTORED")
+                            .message("Merged into existing cart item")
+                            .build());
+                    restoredCount++;
+                }
+            } else {
+                int addQty = Math.min(requestedQty, availableStock);
+                CartItem newItem = new CartItem();
+                newItem.setCart(cartB);
+                newItem.setVariant(currentVariant);
+                newItem.setQuantity(addQty);
+                newItem.setCreatedAt(LocalDateTime.now());
+                cartItemRepository.save(newItem);
+
+                if (addQty < requestedQty) {
+                    itemDetails.add(RestoreToCartResponse.RestoredItemDetail.builder()
+                            .variantId(currentVariant.getVariantId())
+                            .productName(prodName)
+                            .requestedQuantity(requestedQty)
+                            .restoredQuantity(addQty)
+                            .status("CLAMPED")
+                            .message("Added " + addQty + " (clamped due to available stock of " + availableStock + ")")
+                            .build());
+                } else {
+                    itemDetails.add(RestoreToCartResponse.RestoredItemDetail.builder()
+                            .variantId(currentVariant.getVariantId())
+                            .productName(prodName)
+                            .requestedQuantity(requestedQty)
+                            .restoredQuantity(addQty)
+                            .status("RESTORED")
+                            .message("Added to cart")
+                            .build());
+                }
+                restoredCount++;
+            }
+        }
+
+        // 10. If 0 items could be restored because everything was unavailable or out of stock:
+        if (restoredCount == 0 && skippedCount > 0) {
+            throw new InvalidRequestException("None of the items from this order could be restored (out of stock or unavailable)");
+        }
+
+        // 11. Update Cart B timestamp
+        cartB.setModifiedAt(LocalDateTime.now());
+        cartRepository.save(cartB);
+
+        // 12. Mark Cart A as RESTORED (persistent idempotency)
+        cartA.setStatus("RESTORED");
+        cartA.setModifiedAt(LocalDateTime.now());
+        cartRepository.save(cartA);
+
+        return RestoreToCartResponse.builder()
+                .orderId(order.getOrderId())
+                .activeCartId(cartB.getCartId())
+                .restoredItemCount(restoredCount)
+                .skippedItemCount(skippedCount)
+                .message("Successfully restored " + restoredCount + " item(s) to active cart")
+                .items(itemDetails)
+                .build();
     }
 }

@@ -2,12 +2,14 @@ package com.ojt.ecommerce.storefront.order.service;
 
 import java.time.LocalDate;
 import java.time.LocalDateTime;
+import java.time.ZoneId;
 import java.time.format.DateTimeParseException;
 import java.util.ArrayList;
 import java.util.Collections;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
+import java.util.Optional;
 import java.util.stream.Collectors;
 
 import org.springframework.data.domain.Page;
@@ -40,6 +42,7 @@ import com.ojt.ecommerce.storefront.order.dto.OrderStatusHistoryDto;
 import com.ojt.ecommerce.storefront.order.dto.ShipmentTracking;
 import com.ojt.ecommerce.storefront.order.port.ShipmentTrackingPort;
 import com.ojt.ecommerce.storefront.payment.repository.G5PaymentRepository;
+import com.ojt.ecommerce.storefront.reservation.service.InventoryReservationService;
 import com.ojt.ecommerce.storefront.shipping.repository.G5ShipmentRepository;
 
 import jakarta.persistence.criteria.Predicate;
@@ -55,6 +58,7 @@ public class OrderHistoryServiceImpl implements OrderHistoryService {
 	private final G5OrderStatusHistoryRepository orderStatusHistoryRepository;
 	private final G5PaymentRepository paymentRepository;
 	private final G5ShipmentRepository shipmentRepository;
+	private final InventoryReservationService reservationService;
 
 	private final ShipmentTrackingPort shipmentTrackingPort;
 
@@ -135,11 +139,25 @@ public class OrderHistoryServiceImpl implements OrderHistoryService {
 			}
 		}
 
-		return ordersPage.map(order -> OrderListResponse.builder().orderId(order.getOrderId())
-				.orderNo(order.getOrderNo()).totalAmount(order.getTotalAmount()).orderStatus(order.getOrderStatus())
-				.paymentStatus(order.getPaymentStatus()).createdAt(order.getCreatedAt().toString())
-				.items(itemsMap.getOrDefault(order.getOrderId(), Collections.emptyList()))
-				.trackingNumbers(trackingMap.getOrDefault(order.getOrderId(), Collections.emptyList())).build());
+		return ordersPage.map(order -> {
+			Optional<LocalDateTime> expiryOpt = reservationService.getReservationExpiryForOrder(order.getOrderId());
+			String expiresAtIso = expiryOpt
+					.map(exp -> exp.atZone(ZoneId.systemDefault()).toInstant().toString())
+					.orElse(null);
+			boolean reservationActive = reservationService.isReservationActiveForOrder(order.getOrderId());
+			boolean hasInitiatedPayment = paymentRepository.existsByOrderOrderId(order.getOrderId());
+
+			return OrderListResponse.builder().orderId(order.getOrderId())
+					.orderNo(order.getOrderNo()).totalAmount(order.getTotalAmount()).orderStatus(order.getOrderStatus())
+					.paymentStatus(order.getPaymentStatus()).createdAt(order.getCreatedAt().toString())
+					.items(itemsMap.getOrDefault(order.getOrderId(), Collections.emptyList()))
+					.trackingNumbers(trackingMap.getOrDefault(order.getOrderId(), Collections.emptyList()))
+					.checkoutType(order.getCheckoutType())
+					.reservationExpiresAt(expiresAtIso)
+					.reservationActive(reservationActive)
+					.hasInitiatedPayment(hasInitiatedPayment)
+					.build();
+		});
 	}
 
 	@Override
@@ -188,12 +206,58 @@ public class OrderHistoryServiceImpl implements OrderHistoryService {
 
 		List<ShipmentTracking> shipments = shipmentTrackingPort.getTrackingByOrderId(orderId);
 
+		Optional<LocalDateTime> expiryOpt = reservationService.getReservationExpiryForOrder(orderId);
+		String expiresAtIso = expiryOpt
+				.map(exp -> exp.atZone(ZoneId.systemDefault()).toInstant().toString())
+				.orElse(null);
+		boolean reservationActive = reservationService.isReservationActiveForOrder(orderId);
+
 		return OrderDetailResponse.builder().orderId(order.getOrderId()).orderNo(order.getOrderNo())
 				.createdAt(order.getCreatedAt().toString()).orderStatus(order.getOrderStatus())
 				.paymentStatus(order.getPaymentStatus()).subtotalAmount(order.getSubtotalAmount())
 				.discountAmount(order.getDiscountAmount()).taxAmount(order.getTaxAmount())
 				.shippingFee(order.getShippingFee()).totalAmount(order.getTotalAmount()).items(itemSnapshots)
 				.shippingAddress(addressSnapshot).payment(paymentSummary).statusHistory(historyDtos)
-				.shipments(shipments).build();
+				.shipments(shipments)
+				.checkoutType(order.getCheckoutType())
+				.reservationExpiresAt(expiresAtIso)
+				.reservationActive(reservationActive)
+				.build();
+	}
+
+	@Override
+	@Transactional
+	public OrderDetailResponse resumePayment(Long customerId, Long orderId) {
+		Order order = orderRepository.findById(orderId)
+				.orElseThrow(() -> new ResourceNotFoundException("Order not found"));
+
+		if (!order.getCustomer().getCustomerId().equals(customerId)) {
+			throw new ResourceNotFoundException("Order not found");
+		}
+
+		if ("PAID".equalsIgnoreCase(order.getOrderStatus()) || "SUCCESS".equalsIgnoreCase(order.getPaymentStatus())) {
+			throw new InvalidRequestException("Order is already paid");
+		}
+
+		if ("CANCELLED".equalsIgnoreCase(order.getOrderStatus())) {
+			throw new InvalidRequestException("Cancelled order cannot be resumed");
+		}
+
+		if (!"PENDING".equalsIgnoreCase(order.getOrderStatus()) || !"PENDING".equalsIgnoreCase(order.getPaymentStatus())) {
+			throw new InvalidRequestException("Order is not in a payable state: " + order.getOrderStatus());
+		}
+
+		// Final UX Rule 2: Cannot resume if payment has already been initiated (processing)
+		if (paymentRepository.existsByOrderOrderId(orderId)) {
+			throw new InvalidRequestException("Payment is currently processing for this order. Please wait for the result.");
+		}
+
+		// Final UX Rule 6: Cannot resume if reservation is expired (no re-reserve allowed)
+		boolean isActive = reservationService.isReservationActiveForOrder(orderId);
+		if (!isActive) {
+			throw new InvalidRequestException("Stock reservation has expired. Checkout items have been returned to your cart.");
+		}
+
+		return getOrderById(customerId, orderId);
 	}
 }

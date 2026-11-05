@@ -82,6 +82,10 @@ public class Order {
 	@JoinColumn(name = "modified_by", referencedColumnName = "user_id", nullable = true, foreignKey = @ForeignKey(name = "fk_orders_modified_by"))
 	private User modifiedBy;
 
+	@ManyToOne(fetch = FetchType.LAZY, optional = true)
+	@JoinColumn(name = "cart_id", referencedColumnName = "cart_id", nullable = true, foreignKey = @ForeignKey(name = "fk_orders_cart"))
+	private Cart cart;
+
 	@OneToMany(mappedBy = "order", fetch = FetchType.LAZY)
 	private List<OrderItem> orderItems;
 

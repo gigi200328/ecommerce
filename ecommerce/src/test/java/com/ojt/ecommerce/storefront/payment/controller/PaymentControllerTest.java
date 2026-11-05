@@ -2,6 +2,7 @@ package com.ojt.ecommerce.storefront.payment.controller;
 
 import com.ojt.ecommerce.storefront.payment.dto.MockCallbackRequest;
 import com.ojt.ecommerce.storefront.payment.dto.MockCallbackResponse;
+import com.ojt.ecommerce.storefront.payment.dto.PaymentCancelResponse;
 import com.ojt.ecommerce.storefront.payment.dto.PaymentDetailResponse;
 import com.ojt.ecommerce.storefront.payment.dto.PaymentInitiateRequest;
 import com.ojt.ecommerce.storefront.payment.dto.PaymentInitiateResponse;
@@ -121,5 +122,24 @@ class PaymentControllerTest {
                 () -> paymentController.initiatePayment(principal, 404L, request));
 
         assertSame(expected, actual);
+    }
+
+    @Test
+    void cancelPayment_returnsOkAndDelegatesCustomerAndOrderId() {
+        PaymentCancelResponse serviceResponse = PaymentCancelResponse.builder()
+                .orderId(100L)
+                .orderStatus("CANCELLED")
+                .paymentStatus("CANCELLED")
+                .itemsRestored(true)
+                .message("Payment cancelled")
+                .build();
+        when(paymentService.cancelPayment(1L, 100L)).thenReturn(serviceResponse);
+
+        ResponseEntity<PaymentCancelResponse> response =
+                paymentController.cancelPayment(principal, 100L);
+
+        assertEquals(HttpStatus.OK, response.getStatusCode());
+        assertSame(serviceResponse, response.getBody());
+        verify(paymentService).cancelPayment(1L, 100L);
     }
 }

@@ -37,6 +37,13 @@ public class PaymentController {
         return ResponseEntity.ok(response);
     }
 
+    @PostMapping("/payments/orders/{orderId}/cancel")
+    public ResponseEntity<PaymentCancelResponse> cancelPayment(
+            @AuthenticationPrincipal CustomerPrincipal principal,
+            @PathVariable Long orderId) {
+        return ResponseEntity.ok(paymentService.cancelPayment(principal.getCustomerId(), orderId));
+    }
+
     @PostMapping("/payment-callbacks/g3")
     public ResponseEntity<MockCallbackResponse> processMockCallback(
             @RequestHeader(value = "X-Signature", required = false) String signature,

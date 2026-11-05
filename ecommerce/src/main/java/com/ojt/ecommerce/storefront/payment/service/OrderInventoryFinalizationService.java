@@ -4,6 +4,7 @@ import com.ojt.ecommerce.backofficeinventory.repository.InventoryTransactionRepo
 import com.ojt.ecommerce.backofficeinventory.service.InventoryService;
 import com.ojt.ecommerce.entity.Order;
 import com.ojt.ecommerce.storefront.checkout.repository.G5OrderRepository;
+import com.ojt.ecommerce.storefront.reservation.service.InventoryReservationService;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.stereotype.Service;
@@ -18,6 +19,7 @@ public class OrderInventoryFinalizationService {
     private final G5OrderRepository orderRepository;
     private final InventoryService inventoryService;
     private final InventoryTransactionRepository inventoryTxnRepository;
+    private final InventoryReservationService reservationService;
 
     /**
      * Executes inventory stock deduction inside a genuine independent transaction (REQUIRES_NEW).
@@ -62,7 +64,10 @@ public class OrderInventoryFinalizationService {
             return true;
         }
 
-        // 4. Delegate to inventory service to execute item deduction and SALE transaction logging
+        // 4. Consume active reservations for this order (RESERVED -> CONSUMED) and sync reserved_quantity
+        reservationService.consumeReservationsForOrder(orderId);
+
+        // 5. Delegate to inventory service to execute item deduction and SALE transaction logging
         inventoryService.deductStockForOrder(orderId);
         log.info("Successfully finalized inventory deduction for order #{}", orderId);
         return true;

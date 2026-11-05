@@ -6,6 +6,7 @@ import com.ojt.ecommerce.storefront.exception.ResourceNotFoundException;
 import com.ojt.ecommerce.storefront.catalog.dto.*;
 import com.ojt.ecommerce.storefront.catalog.repository.*;
 import com.ojt.ecommerce.storefront.catalog.repository.G5ProductVariantImageRepository;
+import com.ojt.ecommerce.storefront.reservation.service.InventoryReservationService;
 import lombok.RequiredArgsConstructor;
 import org.springframework.data.domain.Page;
 import org.springframework.data.domain.PageRequest;
@@ -37,6 +38,7 @@ public class CatalogServiceImpl implements CatalogService {
     private final G5ProductTagRepository productTagRepository;
     private final com.ojt.ecommerce.storefront.searchhistory.service.SearchHistoryService searchHistoryService;
     private final com.ojt.ecommerce.storefront.searchhistory.repository.SearchKeywordStatsRepository searchKeywordStatsRepository;
+    private final InventoryReservationService reservationService;
  
 
     @Override
@@ -303,10 +305,8 @@ public class CatalogServiceImpl implements CatalogService {
             }
             
             if (!variantIds.isEmpty()) {
-                List<Inventory> inventories = inventoryRepository.findByVariantVariantIdIn(variantIds);
-                for (Inventory inv : inventories) {
-                    inventoryMap.put(inv.getVariant().getVariantId(), inv.getQuantity());
-                }
+                Map<Long, Integer> availableMap = reservationService.getAvailableStockForVariants(variantIds);
+                inventoryMap.putAll(availableMap);
             }
             
             List<ProductImage> images = imageRepository.findByProductProductIdIn(productIds);
@@ -473,20 +473,14 @@ if (!variantIds.isEmpty()) {
     Map<Long, LocalDate> expiryDateMap = new HashMap<>();
 
     if (!variantIds.isEmpty()) {
+        Map<Long, Integer> availableMap = reservationService.getAvailableStockForVariants(variantIds);
+        inventoryMap.putAll(availableMap);
 
         List<Inventory> inventories =
                 inventoryRepository.findByVariantVariantIdIn(variantIds);
 
         for (Inventory inv : inventories) {
-
             Long variantId = inv.getVariant().getVariantId();
-
-            // Keep stock quantity for each variant
-            inventoryMap.merge(
-                    variantId,
-                    inv.getQuantity(),
-                    Integer::sum
-            );
 
             // Expiry Date only for perishable products
             if (Boolean.TRUE.equals(product.getIsPerishable())

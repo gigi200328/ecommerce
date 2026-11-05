@@ -1,9 +1,11 @@
 package com.ojt.ecommerce.storefront.order.dto;
+import lombok.AllArgsConstructor;
 import lombok.Builder;
 import lombok.Data;
+import lombok.NoArgsConstructor;
 import java.math.BigDecimal;
 import java.util.List;
-@Data @Builder public class OrderDetailResponse {
+@Data @Builder @NoArgsConstructor @AllArgsConstructor public class OrderDetailResponse {
     private Long orderId;
     private String orderNo;
     private String createdAt;
@@ -19,4 +21,7 @@ import java.util.List;
     private OrderPaymentSummary payment;
     private List<OrderStatusHistoryDto> statusHistory;
     private List<ShipmentTracking> shipments;
+    private String checkoutType;
+    private String reservationExpiresAt;
+    private Boolean reservationActive;
 }

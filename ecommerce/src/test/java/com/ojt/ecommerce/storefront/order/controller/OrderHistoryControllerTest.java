@@ -145,4 +145,18 @@ class OrderHistoryControllerTest {
         assertEquals("Order not found", ex.getMessage());
         verify(orderHistoryService, times(1)).getOrderById(1L, 999L);
     }
+
+    @Test
+    @DisplayName("Should return 200 OK when resumePayment succeeds")
+    void resumePayment_Success() {
+        when(orderHistoryService.resumePayment(1L, 10L)).thenReturn(sampleOrderDetailResponse);
+
+        ResponseEntity<OrderDetailResponse> response = orderHistoryController.resumePayment(principal, 10L);
+
+        assertNotNull(response);
+        assertEquals(HttpStatus.OK, response.getStatusCode());
+        assertNotNull(response.getBody());
+        assertEquals(10L, response.getBody().getOrderId());
+        verify(orderHistoryService).resumePayment(1L, 10L);
+    }
 }
