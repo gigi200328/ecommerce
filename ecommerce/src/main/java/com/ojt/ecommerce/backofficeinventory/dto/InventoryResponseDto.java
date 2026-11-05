@@ -65,9 +65,6 @@ public class InventoryResponseDto {
     @Schema(description = "Summary of variant attributes (e.g. Color: Black | Size: XL)", example = "Color: Black | Size: XL")
     private String attributeSummary;
 
-    @Schema(description = "Product or variant image URL", example = "/uploads/products/sample.jpg")
-    private String imageUrl;
-
     @Schema(description = "Created timestamp")
     private LocalDateTime createdAt;
 

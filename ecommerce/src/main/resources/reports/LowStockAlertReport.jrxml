@@ -43,7 +43,7 @@
 				<textElement textAlignment="Right" verticalAlignment="Middle">
 					<font fontName="SansSerif" size="9"/>
 				</textElement>
-				<textFieldExpression><![CDATA["Generated on: " + new java.text.SimpleDateFormat("dd/MM/yyyy, hh:mm a").format(new java.util.Date())]]></textFieldExpression>
+				<textFieldExpression><![CDATA["Generated on: " + new java.text.SimpleDateFormat("yyyy-MM-dd HH:mm").format(new java.util.Date())]]></textFieldExpression>
 			</textField>
 			<line>
 				<reportElement x="0" y="48" width="802" height="1" forecolor="#CBD5E1" uuid="885e7834-3151-40b9-b88d-e46fa2701d45"/>

@@ -21,5 +21,6 @@ public class ProductImageRequestDto {
 
     private Boolean isPrimary;
 
+    @NotNull(message = "User ID is required")
     private Long userId;
 }

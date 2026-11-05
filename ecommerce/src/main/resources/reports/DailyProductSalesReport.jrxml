@@ -41,7 +41,7 @@
 				<textElement textAlignment="Right" verticalAlignment="Middle">
 					<font fontName="SansSerif" size="9"/>
 				</textElement>
-				<textFieldExpression><![CDATA["Generated on: " + new java.text.SimpleDateFormat("dd/MM/yyyy, hh:mm a").format(new java.util.Date())]]></textFieldExpression>
+				<textFieldExpression><![CDATA["Generated on: " + new java.text.SimpleDateFormat("yyyy-MM-dd HH:mm").format(new java.util.Date())]]></textFieldExpression>
 			</textField>
 			<line>
 				<reportElement x="0" y="48" width="555" height="1" forecolor="#CBD5E1" uuid="885e7834-3151-40b9-b88d-e46fa2701d41"/>
@@ -171,7 +171,7 @@
 				</textElement>
 				<textFieldExpression><![CDATA[$V{REPORT_COUNT}]]></textFieldExpression>
 			</textField>
-			<textField pattern="dd/MM/yyyy" isBlankWhenNull="true">
+			<textField pattern="yyyy-MM-dd" isBlankWhenNull="true">
 				<reportElement x="35" y="0" width="70" height="24" uuid="ab3fc6b0-75d1-4171-aa34-bca54c7b6c50"/>
 				<box leftPadding="5" rightPadding="5">
 					<pen lineWidth="0.5" lineColor="#CBD5E1"/>

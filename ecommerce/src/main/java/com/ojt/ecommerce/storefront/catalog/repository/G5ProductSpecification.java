@@ -42,85 +42,40 @@ public class G5ProductSpecification {
             }
 
             if (minPrice != null || maxPrice != null) {
-
                 Subquery<Long> priceSub = query.subquery(Long.class);
-
-                Root<ProductVariant> pv =
-                        priceSub.from(ProductVariant.class);
-
-                Predicate pricePred = cb.equal(
-                        pv.get("product").get("productId"),
-                        root.get("productId")
-                );
-
-                pricePred = cb.and(
-                        pricePred,
-                        cb.equal(pv.get("status"), "ACTIVE")
-                );
-
+                Root<ProductVariant> pv = priceSub.from(ProductVariant.class);
+                priceSub.select(pv.get("product").get("productId"));
+                
+                Expression<BigDecimal> effectivePrice = cb.coalesce(pv.get("discountPrice"), pv.get("sellingPrice"));
+                Predicate pricePred = cb.equal(pv.get("status"), "ACTIVE");
+                
                 if (minPrice != null) {
-                    pricePred = cb.and(
-                            pricePred,
-                            cb.greaterThanOrEqualTo(
-                                    pv.<BigDecimal>get("sellingPrice"),
-                                    minPrice
-                            )
-                    );
+                    pricePred = cb.and(pricePred, cb.greaterThanOrEqualTo(effectivePrice, minPrice));
                 }
-
                 if (maxPrice != null) {
-                    pricePred = cb.and(
-                            pricePred,
-                            cb.lessThanOrEqualTo(
-                                    pv.<BigDecimal>get("sellingPrice"),
-                                    maxPrice
-                            )
-                    );
+                    pricePred = cb.and(pricePred, cb.lessThanOrEqualTo(effectivePrice, maxPrice));
                 }
-
-                priceSub.select(pv.get("variantId"));
                 priceSub.where(pricePred);
-
-                p = cb.and(p, cb.exists(priceSub));
+                p = cb.and(p, cb.in(root.get("productId")).value(priceSub));
             }
 
-            if (availability != null &&
-                    !availability.equalsIgnoreCase("ALL")) {
-
+            if (availability != null && !availability.equalsIgnoreCase("ALL")) {
                 Subquery<Long> stockSub = query.subquery(Long.class);
                 Root<Inventory> inv = stockSub.from(Inventory.class);
-
-                stockSub.select(
-                        inv.get("variant").get("product").get("productId")
-                );
-
-                Expression<Integer> availableQty = cb.diff(
-                        inv.<Integer>get("quantity"),
-                        inv.<Integer>get("reservedQuantity")
-                );
-
+                stockSub.select(inv.get("variant").get("product").get("productId"));
                 stockSub.where(
-                        cb.equal(
-                                inv.get("variant").get("status"),
-                                "ACTIVE"
-                        ),
-                        cb.greaterThan(availableQty, 0)
+                    cb.and(
+                        cb.equal(inv.get("variant").get("status"), "ACTIVE"),
+                        cb.greaterThan(inv.get("quantity"), 0)
+                    )
                 );
-
+                
                 if (availability.equalsIgnoreCase("IN_STOCK")) {
-                    p = cb.and(
-                            p,
-                            root.get("productId").in(stockSub)
-                    );
+                    p = cb.and(p, cb.in(root.get("productId")).value(stockSub));
                 } else if (availability.equalsIgnoreCase("SOLD_OUT")) {
-                    p = cb.and(
-                            p,
-                            cb.not(root.get("productId").in(stockSub))
-                    );
+                    p = cb.and(p, cb.not(cb.in(root.get("productId")).value(stockSub)));
                 }
             }
-                
-                
 
             if (tags != null && !tags.isEmpty()) {
                 for (String tag : tags) {
@@ -133,44 +88,6 @@ public class G5ProductSpecification {
             }
 
             return p;
-        };
-    }
-    
-    public static Specification<Product> sortByPrice(boolean ascending) {
-
-        return (root, query, cb) -> {
-
-            Subquery<BigDecimal> priceSub =
-                    query.subquery(BigDecimal.class);
-
-            Root<ProductVariant> pv =
-                    priceSub.from(ProductVariant.class);
-
-            priceSub.select(
-                    cb.min(pv.<BigDecimal>get("sellingPrice"))
-            );
-
-            priceSub.where(
-                    cb.equal(
-                            pv.get("product").get("productId"),
-                            root.get("productId")
-                    ),
-                    cb.equal(pv.get("status"), "ACTIVE")
-            );
-
-            if (ascending) {
-                query.orderBy(
-                        cb.asc(priceSub),
-                        cb.asc(root.get("productId"))
-                );
-            } else {
-                query.orderBy(
-                        cb.desc(priceSub),
-                        cb.asc(root.get("productId"))
-                );
-            }
-
-            return cb.conjunction();
         };
     }
 

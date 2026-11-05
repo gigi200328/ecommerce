@@ -55,14 +55,6 @@ import net.sf.jasperreports.export.SimpleOutputStreamExporterOutput;
 public class JasperReportService {
 
     private final ReportRepository reportRepository;
-    private final ThreadLocal<Integer> lastRecordCount = new ThreadLocal<>();
-
-    /**
-     * Retrieve the record count of the most recently generated report for the current thread.
-     */
-    public Integer getLastRecordCount() {
-        return lastRecordCount.get();
-    }
 
     /**
      * Helper method to export JasperPrint to either PDF or Excel.
@@ -92,7 +84,6 @@ public class JasperReportService {
     public byte[] generateDailyProductSalesReport(LocalDate startDate, LocalDate endDate, String format) throws Exception {
         // Fetch data from the database using the Stored Procedure
         List<DailyProductSalesDTO> salesData = reportRepository.getDailyProductSales(startDate, endDate);
-        lastRecordCount.set(salesData != null ? salesData.size() : 0);
 
         InputStream reportStream = getClass().getResourceAsStream("/reports/DailyProductSalesReport.jrxml");
         if (reportStream == null) {
@@ -114,7 +105,6 @@ public class JasperReportService {
 
     public byte[] generateCategoryReport(String format) throws Exception {
         List<CategorySummaryDTO> categoryData = reportRepository.getCategorySummary();
-        lastRecordCount.set(categoryData != null ? categoryData.size() : 0);
 
         InputStream reportStream = getClass().getResourceAsStream("/reports/CategorySummaryReport.jrxml");
         if (reportStream == null) {
@@ -134,7 +124,6 @@ public class JasperReportService {
 
     public byte[] generateTopSellingProductsReport(Integer limitCount, String format) throws Exception {
         List<TopSellingProductDTO> topSellingData = reportRepository.getTopSellingProducts(limitCount);
-        lastRecordCount.set(topSellingData != null ? topSellingData.size() : 0);
 
         InputStream reportStream = getClass().getResourceAsStream("/reports/TopSellingProductsReport.jrxml");
         if (reportStream == null) {
@@ -155,7 +144,6 @@ public class JasperReportService {
 
     public byte[] generateRefundSummaryReport(LocalDate startDate, LocalDate endDate, String format) throws Exception {
         List<RefundSummaryReportDTO> refundData = reportRepository.getRefundSummaryReport(startDate, endDate);
-        lastRecordCount.set(refundData != null ? refundData.size() : 0);
 
         InputStream reportStream = getClass().getResourceAsStream("/reports/RefundSummaryReport.jrxml");
         if (reportStream == null) {
@@ -178,7 +166,6 @@ public class JasperReportService {
     public byte[] generateLowStockAlertReport(String format) throws Exception {
         // 1. Fetch data from the database using the Stored Procedure
         List<LowStockAlertDTO> lowStockData = reportRepository.getLowStockAlertReport();
-        lastRecordCount.set(lowStockData != null ? lowStockData.size() : 0);
 
         // 2. Load and compile the Jasper Report (.jrxml) template
         InputStream reportStream = getClass().getResourceAsStream("/reports/LowStockAlertReport.jrxml");
@@ -209,7 +196,6 @@ public class JasperReportService {
 
         // 1. Fetch data from the database using the Stored Procedure
         List<OrderFulfillmentReportDTO> orderData = reportRepository.getOrderFulfillmentReport(startDate, endDate, statusFilter);
-        lastRecordCount.set(orderData != null ? orderData.size() : 0);
 
         // 2. Load and compile the Jasper Report (.jrxml) template
         InputStream reportStream = getClass().getResourceAsStream("/reports/OrderFulfillmentReport.jrxml");
@@ -306,7 +292,6 @@ public class JasperReportService {
 
     public byte[] generateDynamicProductReport(String search, Long categoryId, Long brandId, String status, List<String> selectedColumns, String format) throws Exception {
         List<ProductCatalogExportDTO> rawData = reportRepository.getProductCatalogExport(search, categoryId, brandId, status);
-        lastRecordCount.set(rawData != null ? rawData.size() : 0);
         List<ProductCatalogExportItem> data = new ArrayList<>();
         if (rawData != null) {
             for (ProductCatalogExportDTO dto : rawData) {
@@ -409,7 +394,7 @@ public class JasperReportService {
         dateField.setHorizontalTextAlign(HorizontalTextAlignEnum.RIGHT);
         dateField.setVerticalTextAlign(VerticalTextAlignEnum.MIDDLE);
         JRDesignExpression dateExpr = new JRDesignExpression();
-        dateExpr.setText("\"Generated on: \" + new java.text.SimpleDateFormat(\"dd/MM/yyyy, hh:mm a\").format(new java.util.Date())");
+        dateExpr.setText("\"Generated on: \" + new java.text.SimpleDateFormat(\"yyyy-MM-dd HH:mm\").format(new java.util.Date())");
         dateField.setExpression(dateExpr);
         titleBand.addElement(dateField);
 
@@ -635,7 +620,6 @@ public class JasperReportService {
 
     public byte[] generateDynamicBrandReport(String search, String status, List<String> selectedColumns, String format) throws Exception {
         List<BrandExportDTO> rawData = reportRepository.getBrandExportReport(search, status);
-        lastRecordCount.set(rawData != null ? rawData.size() : 0);
         List<BrandExportItem> data = new ArrayList<>();
         if (rawData != null) {
             for (BrandExportDTO dto : rawData) {
@@ -751,7 +735,7 @@ public class JasperReportService {
         dateField.setHorizontalTextAlign(HorizontalTextAlignEnum.RIGHT);
         dateField.setVerticalTextAlign(VerticalTextAlignEnum.MIDDLE);
         JRDesignExpression dateExpr = new JRDesignExpression();
-        dateExpr.setText("\"Generated on: \" + new java.text.SimpleDateFormat(\"dd/MM/yyyy, hh:mm a\").format(new java.util.Date())");
+        dateExpr.setText("\"Generated on: \" + new java.text.SimpleDateFormat(\"yyyy-MM-dd HH:mm\").format(new java.util.Date())");
         dateField.setExpression(dateExpr);
         titleBand.addElement(dateField);
 
@@ -986,7 +970,6 @@ public class JasperReportService {
 
     public byte[] generateDynamicRefundReport(LocalDate startDate, LocalDate endDate, String search, String status, List<String> selectedColumns, String format) throws Exception {
         List<RefundExportDTO> rawData = reportRepository.getRefundExportReport(startDate, endDate, search, status);
-        lastRecordCount.set(rawData != null ? rawData.size() : 0);
         List<RefundExportItem> data = new ArrayList<>();
         if (rawData != null) {
             for (RefundExportDTO dto : rawData) {
@@ -1110,7 +1093,7 @@ public class JasperReportService {
         dateField.setHorizontalTextAlign(HorizontalTextAlignEnum.RIGHT);
         dateField.setVerticalTextAlign(VerticalTextAlignEnum.MIDDLE);
         JRDesignExpression dateExpr = new JRDesignExpression();
-        dateExpr.setText("\"Generated on: \" + new java.text.SimpleDateFormat(\"dd/MM/yyyy, hh:mm a\").format(new java.util.Date())");
+        dateExpr.setText("\"Generated on: \" + new java.text.SimpleDateFormat(\"yyyy-MM-dd HH:mm\").format(new java.util.Date())");
         dateField.setExpression(dateExpr);
         titleBand.addElement(dateField);
 
@@ -1359,7 +1342,6 @@ public class JasperReportService {
         String activeSearch = (search != null) ? search.trim() : "";
 
         List<InventoryExportDTO> rawData = reportRepository.getInventoryExportReport(activeTab, activeSearch, activeStatus);
-        lastRecordCount.set(rawData != null ? rawData.size() : 0);
         List<InventoryExportItem> data = new ArrayList<>();
         if (rawData != null) {
             for (InventoryExportDTO dto : rawData) {
@@ -1499,7 +1481,7 @@ public class JasperReportService {
         dateField.setHorizontalTextAlign(HorizontalTextAlignEnum.RIGHT);
         dateField.setVerticalTextAlign(VerticalTextAlignEnum.MIDDLE);
         JRDesignExpression dateExpr = new JRDesignExpression();
-        dateExpr.setText("\"Generated on: \" + new java.text.SimpleDateFormat(\"dd/MM/yyyy, hh:mm a\").format(new java.util.Date())");
+        dateExpr.setText("\"Generated on: \" + new java.text.SimpleDateFormat(\"yyyy-MM-dd HH:mm\").format(new java.util.Date())");
         dateField.setExpression(dateExpr);
         titleBand.addElement(dateField);
 
@@ -1751,7 +1733,6 @@ public class JasperReportService {
         String activeSearch = (search != null) ? search.trim() : "";
 
         List<com.ojt.ecommerce.backofficeinventory.dto.OrderPageExportDTO> rawData = reportRepository.getOrdersPageExportReport(activeStatus, activeSearch);
-        lastRecordCount.set(rawData != null ? rawData.size() : 0);
         List<OrderPageExportItem> data = new ArrayList<>();
         if (rawData != null) {
             for (com.ojt.ecommerce.backofficeinventory.dto.OrderPageExportDTO dto : rawData) {
@@ -1883,7 +1864,7 @@ public class JasperReportService {
         dateField.setHorizontalTextAlign(HorizontalTextAlignEnum.RIGHT);
         dateField.setVerticalTextAlign(VerticalTextAlignEnum.MIDDLE);
         JRDesignExpression dateExpr = new JRDesignExpression();
-        dateExpr.setText("\"Generated on: \" + new java.text.SimpleDateFormat(\"dd/MM/yyyy, hh:mm a\").format(new java.util.Date())");
+        dateExpr.setText("\"Generated on: \" + new java.text.SimpleDateFormat(\"yyyy-MM-dd HH:mm\").format(new java.util.Date())");
         dateField.setExpression(dateExpr);
         titleBand.addElement(dateField);
 

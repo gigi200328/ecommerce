@@ -24,9 +24,6 @@ import org.springframework.context.ApplicationEventPublisher;
 import com.ojt.ecommerce.storefront.payment.event.OrderPaidEvent;
 import org.springframework.web.client.RestTemplate;
 
-import com.fasterxml.jackson.databind.ObjectMapper;
-import com.ojt.ecommerce.common.util.HmacSignatureUtil;
-
 import java.time.LocalDateTime;
 import java.util.Map;
 import java.util.UUID;
@@ -43,7 +40,6 @@ public class PaymentServiceImpl implements PaymentService {
     private final InventoryService inventoryService;
     
     private final ApplicationEventPublisher eventPublisher;
-    private final ObjectMapper objectMapper = new ObjectMapper().findAndRegisterModules();
     
     @Value("${payment.gateway.base-url}")
     private String pgBaseUrl;
@@ -57,14 +53,12 @@ public class PaymentServiceImpl implements PaymentService {
     @Value("${payment.gateway.client-secret}")
     private String pgClientSecret;
 
-    @Value("${payment.gateway.webhook-secret:${payment.gateway.client-secret}}")
-    private String pgWebhookSecret;
-
     private RestTemplate restTemplate = new RestTemplate();
 
     void setRestTemplate(RestTemplate restTemplate) {
         this.restTemplate = restTemplate;
     }
+
     @Override
     @Transactional
     public PaymentInitiateResponse initiatePayment(Long customerId, Long orderId, PaymentInitiateRequest request) {
@@ -159,44 +153,7 @@ public class PaymentServiceImpl implements PaymentService {
 
     @Override
     @Transactional
-    public MockCallbackResponse processMockCallback(String rawPayload, String signature) {
-        boolean isSignatureValid = HmacSignatureUtil.verifySignature(rawPayload, pgWebhookSecret, signature);
-
-        MockCallbackRequest request;
-        try {
-            request = objectMapper.readValue(rawPayload, MockCallbackRequest.class);
-        } catch (Exception e) {
-            throw new InvalidRequestException("Malformed callback payload JSON: " + e.getMessage());
-        }
-
-        if (!isSignatureValid) {
-            Payment payment = paymentRepository.findByTransactionRef(request.getTransactionRef()).orElse(null);
-            if (payment != null) {
-                PaymentCallback callback = new PaymentCallback();
-                callback.setPayment(payment);
-                callback.setExternalEventId(request.getExternalEventId());
-                callback.setTransactionRef(request.getTransactionRef());
-                callback.setEventType(request.getStatus());
-                callback.setSignatureValid(false);
-                callback.setPayloadJson(rawPayload);
-                callback.setReceivedAt(LocalDateTime.now());
-                callback.setProcessingStatus("REJECTED");
-                callback.setProcessedAt(LocalDateTime.now());
-                paymentCallbackRepository.save(callback);
-            }
-            throw new AccessDeniedException("Invalid payment callback signature! Request rejected.");
-        }
-
-        return executeCallback(request, rawPayload, true);
-    }
-
-    @Override
-    @Transactional
     public MockCallbackResponse processMockCallback(MockCallbackRequest request) {
-        return executeCallback(request, "{\"status\":\"" + request.getStatus() + "\"}", true);
-    }
-
-    private MockCallbackResponse executeCallback(MockCallbackRequest request, String payloadJson, boolean signatureValid) {
         // 1. Resolve and validate the callback's payment reference
         Payment payment = paymentRepository.findByTransactionRef(request.getTransactionRef())
                 .orElseThrow(() -> new ResourceNotFoundException("Payment not found"));
@@ -229,8 +186,8 @@ public class PaymentServiceImpl implements PaymentService {
         callback.setExternalEventId(request.getExternalEventId());
         callback.setTransactionRef(request.getTransactionRef());
         callback.setEventType(request.getStatus());
-        callback.setSignatureValid(signatureValid);
-        callback.setPayloadJson(payloadJson);
+        callback.setSignatureValid(true);
+        callback.setPayloadJson("{\"status\":\"" + request.getStatus() + "\"}");
         callback.setReceivedAt(LocalDateTime.now());
 
         // 5. If this specific payment was already recorded as SUCCESS

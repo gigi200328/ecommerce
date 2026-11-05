@@ -119,24 +119,24 @@ public class DatabaseSeeder implements CommandLineRunner {
             userRepository.save(orderUser);
         }
 
-        // ၄။ Default Categories & Brands (createdBy, modifiedBy, createdAt နှင့် modifiedAt အပြည့်အစုံဖြင့်)
+        // ၄။ Default Categories & Brands
         User defaultAdmin = userRepository.findByEmail("admin@ecommerce.com").orElse(null);
         if (defaultAdmin != null) {
             if (categoryRepository.count() == 0) {
                 categoryRepository.saveAll(List.of(
-                    Category.builder().categoryName("Clothing").description("Fashion apparel, garments, and casual wear").createdBy(defaultAdmin).modifiedBy(defaultAdmin).createdAt(LocalDateTime.now()).modifiedAt(LocalDateTime.now()).build(),
-                    Category.builder().categoryName("Footwear").description("Shoes, sneakers, and sandals").createdBy(defaultAdmin).modifiedBy(defaultAdmin).createdAt(LocalDateTime.now()).modifiedAt(LocalDateTime.now()).build(),
-                    Category.builder().categoryName("Cosmetics").description("Beauty and personal care products").createdBy(defaultAdmin).modifiedBy(defaultAdmin).createdAt(LocalDateTime.now()).modifiedAt(LocalDateTime.now()).build(),
-                    Category.builder().categoryName("Beverages").description("Refreshing drinks and beverages").createdBy(defaultAdmin).modifiedBy(defaultAdmin).createdAt(LocalDateTime.now()).modifiedAt(LocalDateTime.now()).build(),
-                    Category.builder().categoryName("Electronics").description("Phones, computers, and electronic gadgets").createdBy(defaultAdmin).modifiedBy(defaultAdmin).createdAt(LocalDateTime.now()).modifiedAt(LocalDateTime.now()).build()
+                    Category.builder().categoryName("Clothing").description("Fashion apparel, garments, and casual wear").createdBy(defaultAdmin).createdAt(LocalDateTime.now()).build(),
+                    Category.builder().categoryName("Footwear").description("Shoes, sneakers, and sandals").createdBy(defaultAdmin).createdAt(LocalDateTime.now()).build(),
+                    Category.builder().categoryName("Cosmetics").description("Beauty and personal care products").createdBy(defaultAdmin).createdAt(LocalDateTime.now()).build(),
+                    Category.builder().categoryName("Beverages").description("Refreshing drinks and beverages").createdBy(defaultAdmin).createdAt(LocalDateTime.now()).build(),
+                    Category.builder().categoryName("Electronics").description("Phones, computers, and electronic gadgets").createdBy(defaultAdmin).createdAt(LocalDateTime.now()).build()
                 ));
             }
             if (brandRepository.count() == 0) {
                 brandRepository.saveAll(List.of(
-                    Brand.builder().brandName("Nike").description("Premium athletic footwear and sportswear").status(BrandStatus.ACTIVE).createdBy(defaultAdmin).modifiedBy(defaultAdmin).createdAt(LocalDateTime.now()).modifiedAt(LocalDateTime.now()).build(),
-                    Brand.builder().brandName("Zara").description("Contemporary fashion and lifestyle").status(BrandStatus.ACTIVE).createdBy(defaultAdmin).modifiedBy(defaultAdmin).createdAt(LocalDateTime.now()).modifiedAt(LocalDateTime.now()).build(),
-                    Brand.builder().brandName("Apple").description("Smart devices and consumer electronics").status(BrandStatus.ACTIVE).createdBy(defaultAdmin).modifiedBy(defaultAdmin).createdAt(LocalDateTime.now()).modifiedAt(LocalDateTime.now()).build(),
-                    Brand.builder().brandName("Samsung").description("Electronics and modern hardware").status(BrandStatus.ACTIVE).createdBy(defaultAdmin).modifiedBy(defaultAdmin).createdAt(LocalDateTime.now()).modifiedAt(LocalDateTime.now()).build()
+                    Brand.builder().brandName("Nike").description("Premium athletic footwear and sportswear").status(BrandStatus.ACTIVE).createdBy(defaultAdmin).createdAt(LocalDateTime.now()).build(),
+                    Brand.builder().brandName("Zara").description("Contemporary fashion and lifestyle").status(BrandStatus.ACTIVE).createdBy(defaultAdmin).createdAt(LocalDateTime.now()).build(),
+                    Brand.builder().brandName("Apple").description("Smart devices and consumer electronics").status(BrandStatus.ACTIVE).createdBy(defaultAdmin).createdAt(LocalDateTime.now()).build(),
+                    Brand.builder().brandName("Samsung").description("Electronics and modern hardware").status(BrandStatus.ACTIVE).createdBy(defaultAdmin).createdAt(LocalDateTime.now()).build()
                 ));
             }
         }

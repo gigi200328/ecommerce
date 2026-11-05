@@ -12,7 +12,7 @@ import com.fasterxml.jackson.datatype.jsr310.ser.LocalDateTimeSerializer;
 @Configuration
 public class JacksonConfig {
 
-	private static final String DATETIME_FORMAT = "dd/MM/yyyy, hh:mm a"; // မိမိလိုချင်သော ပုံစံ
+	private static final String DATETIME_FORMAT = "yyyy-MM-dd hh:mm a"; // မိမိလိုချင်သော ပုံစံ
 
 	@Bean
 	public Jackson2ObjectMapperBuilderCustomizer jsonCustomizer() {

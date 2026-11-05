@@ -170,11 +170,7 @@ public class OrderHistoryServiceImpl implements OrderHistoryService {
 		Payment payment = paymentRepository.findFirstByOrderOrderIdOrderByCreatedAtDesc(orderId).orElse(null);
 		OrderPaymentSummary paymentSummary = null;
 		if (payment != null) {
-			String pm = payment.getPaymentMethod();
-			if (pm != null && (pm.equalsIgnoreCase("MINI_BANKING") || pm.toUpperCase().contains("MINI"))) {
-				pm = "EKARAJ  BANK";
-			}
-			paymentSummary = OrderPaymentSummary.builder().paymentMethod(pm)
+			paymentSummary = OrderPaymentSummary.builder().paymentMethod(payment.getPaymentMethod())
 					.paymentStatus(payment.getPaymentStatus()).transactionRef(payment.getTransactionRef())
 					.amount(payment.getAmount())
 					.paidAt(payment.getPaidAt() != null ? payment.getPaidAt().toString() : null).build();

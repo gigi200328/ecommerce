@@ -150,8 +150,8 @@ public class ReportProcedureSeeder implements CommandLineRunner {
                     rr.request_reason AS requestReason,
                     rr.request_reason AS request_reason,
                     rr.status AS status,
-                    DATE_FORMAT(rr.requested_at, '%d/%m/%Y, %h:%i %p') AS requested_date,
-                    DATE_FORMAT(rr.requested_at, '%d/%m/%Y, %h:%i %p') AS requestedDate
+                    DATE_FORMAT(rr.requested_at, '%Y-%m-%d') AS requested_date,
+                    DATE_FORMAT(rr.requested_at, '%Y-%m-%d') AS requestedDate
                 FROM refund_requests rr
                 JOIN order_items oi ON rr.order_item_id = oi.order_item_id
                 JOIN orders o ON oi.order_id = o.order_id
@@ -343,18 +343,18 @@ public class ReportProcedureSeeder implements CommandLineRunner {
                     IFNULL(i.reorder_level, 0) AS reorderLevel,
                     CASE 
                         WHEN i.expiry_date IS NOT NULL AND i.batch_number IS NOT NULL AND TRIM(i.batch_number) != '' 
-                            THEN CONCAT(DATE_FORMAT(i.expiry_date, '%d/%m/%Y'), ' (', i.batch_number, ')')
+                            THEN CONCAT(DATE_FORMAT(i.expiry_date, '%Y-%m-%d'), ' (', i.batch_number, ')')
                         WHEN i.expiry_date IS NOT NULL 
-                            THEN DATE_FORMAT(i.expiry_date, '%d/%m/%Y')
+                            THEN DATE_FORMAT(i.expiry_date, '%Y-%m-%d')
                         WHEN i.batch_number IS NOT NULL AND TRIM(i.batch_number) != '' 
                             THEN i.batch_number
                         ELSE '-'
                     END AS expiry_and_batch,
                     CASE 
                         WHEN i.expiry_date IS NOT NULL AND i.batch_number IS NOT NULL AND TRIM(i.batch_number) != '' 
-                            THEN CONCAT(DATE_FORMAT(i.expiry_date, '%d/%m/%Y'), ' (', i.batch_number, ')')
+                            THEN CONCAT(DATE_FORMAT(i.expiry_date, '%Y-%m-%d'), ' (', i.batch_number, ')')
                         WHEN i.expiry_date IS NOT NULL 
-                            THEN DATE_FORMAT(i.expiry_date, '%d/%m/%Y')
+                            THEN DATE_FORMAT(i.expiry_date, '%Y-%m-%d')
                         WHEN i.batch_number IS NOT NULL AND TRIM(i.batch_number) != '' 
                             THEN i.batch_number
                         ELSE '-'
@@ -391,8 +391,8 @@ public class ReportProcedureSeeder implements CommandLineRunner {
                 SELECT 
                     o.order_no AS order_no,
                     o.order_no AS orderNo,
-                    DATE_FORMAT(o.created_at, '%d/%m/%Y, %h:%i %p') AS order_date,
-                    DATE_FORMAT(o.created_at, '%d/%m/%Y, %h:%i %p') AS orderDate,
+                    DATE_FORMAT(o.created_at, '%Y-%m-%d') AS order_date,
+                    DATE_FORMAT(o.created_at, '%Y-%m-%d') AS orderDate,
                     IFNULL(c.full_name, 'Guest Customer') AS customer_name,
                     IFNULL(c.full_name, 'Guest Customer') AS customerName,
                     o.total_amount AS total_amount,

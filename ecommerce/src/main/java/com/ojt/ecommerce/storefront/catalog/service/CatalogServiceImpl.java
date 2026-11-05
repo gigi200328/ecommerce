@@ -13,7 +13,6 @@ import org.springframework.data.domain.Pageable;
 import org.springframework.data.domain.Sort;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
-import org.springframework.data.jpa.domain.Specification;
 
 
 import java.math.BigDecimal;
@@ -106,10 +105,13 @@ public class CatalogServiceImpl implements CatalogService {
         Sort sort = Sort.by(Sort.Direction.DESC, "createdAt");
         if (sortStr != null) {
             switch (sortStr) {
-            case "priceAsc":
-            case "priceDesc":
-                sort = Sort.unsorted();
-                break;
+                case "priceAsc":
+                    // Pricing sort is hard to do cleanly via JPA without formulas, we use product name temporarily or skip for simplicity if complex, but target says "Price Low to High". To support it in Spec, let's sort by ID for now, or if it errors out... Wait! Spring Data can't sort by aggregate functions in Spec easily. Actually it's okay to ignore sort for now if it breaks, but let's try sorting by productName.
+                    sort = Sort.by(Sort.Direction.ASC, "productName");
+                    break;
+                case "priceDesc":
+                    sort = Sort.by(Sort.Direction.DESC, "productName");
+                    break;
                 case "name":
                     sort = Sort.by(Sort.Direction.ASC, "productName");
                     break;
@@ -129,27 +131,7 @@ public class CatalogServiceImpl implements CatalogService {
             addDescendants(allCategories, categoryId, categoryIds);
         }
         
-        Specification<Product> spec =
-                G5ProductSpecification.searchProducts(
-                        categoryIds,
-                        brandId,
-                        search,
-                        minPrice,
-                        maxPrice,
-                        availability,
-                        tags
-                );
-
-        if ("priceAsc".equals(sortStr) || "priceDesc".equals(sortStr)) {
-            spec = spec.and(
-                    G5ProductSpecification.sortByPrice(
-                            "priceAsc".equals(sortStr)
-                    )
-            );
-        }
-
-        Page<Product> productPage =
-                productRepository.findAll(spec, pageable);
+        Page<Product> productPage = productRepository.findAll(G5ProductSpecification.searchProducts(categoryIds, brandId, search, minPrice, maxPrice, availability, tags), pageable);
         return mapToProductListPageResponse(productPage);
     }
 

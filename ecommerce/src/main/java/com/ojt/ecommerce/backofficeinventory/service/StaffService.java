@@ -32,11 +32,9 @@ public class StaffService {
             throw new RuntimeException("This email address is already registered.");
         }
 
-        User currentUser = getCurrentUser();
-        Long currentUserId = currentUser != null ? currentUser.getUserId() : null;
-
         // Only the Primary Super Admin can create accounts with the ADMIN role
         if ("ADMIN".equalsIgnoreCase(request.getRoleName())) {
+            User currentUser = getCurrentUser();
             if (currentUser != null && !isSuperAdmin(currentUser)) {
                 throw new RuntimeException("Only the primary Super Administrator can appoint or create Administrator accounts.");
             }
@@ -45,16 +43,12 @@ public class StaffService {
         Role role = roleRepository.findByRoleName(request.getRoleName())
                 .orElseThrow(() -> new RuntimeException("Role not found: " + request.getRoleName()));
 
-        // Validate password complexity rules
-        validatePasswordStrength(request.getPassword());
-
         User newStaff = User.builder()
                 .userName(request.getUserName())
                 .email(request.getEmail())
                 .passwordHash(passwordEncoder.encode(request.getPassword()))
                 .status("ACTIVE")
                 .createdAt(LocalDateTime.now())
-                .createdBy(currentUserId)
                 .userRole(role)
                 .tokenVersion(1)
                 .mustChangePassword(true) // newly created staff/admin accounts must change password on first login
@@ -91,7 +85,6 @@ public class StaffService {
                 .orElseThrow(() -> new RuntimeException("Staff member not found with ID: " + id));
 
         User currentUser = getCurrentUser();
-        Long currentUserId = currentUser != null ? currentUser.getUserId() : null;
 
         // 1. Super Admin Protection: Other admins cannot modify the primary Super Admin
         if (isSuperAdmin(existingStaff)) {
@@ -152,17 +145,12 @@ public class StaffService {
 
         // If password is reset by admin, require user to change it on their next login
         if (request.getPassword() != null && !request.getPassword().isEmpty()) {
-            if (isSuperAdmin(existingStaff)) {
-                throw new RuntimeException("Super Administrator password cannot be reset from this staff management form. Please use the Change Password settings in Profile.");
-            }
-            validatePasswordStrength(request.getPassword());
             existingStaff.setPasswordHash(passwordEncoder.encode(request.getPassword()));
             existingStaff.setMustChangePassword(true);
             existingStaff.setTokenVersion((existingStaff.getTokenVersion() == null ? 1 : existingStaff.getTokenVersion()) + 1);
         }
 
         existingStaff.setModifiedAt(LocalDateTime.now());
-        existingStaff.setModifiedBy(currentUserId);
         User updatedStaff = userRepository.save(existingStaff);
 
         return StaffResponseDTO.builder()
@@ -181,12 +169,8 @@ public class StaffService {
         
         validateDeactivationAllowed(existingStaff);
 
-        User currentUser = getCurrentUser();
-        Long currentUserId = currentUser != null ? currentUser.getUserId() : null;
-
         existingStaff.setStatus("INACTIVE");
         existingStaff.setModifiedAt(LocalDateTime.now());
-        existingStaff.setModifiedBy(currentUserId);
         existingStaff.setTokenVersion((existingStaff.getTokenVersion() == null ? 1 : existingStaff.getTokenVersion()) + 1);
         
         userRepository.save(existingStaff);
@@ -200,16 +184,9 @@ public class StaffService {
             throw new RuntimeException("Current password is incorrect.");
         }
 
-        if (request.getCurrentPassword().equals(request.getNewPassword())) {
-            throw new RuntimeException("New password must be different from current password.");
-        }
-
-        validatePasswordStrength(request.getNewPassword());
-
         user.setPasswordHash(passwordEncoder.encode(request.getNewPassword()));
         user.setMustChangePassword(false); // cleared upon successful password change!
         user.setModifiedAt(LocalDateTime.now());
-        user.setModifiedBy(user.getUserId());
         user.setTokenVersion((user.getTokenVersion() == null ? 1 : user.getTokenVersion()) + 1);
         userRepository.save(user);
     }
@@ -223,12 +200,8 @@ public class StaffService {
             existingStaff.setTokenVersion((existingStaff.getTokenVersion() == null ? 1 : existingStaff.getTokenVersion()) + 1);
         }
 
-        User currentUser = getCurrentUser();
-        Long currentUserId = currentUser != null ? currentUser.getUserId() : null;
-
         existingStaff.setStatus(status.toUpperCase());
         existingStaff.setModifiedAt(LocalDateTime.now());
-        existingStaff.setModifiedBy(currentUserId);
         
         userRepository.save(existingStaff);
     }
@@ -246,28 +219,6 @@ public class StaffService {
                 .status(staff.getStatus())
                 .createdAt(staff.getCreatedAt())
                 .build();
-    }
-
-    /**
-     * Password Complexity Policy
-     * အနည်းဆုံး ၈ လုံး၊ စာလုံးကြီး (A-Z)၊ စာလုံးသေး (a-z)၊ ဂဏန်း (0-9) နှင့် သင်္ကေတ (!@#$%^&*) မဖြစ်မနေ ပါရှိရမည်
-     */
-    private void validatePasswordStrength(String password) {
-        if (password == null || password.length() < 8) {
-            throw new RuntimeException("Password must be at least 8 characters long.");
-        }
-        if (!password.matches(".*[A-Z].*")) {
-            throw new RuntimeException("Password must contain at least one uppercase letter (A-Z).");
-        }
-        if (!password.matches(".*[a-z].*")) {
-            throw new RuntimeException("Password must contain at least one lowercase letter (a-z).");
-        }
-        if (!password.matches(".*[0-9].*")) {
-            throw new RuntimeException("Password must contain at least one number (0-9).");
-        }
-        if (!password.matches(".*[!@#$%^&*()_+\\-=\\[\\]{};':\"\\\\|,.<>\\/?].*")) {
-            throw new RuntimeException("Password must contain at least one special character (e.g. !@#$%^&*).");
-        }
     }
 
     private void validateDeactivationAllowed(User targetStaff) {

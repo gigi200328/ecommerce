@@ -22,8 +22,6 @@ import com.ojt.ecommerce.backofficeinventory.repository.ProductImageRepository;
 import com.ojt.ecommerce.backofficeinventory.repository.ProductRepository;
 import com.ojt.ecommerce.backofficeinventory.repository.UserRepository;
 import com.ojt.ecommerce.backofficeinventory.repository.ProductVariantRepository;
-import com.ojt.ecommerce.backofficeinventory.repository.ProductVariantImageRepository;
-import com.ojt.ecommerce.entity.ProductVariantImage;
 import com.ojt.ecommerce.backofficeinventory.specification.ProductSpecification;
 import com.ojt.ecommerce.entity.Brand;
 import com.ojt.ecommerce.entity.Category;
@@ -57,8 +55,6 @@ public class ProductService {
     private final ProductVariantRepository productVariantRepository;
 
     private final InventoryRepository inventoryRepository;
-
-    private final ProductVariantImageRepository productVariantImageRepository;
 
 
     // =========================================================
