@@ -24,4 +24,5 @@ import java.util.List;
     private String checkoutType;
     private String reservationExpiresAt;
     private Boolean reservationActive;
+    private Boolean isExpired;
 }

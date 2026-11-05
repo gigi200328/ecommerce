@@ -19,6 +19,8 @@ public interface G5OrderRepository extends JpaRepository<Order, Long>, JpaSpecif
     @Query("SELECT o FROM Order o WHERE o.orderId = :orderId")
     Optional<Order> findByIdWithLock(@Param("orderId") Long orderId);
 
+    List<Order> findByCustomerCustomerIdAndOrderStatus(Long customerId, String orderStatus);
+
     @Query("SELECT o FROM Order o WHERE o.orderStatus = 'PAID' " +
            "AND o.createdAt >= :since " +
            "AND o.orderItems IS NOT EMPTY " +

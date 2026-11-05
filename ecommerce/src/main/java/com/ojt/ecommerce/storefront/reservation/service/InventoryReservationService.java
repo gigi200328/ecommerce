@@ -28,5 +28,7 @@ public interface InventoryReservationService {
 
     boolean isReservationActiveForOrder(Long orderId);
 
+    boolean isOrderExpired(Long orderId);
+
     void reReserveStockForOrder(Order order);
 }

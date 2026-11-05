@@ -6,6 +6,7 @@ import com.ojt.ecommerce.entity.OrderItem;
 import com.ojt.ecommerce.storefront.catalog.repository.G5InventoryRepository;
 import com.ojt.ecommerce.storefront.checkout.repository.G5OrderItemRepository;
 import com.ojt.ecommerce.storefront.exception.InvalidRequestException;
+import com.ojt.ecommerce.storefront.payment.repository.G5PaymentRepository;
 import com.ojt.ecommerce.storefront.reservation.dto.ReservationItem;
 import com.ojt.ecommerce.storefront.reservation.entity.InventoryReservation;
 import com.ojt.ecommerce.storefront.reservation.repository.InventoryReservationRepository;
@@ -27,6 +28,7 @@ public class InventoryReservationServiceImpl implements InventoryReservationServ
     private final InventoryReservationRepository reservationRepository;
     private final G5InventoryRepository inventoryRepository;
     private final G5OrderItemRepository orderItemRepository;
+    private final G5PaymentRepository paymentRepository;
 
     @Value("${storefront.inventory.reservation-ttl-minutes:3}")
     private int reservationTtlMinutes = 3;
@@ -190,14 +192,24 @@ public class InventoryReservationServiceImpl implements InventoryReservationServ
         Set<Long> affectedVariantIds = new HashSet<>();
         Set<Long> affectedOrderIds = new LinkedHashSet<>();
         for (InventoryReservation res : expired) {
+            if (res.getOrder() != null && res.getOrder().getOrderId() != null) {
+                Long orderId = res.getOrder().getOrderId();
+                // Critical guard: Pre-payment 3-minute expiry stops applying once payment is initiated
+                if (paymentRepository.existsByOrderOrderId(orderId)) {
+                    continue;
+                }
+                String orderStatus = res.getOrder().getOrderStatus();
+                String paymentStatus = res.getOrder().getPaymentStatus();
+                if ("PAID".equalsIgnoreCase(orderStatus) || "SUCCESS".equalsIgnoreCase(paymentStatus)) {
+                    continue;
+                }
+                affectedOrderIds.add(orderId);
+            }
             res.setStatus(InventoryReservation.STATUS_EXPIRED);
             res.setModifiedAt(now);
             reservationRepository.save(res);
             if (res.getVariant() != null) {
                 affectedVariantIds.add(res.getVariant().getVariantId());
-            }
-            if (res.getOrder() != null && res.getOrder().getOrderId() != null) {
-                affectedOrderIds.add(res.getOrder().getOrderId());
             }
         }
 
@@ -302,6 +314,16 @@ public class InventoryReservationServiceImpl implements InventoryReservationServ
         LocalDateTime now = LocalDateTime.now();
         return reservations.stream()
                 .anyMatch(r -> r.getExpiresAt() != null && r.getExpiresAt().isAfter(now));
+    }
+
+    @Override
+    @Transactional(readOnly = true)
+    public boolean isOrderExpired(Long orderId) {
+        if (orderId == null) {
+            return false;
+        }
+        return !reservationRepository.findByOrderOrderIdAndStatus(
+                orderId, InventoryReservation.STATUS_EXPIRED).isEmpty();
     }
 
     @Override

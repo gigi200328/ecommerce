@@ -1374,4 +1374,25 @@ class CartServiceImplTest {
         assertEquals("ACTIVE", cartB.getStatus());
         assertEquals("RESTORED", cartA.getStatus());
     }
+
+    @Test
+    @DisplayName("Revised UX: restoreFailedCartOrder throws InvalidRequestException when order is expired")
+    void restoreFailedCartOrder_throwsException_whenOrderIsExpired() {
+        Long customerId = 1L;
+        Long orderId = 500L;
+        Cart cartA = createCart(10L, mockCustomer);
+        cartA.setStatus("PENDING_PAYMENT");
+
+        Order order = createMockOrder(orderId, mockCustomer, cartA, "CART", "FAILED", "CANCELLED");
+
+        when(orderRepository.findByIdWithLock(orderId)).thenReturn(Optional.of(order));
+        when(reservationService.isOrderExpired(orderId)).thenReturn(true);
+
+        InvalidRequestException ex = assertThrows(InvalidRequestException.class, () ->
+                cartService.restoreFailedCartOrder(customerId, orderId));
+
+        assertEquals("Cannot restore items from an expired order", ex.getMessage());
+        assertEquals("PENDING_PAYMENT", cartA.getStatus());
+        verify(cartItemRepository, never()).findByCartCartId(anyLong());
+    }
 }

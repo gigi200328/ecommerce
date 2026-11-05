@@ -6,6 +6,7 @@ import java.time.ZoneId;
 import java.time.format.DateTimeParseException;
 import java.util.ArrayList;
 import java.util.Collections;
+import java.util.Comparator;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
@@ -37,6 +38,7 @@ import com.ojt.ecommerce.storefront.order.dto.OrderDetailResponse;
 import com.ojt.ecommerce.storefront.order.dto.OrderItemSnapshot;
 import com.ojt.ecommerce.storefront.order.dto.OrderItemSummary;
 import com.ojt.ecommerce.storefront.order.dto.OrderListResponse;
+import com.ojt.ecommerce.storefront.order.dto.PendingOrderExpiryResponse;
 import com.ojt.ecommerce.storefront.order.dto.OrderPaymentSummary;
 import com.ojt.ecommerce.storefront.order.dto.OrderStatusHistoryDto;
 import com.ojt.ecommerce.storefront.order.dto.ShipmentTracking;
@@ -146,6 +148,7 @@ public class OrderHistoryServiceImpl implements OrderHistoryService {
 					.orElse(null);
 			boolean reservationActive = reservationService.isReservationActiveForOrder(order.getOrderId());
 			boolean hasInitiatedPayment = paymentRepository.existsByOrderOrderId(order.getOrderId());
+			boolean isExpired = reservationService.isOrderExpired(order.getOrderId());
 
 			return OrderListResponse.builder().orderId(order.getOrderId())
 					.orderNo(order.getOrderNo()).totalAmount(order.getTotalAmount()).orderStatus(order.getOrderStatus())
@@ -156,6 +159,7 @@ public class OrderHistoryServiceImpl implements OrderHistoryService {
 					.reservationExpiresAt(expiresAtIso)
 					.reservationActive(reservationActive)
 					.hasInitiatedPayment(hasInitiatedPayment)
+					.isExpired(isExpired)
 					.build();
 		});
 	}
@@ -211,6 +215,7 @@ public class OrderHistoryServiceImpl implements OrderHistoryService {
 				.map(exp -> exp.atZone(ZoneId.systemDefault()).toInstant().toString())
 				.orElse(null);
 		boolean reservationActive = reservationService.isReservationActiveForOrder(orderId);
+		boolean isExpired = reservationService.isOrderExpired(orderId);
 
 		return OrderDetailResponse.builder().orderId(order.getOrderId()).orderNo(order.getOrderNo())
 				.createdAt(order.getCreatedAt().toString()).orderStatus(order.getOrderStatus())
@@ -222,6 +227,7 @@ public class OrderHistoryServiceImpl implements OrderHistoryService {
 				.checkoutType(order.getCheckoutType())
 				.reservationExpiresAt(expiresAtIso)
 				.reservationActive(reservationActive)
+				.isExpired(isExpired)
 				.build();
 	}
 
@@ -255,9 +261,63 @@ public class OrderHistoryServiceImpl implements OrderHistoryService {
 		// Final UX Rule 6: Cannot resume if reservation is expired (no re-reserve allowed)
 		boolean isActive = reservationService.isReservationActiveForOrder(orderId);
 		if (!isActive) {
-			throw new InvalidRequestException("Stock reservation has expired. Checkout items have been returned to your cart.");
+			throw new InvalidRequestException("The order has expired and can no longer be paid.");
 		}
 
 		return getOrderById(customerId, orderId);
+	}
+
+	@Override
+	@Transactional(readOnly = true)
+	public PendingOrderExpiryResponse getPendingOrderExpiry(Long customerId) {
+		if (customerId == null) {
+			return PendingOrderExpiryResponse.builder().pendingCount(0).build();
+		}
+
+		List<Order> pendingOrders = orderRepository.findByCustomerCustomerIdAndOrderStatus(customerId, "PENDING");
+		if (pendingOrders.isEmpty()) {
+			return PendingOrderExpiryResponse.builder().pendingCount(0).build();
+		}
+
+		LocalDateTime now = LocalDateTime.now();
+		List<OrderExpiryCandidate> candidates = new ArrayList<>();
+
+		for (Order order : pendingOrders) {
+			if (!"PENDING".equalsIgnoreCase(order.getPaymentStatus())) {
+				continue;
+			}
+			if (paymentRepository.existsByOrderOrderId(order.getOrderId())) {
+				continue; // Payment already initiated / processing
+			}
+			Optional<LocalDateTime> expiryOpt = reservationService.getReservationExpiryForOrder(order.getOrderId());
+			if (expiryOpt.isPresent() && expiryOpt.get().isAfter(now) && reservationService.isReservationActiveForOrder(order.getOrderId())) {
+				candidates.add(new OrderExpiryCandidate(order, expiryOpt.get()));
+			}
+		}
+
+		if (candidates.isEmpty()) {
+			return PendingOrderExpiryResponse.builder().pendingCount(0).build();
+		}
+
+		candidates.sort(Comparator.comparing(c -> c.expiresAt));
+
+		OrderExpiryCandidate nearest = candidates.get(0);
+		String expiresAtIso = nearest.expiresAt.atZone(ZoneId.systemDefault()).toInstant().toString();
+
+		return PendingOrderExpiryResponse.builder()
+				.orderId(nearest.order.getOrderId())
+				.orderNo(nearest.order.getOrderNo())
+				.expiresAt(expiresAtIso)
+				.pendingCount(candidates.size())
+				.build();
+	}
+
+	private static class OrderExpiryCandidate {
+		final Order order;
+		final LocalDateTime expiresAt;
+		OrderExpiryCandidate(Order order, LocalDateTime expiresAt) {
+			this.order = order;
+			this.expiresAt = expiresAt;
+		}
 	}
 }

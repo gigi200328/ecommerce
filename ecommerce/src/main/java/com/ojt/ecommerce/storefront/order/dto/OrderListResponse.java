@@ -18,4 +18,5 @@ import java.util.List;
     private String reservationExpiresAt;
     private Boolean reservationActive;
     private Boolean hasInitiatedPayment;
+    private Boolean isExpired;
 }

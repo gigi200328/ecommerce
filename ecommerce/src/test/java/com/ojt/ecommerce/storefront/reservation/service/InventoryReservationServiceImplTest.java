@@ -7,6 +7,7 @@ import com.ojt.ecommerce.entity.ProductVariant;
 import com.ojt.ecommerce.storefront.catalog.repository.G5InventoryRepository;
 import com.ojt.ecommerce.storefront.checkout.repository.G5OrderItemRepository;
 import com.ojt.ecommerce.storefront.exception.InvalidRequestException;
+import com.ojt.ecommerce.storefront.payment.repository.G5PaymentRepository;
 import com.ojt.ecommerce.storefront.reservation.dto.ReservationItem;
 import com.ojt.ecommerce.storefront.reservation.entity.InventoryReservation;
 import com.ojt.ecommerce.storefront.reservation.repository.InventoryReservationRepository;
@@ -42,6 +43,9 @@ class InventoryReservationServiceImplTest {
 
     @Mock
     private G5OrderItemRepository orderItemRepository;
+
+    @Mock
+    private G5PaymentRepository paymentRepository;
 
     @InjectMocks
     private InventoryReservationServiceImpl reservationService;
@@ -584,5 +588,63 @@ class InventoryReservationServiceImplTest {
 
         when(orderItemRepository.findByOrderOrderId(101L)).thenReturn(Collections.emptyList());
         assertThrows(InvalidRequestException.class, () -> reservationService.reReserveStockForOrder(mockOrder));
+    }
+
+    // =========================================================================
+    // Revised UX: isOrderExpired & Payment-Initiated Expiry Guard Tests
+    // =========================================================================
+
+    @Test
+    @DisplayName("Revised UX: isOrderExpired returns true when reservation is in EXPIRED status")
+    void isOrderExpired_returnsTrue_whenExpiredReservationsExist() {
+        InventoryReservation expiredRes = InventoryReservation.builder()
+                .reservationId(99L)
+                .order(mockOrder)
+                .status(InventoryReservation.STATUS_EXPIRED)
+                .build();
+
+        when(reservationRepository.findByOrderOrderIdAndStatus(101L, InventoryReservation.STATUS_EXPIRED))
+                .thenReturn(List.of(expiredRes));
+
+        assertTrue(reservationService.isOrderExpired(101L));
+    }
+
+    @Test
+    @DisplayName("Revised UX: isOrderExpired returns false when reservations are RESERVED or RELEASED")
+    void isOrderExpired_returnsFalse_whenNotExpired() {
+        assertFalse(reservationService.isOrderExpired(null));
+
+        InventoryReservation reservedRes = InventoryReservation.builder()
+                .reservationId(100L)
+                .order(mockOrder)
+                .status(InventoryReservation.STATUS_RESERVED)
+                .build();
+
+        when(reservationRepository.findByOrderOrderId(101L)).thenReturn(List.of(reservedRes));
+        assertFalse(reservationService.isOrderExpired(101L));
+    }
+
+    @Test
+    @DisplayName("Revised UX: expireAbandonedReservationsAndGetOrderIds skips orders with initiated payment")
+    void expireAbandonedReservationsAndGetOrderIds_skipsOrderWhenPaymentInitiated() {
+        InventoryReservation overdueRes = InventoryReservation.builder()
+                .reservationId(10L)
+                .order(mockOrder)
+                .variant(variant1)
+                .quantity(2)
+                .status(InventoryReservation.STATUS_RESERVED)
+                .expiresAt(LocalDateTime.now().minusMinutes(5))
+                .build();
+
+        when(reservationRepository.findExpiredReservations(any(LocalDateTime.class)))
+                .thenReturn(List.of(overdueRes));
+        when(paymentRepository.existsByOrderOrderId(101L)).thenReturn(true);
+
+        List<Long> expiredOrderIds = reservationService.expireAbandonedReservationsAndGetOrderIds();
+
+        assertTrue(expiredOrderIds.isEmpty());
+        // Reservation should NOT be marked expired because payment is in-flight
+        assertEquals(InventoryReservation.STATUS_RESERVED, overdueRes.getStatus());
+        verify(reservationRepository, never()).save(overdueRes);
     }
 }

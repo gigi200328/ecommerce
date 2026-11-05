@@ -3,6 +3,7 @@ package com.ojt.ecommerce.storefront.order.controller;
 import com.ojt.ecommerce.storefront.exception.ResourceNotFoundException;
 import com.ojt.ecommerce.storefront.order.dto.OrderDetailResponse;
 import com.ojt.ecommerce.storefront.order.dto.OrderListResponse;
+import com.ojt.ecommerce.storefront.order.dto.PendingOrderExpiryResponse;
 import com.ojt.ecommerce.storefront.order.service.OrderHistoryService;
 import com.ojt.ecommerce.storefront.security.CustomerPrincipal;
 import org.junit.jupiter.api.BeforeEach;
@@ -158,5 +159,28 @@ class OrderHistoryControllerTest {
         assertNotNull(response.getBody());
         assertEquals(10L, response.getBody().getOrderId());
         verify(orderHistoryService).resumePayment(1L, 10L);
+    }
+
+    @Test
+    @DisplayName("Should return 200 OK with pending order expiry details")
+    void getPendingOrderExpiry_Success() {
+        PendingOrderExpiryResponse expiryResponse = PendingOrderExpiryResponse.builder()
+                .orderId(10L)
+                .orderNo("ORD-1001")
+                .expiresAt("2026-11-06T10:00:00")
+                .pendingCount(1)
+                .build();
+
+        when(orderHistoryService.getPendingOrderExpiry(1L)).thenReturn(expiryResponse);
+
+        ResponseEntity<PendingOrderExpiryResponse> response =
+                orderHistoryController.getPendingOrderExpiry(principal);
+
+        assertNotNull(response);
+        assertEquals(HttpStatus.OK, response.getStatusCode());
+        assertNotNull(response.getBody());
+        assertEquals(10L, response.getBody().getOrderId());
+        assertEquals(1, response.getBody().getPendingCount());
+        verify(orderHistoryService).getPendingOrderExpiry(1L);
     }
 }

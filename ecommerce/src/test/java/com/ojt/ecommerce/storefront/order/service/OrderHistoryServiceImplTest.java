@@ -43,6 +43,7 @@ import com.ojt.ecommerce.storefront.exception.InvalidRequestException;
 import com.ojt.ecommerce.storefront.exception.ResourceNotFoundException;
 import com.ojt.ecommerce.storefront.order.dto.OrderDetailResponse;
 import com.ojt.ecommerce.storefront.order.dto.OrderListResponse;
+import com.ojt.ecommerce.storefront.order.dto.PendingOrderExpiryResponse;
 import com.ojt.ecommerce.storefront.order.dto.ShipmentTracking;
 import com.ojt.ecommerce.storefront.order.port.ShipmentTrackingPort;
 import com.ojt.ecommerce.storefront.payment.repository.G5PaymentRepository;
@@ -445,5 +446,63 @@ class OrderHistoryServiceImplTest {
 
 		assertThrows(InvalidRequestException.class, () -> orderHistoryService.resumePayment(1L, 10L));
 		verify(reservationService, never()).reReserveStockForOrder(any());
+	}
+
+	@Test
+	@DisplayName("Revised UX: getPendingOrderExpiry returns nearest expiry among active pending orders")
+	void getPendingOrderExpiry_returnsNearestExpiry() {
+		LocalDateTime now = LocalDateTime.now();
+		Order order1 = Order.builder()
+				.orderId(101L)
+				.orderNo("ORD-101")
+				.orderStatus("PENDING")
+				.paymentStatus("PENDING")
+				.build();
+		Order order2 = Order.builder()
+				.orderId(102L)
+				.orderNo("ORD-102")
+				.orderStatus("PENDING")
+				.paymentStatus("PENDING")
+				.build();
+
+		when(orderRepository.findByCustomerCustomerIdAndOrderStatus(1L, "PENDING"))
+				.thenReturn(List.of(order1, order2));
+		when(paymentRepository.existsByOrderOrderId(101L)).thenReturn(false);
+		when(paymentRepository.existsByOrderOrderId(102L)).thenReturn(false);
+
+		when(reservationService.getReservationExpiryForOrder(101L))
+				.thenReturn(Optional.of(now.plusMinutes(2)));
+		when(reservationService.getReservationExpiryForOrder(102L))
+				.thenReturn(Optional.of(now.plusMinutes(1)));
+		when(reservationService.isReservationActiveForOrder(101L)).thenReturn(true);
+		when(reservationService.isReservationActiveForOrder(102L)).thenReturn(true);
+
+		PendingOrderExpiryResponse res = orderHistoryService.getPendingOrderExpiry(1L);
+
+		assertNotNull(res);
+		assertEquals(2, res.getPendingCount());
+		assertEquals(102L, res.getOrderId());
+		assertEquals("ORD-102", res.getOrderNo());
+		assertNotNull(res.getExpiresAt());
+	}
+
+	@Test
+	@DisplayName("Revised UX: getPendingOrderExpiry returns zero pendingCount when all orders have initiated payment")
+	void getPendingOrderExpiry_skipsInitiatedPaymentOrders() {
+		Order order1 = Order.builder()
+				.orderId(101L)
+				.orderNo("ORD-101")
+				.orderStatus("PENDING")
+				.paymentStatus("PENDING")
+				.build();
+
+		when(orderRepository.findByCustomerCustomerIdAndOrderStatus(1L, "PENDING"))
+				.thenReturn(List.of(order1));
+		when(paymentRepository.existsByOrderOrderId(101L)).thenReturn(true);
+
+		PendingOrderExpiryResponse res = orderHistoryService.getPendingOrderExpiry(1L);
+
+		assertNotNull(res);
+		assertEquals(0, res.getPendingCount());
 	}
 }

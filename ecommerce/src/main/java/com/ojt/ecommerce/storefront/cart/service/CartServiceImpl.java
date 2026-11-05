@@ -493,6 +493,11 @@ public class CartServiceImpl implements CartService {
             throw new InvalidRequestException("Order is not in a failed or cancelled payment state");
         }
 
+        // Guard: Disallow restoring expired orders
+        if (reservationService.isOrderExpired(order.getOrderId())) {
+            throw new InvalidRequestException("Cannot restore items from an expired order");
+        }
+
         // 6. Idempotency / Already restored check
         if ("RESTORED".equalsIgnoreCase(cartA.getStatus())) {
             throw new ConflictException("This cart order has already been restored");

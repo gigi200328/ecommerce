@@ -4,9 +4,9 @@ import com.ojt.ecommerce.entity.Cart;
 import com.ojt.ecommerce.entity.Customer;
 import com.ojt.ecommerce.entity.Order;
 import com.ojt.ecommerce.entity.OrderStatusHistory;
-import com.ojt.ecommerce.storefront.cart.service.CartService;
 import com.ojt.ecommerce.storefront.checkout.repository.G5OrderRepository;
 import com.ojt.ecommerce.storefront.checkout.repository.G5OrderStatusHistoryRepository;
+import com.ojt.ecommerce.storefront.payment.repository.G5PaymentRepository;
 import com.ojt.ecommerce.storefront.reservation.service.InventoryReservationService;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.DisplayName;
@@ -34,13 +34,13 @@ public class ReservationExpiryWorkerTest {
     private InventoryReservationService reservationService;
 
     @Mock
-    private CartService cartService;
-
-    @Mock
     private G5OrderRepository orderRepository;
 
     @Mock
     private G5OrderStatusHistoryRepository orderStatusHistoryRepository;
+
+    @Mock
+    private G5PaymentRepository paymentRepository;
 
     @InjectMocks
     private ReservationExpiryWorker worker;
@@ -71,12 +71,11 @@ public class ReservationExpiryWorkerTest {
         worker.runReservationExpirySweep();
 
         verify(orderRepository, never()).findByIdWithLock(anyLong());
-        verify(cartService, never()).restoreFailedCartOrder(anyLong(), anyLong());
     }
 
     @Test
-    @DisplayName("runReservationExpirySweep: CART order with expired reservation is cancelled and auto-restored")
-    void runSweep_cartOrder_cancelledAndAutoRestored() {
+    @DisplayName("runReservationExpirySweep: CART order with expired reservation is cancelled and NOT restored")
+    void runSweep_cartOrder_cancelledWithoutCartRestore() {
         Order order = Order.builder()
                 .orderId(100L)
                 .customer(customer)
@@ -89,6 +88,7 @@ public class ReservationExpiryWorkerTest {
                 .build();
 
         when(reservationService.expireAbandonedReservationsAndGetOrderIds()).thenReturn(List.of(100L));
+        when(paymentRepository.existsByOrderOrderId(100L)).thenReturn(false);
         when(orderRepository.findByIdWithLock(100L)).thenReturn(Optional.of(order));
 
         worker.runReservationExpirySweep();
@@ -97,11 +97,22 @@ public class ReservationExpiryWorkerTest {
         assertThat(order.getPaymentStatus()).isEqualTo("FAILED");
         verify(orderRepository).save(order);
         verify(orderStatusHistoryRepository).save(any(OrderStatusHistory.class));
-        verify(cartService).restoreFailedCartOrder(1L, 100L);
     }
 
     @Test
-    @DisplayName("runReservationExpirySweep: Already PAID/SUCCESS order is not cancelled and not restored")
+    @DisplayName("runReservationExpirySweep: Order with initiated payment is skipped by worker")
+    void runSweep_orderWithInitiatedPayment_skipped() {
+        when(reservationService.expireAbandonedReservationsAndGetOrderIds()).thenReturn(List.of(100L));
+        when(paymentRepository.existsByOrderOrderId(100L)).thenReturn(true);
+
+        worker.runReservationExpirySweep();
+
+        verify(orderRepository, never()).findByIdWithLock(anyLong());
+        verify(orderRepository, never()).save(any());
+    }
+
+    @Test
+    @DisplayName("runReservationExpirySweep: Already PAID/SUCCESS order is not cancelled and not modified")
     void runSweep_alreadyPaidOrder_preserved() {
         Order paidOrder = Order.builder()
                 .orderId(101L)
@@ -113,6 +124,7 @@ public class ReservationExpiryWorkerTest {
                 .build();
 
         when(reservationService.expireAbandonedReservationsAndGetOrderIds()).thenReturn(List.of(101L));
+        when(paymentRepository.existsByOrderOrderId(101L)).thenReturn(false);
         when(orderRepository.findByIdWithLock(101L)).thenReturn(Optional.of(paidOrder));
 
         worker.runReservationExpirySweep();
@@ -121,7 +133,6 @@ public class ReservationExpiryWorkerTest {
         assertThat(paidOrder.getPaymentStatus()).isEqualTo("SUCCESS");
         verify(orderRepository, never()).save(paidOrder);
         verify(orderStatusHistoryRepository, never()).save(any());
-        verify(cartService, never()).restoreFailedCartOrder(anyLong(), anyLong());
     }
 
     @Test
@@ -137,6 +148,7 @@ public class ReservationExpiryWorkerTest {
                 .build();
 
         when(reservationService.expireAbandonedReservationsAndGetOrderIds()).thenReturn(List.of(102L));
+        when(paymentRepository.existsByOrderOrderId(102L)).thenReturn(false);
         when(orderRepository.findByIdWithLock(102L)).thenReturn(Optional.of(buyNowOrder));
 
         worker.runReservationExpirySweep();
@@ -145,6 +157,5 @@ public class ReservationExpiryWorkerTest {
         assertThat(buyNowOrder.getPaymentStatus()).isEqualTo("FAILED");
         verify(orderRepository).save(buyNowOrder);
         verify(orderStatusHistoryRepository).save(any(OrderStatusHistory.class));
-        verify(cartService, never()).restoreFailedCartOrder(anyLong(), anyLong());
     }
 }
