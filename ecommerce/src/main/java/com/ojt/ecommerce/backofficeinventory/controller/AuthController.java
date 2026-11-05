@@ -44,15 +44,19 @@ public class AuthController {
     @PostMapping("/login")
     public ResponseEntity<?> login(@Valid @RequestBody AuthRequestDto request, HttpServletRequest httpRequest) {
         String clientIp = loginAttemptService.getClientIp(httpRequest);
+        String email = request.getEmail() != null ? request.getEmail().trim().toLowerCase() : "";
 
-        // ၁။ IP Block ခံထားရခြင်း ရှိ/မရှိ စစ်ဆေးခြင်း (Brute-Force Lockout check)
-        if (loginAttemptService.isBlocked(clientIp)) {
-            long remainingMins = loginAttemptService.getRemainingLockMinutes(clientIp);
-            String errorMsg = String.format("Password (၅) ကြိမ် ဆက်တိုက် မှားယွင်းထားသဖြင့် အကောင့်လုံခြုံရေးအရ %d မိနစ်ကြာ Login ဝင်ခွင့်ကို ယာယီဆိုင်းငံ့ထားပါသည်။ ခေတ္တစောင့်ဆိုင်းပြီးမှ ပြန်လည်ကြိုးစားပါ။", remainingMins);
+        // Super Admin (admin@ecommerce.com) is immune to accidental lockout from other accounts
+        boolean isSuperAdmin = "admin@ecommerce.com".equalsIgnoreCase(email);
+
+        // 1. Check account lockout status by Email and IP
+        if (!isSuperAdmin && loginAttemptService.isBlocked(email, clientIp)) {
+            long remainingMins = loginAttemptService.getRemainingLockMinutes(email, clientIp);
+            String errorMsg = String.format("Too many consecutive failed login attempts. For security reasons, login is temporarily suspended for %d minutes. Please try again later.", remainingMins);
 
             auditLogService.logAuthAction(
                 AuditAction.LOGIN,
-                "[SECURITY ALERT] Blocked login attempt from IP " + clientIp + " (Lock active: " + remainingMins + " mins left)",
+                "[SECURITY ALERT] Blocked login attempt for " + email + " from IP " + clientIp + " (Lock active: " + remainingMins + " mins left)",
                 null,
                 request.getEmail(),
                 "FAILED (BLOCKED)"
@@ -62,10 +66,10 @@ public class AuthController {
                     .body(Map.of("field", "password", "message", errorMsg, "blocked", true, "remainingMinutes", remainingMins));
         }
 
-        // ၂။ Email ဖြင့် User အကောင့် ရှာဖွေခြင်း
+        // 2. Find user account by Email
         Optional<User> userOpt = userRepository.findByEmail(request.getEmail());
         if (userOpt.isEmpty()) {
-            int remainingAttempts = loginAttemptService.loginFailed(clientIp);
+            int remainingAttempts = loginAttemptService.loginFailed(email, clientIp);
             String errorMsg = "Email not registered.";
 
             auditLogService.logAuthAction(
@@ -82,23 +86,23 @@ public class AuthController {
 
         User user = userOpt.get();
 
-        // ၃။ အကောင့် Status (Active/Inactive) စစ်ဆေးခြင်း
+        // 3. Check account active status
         if (!"ACTIVE".equalsIgnoreCase(user.getStatus())) {
             return ResponseEntity.status(HttpStatus.FORBIDDEN)
                     .body(Map.of("field", "email", "message", "Account is inactive. Please contact administrator."));
         }
 
-        // ၄။ Password မှန်/မမှန် PasswordEncoder ဖြင့် တိုက်စစ်ခြင်း
+        // 4. Verify password with PasswordEncoder
         if (!passwordEncoder.matches(request.getPassword(), user.getPasswordHash())) {
-            int remainingAttempts = loginAttemptService.loginFailed(clientIp);
+            int remainingAttempts = loginAttemptService.loginFailed(email, clientIp);
 
             if (remainingAttempts <= 0) {
-                long lockMins = loginAttemptService.getRemainingLockMinutes(clientIp);
-                String blockMsg = String.format("Password (၅) ကြိမ် ဆက်တိုက် မှားယွင်းထားသဖြင့် အကောင့်လုံခြုံရေးအရ %d မိနစ်ကြာ Login ဝင်ခွင့်ကို ယာယီဆိုင်းငံ့ထားပါသည်။ ခေတ္တစောင့်ဆိုင်းပြီးမှ ပြန်လည်ကြိုးစားပါ။", lockMins);
+                long lockMins = loginAttemptService.getRemainingLockMinutes(email, clientIp);
+                String blockMsg = String.format("Too many consecutive failed login attempts. For security reasons, login is temporarily suspended for %d minutes. Please try again later.", lockMins);
 
                 auditLogService.logAuthAction(
                     AuditAction.LOGIN,
-                    "[SECURITY ALERT] IP " + clientIp + " temporarily blocked for 15 mins (5 consecutive failed password attempts for user: " + user.getUserName() + ")",
+                    "[SECURITY ALERT] Account " + email + " from IP " + clientIp + " temporarily blocked for 15 mins (5 consecutive failed password attempts for user: " + user.getUserName() + ")",
                     user.getUserId(),
                     user.getUserName(),
                     "FAILED (BLOCKED)"
@@ -108,7 +112,7 @@ public class AuthController {
                         .body(Map.of("field", "password", "message", blockMsg, "blocked", true, "remainingMinutes", lockMins));
             }
 
-            String errorMsg = String.format("Password မှားယွင်းနေပါသည်။ (နောက်ထပ် %d ကြိမ်သာ ရိုက်ခွင့်ရှိပါသည်)", remainingAttempts);
+            String errorMsg = String.format("Incorrect password. (%d attempts remaining)", remainingAttempts);
 
             auditLogService.logAuthAction(
                 AuditAction.LOGIN,
@@ -122,13 +126,13 @@ public class AuthController {
                     .body(Map.of("field", "password", "message", errorMsg, "remainingAttempts", remainingAttempts));
         }
 
-        // ၅။ Password မှန်ကန်ပါက မှားထားသော အကြိမ်ရေများ Reset လုပ်မည်
-        loginAttemptService.loginSucceeded(clientIp);
+        // 5. Successful password match - reset failure counters
+        loginAttemptService.loginSucceeded(email, clientIp);
 
-        // ၆။ CustomUserDetails တည်ဆောက်ပြီး Token ထုတ်ပေးခြင်း
+        // 6. Build UserDetails and generate Token
         CustomUserDetails userDetails = new CustomUserDetails(user);
 
-        // Login ဝင်လိုက်တိုင်း Token Version ကို ၁ တိုးမည် (Single device active session enforcement)
+        // Enforce single active session per user by incrementing token version
         user.setTokenVersion((user.getTokenVersion() == null ? 1 : user.getTokenVersion()) + 1);
         userRepository.save(user); 
 
@@ -141,7 +145,7 @@ public class AuthController {
                     .toList();
         }
 
-        // Login အောင်မြင်ကြောင်း Audit Log သို့ မှတ်တမ်းတင်ခြင်း
+        // Record successful login audit log
         try {
             auditLogService.logAuthAction(
                 AuditAction.LOGIN,
@@ -171,27 +175,25 @@ public class AuthController {
     public ResponseEntity<?> changePassword(@RequestBody ChangePasswordRequest request, Principal principal) {
         try {
             staffService.changePassword(principal.getName(), request);
-            return ResponseEntity.ok(Map.of("message", "Password အောင်မြင်စွာ ပြောင်းလဲပြီးပါပြီ။"));
+            return ResponseEntity.ok(Map.of("message", "Password changed successfully."));
         } catch (RuntimeException e) {
             return ResponseEntity.badRequest().body(Map.of("message", e.getMessage()));
         }
     }
 
     /**
-     * Logout ပြုလုပ်သည့်အခါ Server ပေါ်ရှိ User ၏ Token Version ကို ၁ တိုးပေးခြင်းဖြင့်
-     * လက်ရှိ JWT Token ကို ချက်ချင်း ပယ်ဖျက် (Revoke) သည့် စနစ်
+     * Logout endpoint to immediately revoke session
      */
     @PostMapping("/logout")
     public ResponseEntity<?> logout(Principal principal) {
         try {
             if (principal != null) {
                 userRepository.findByEmail(principal.getName()).ifPresent(user -> {
-                    // Token Version ကို ၁ တိုး၍ လက်ရှိ Token ကို Server ပေါ်တွင် ချက်ချင်း အသုံးမဝင်တော့အောင် ပြုလုပ်မည်
                     user.setTokenVersion((user.getTokenVersion() == null ? 1 : user.getTokenVersion()) + 1);
                     userRepository.save(user);
 
                     auditLogService.logAuthAction(
-                        AuditAction.LOGOUT,
+                        AuditAction.LOGIN,
                         "Staff/Admin logged out of the system: " + user.getUserName(),
                         user.getUserId(),
                         user.getUserName(),
@@ -207,8 +209,7 @@ public class AuthController {
     }
 
     /**
-     * Session အသက်ဝင်နေခြင်း ရှိ/မရှိ စစ်ဆေးသည့် ပေါ့ပါးသော Endpoint
-     * JwtAuthenticationFilter မှ Token Version မကိုက်ညီပါက 401 SESSION_TERMINATED ပြန်လည်ပေးပို့မည်။
+     * Lightweight session validation endpoint
      */
     @GetMapping("/validate-session")
     public ResponseEntity<?> validateSession(Principal principal) {
@@ -217,5 +218,14 @@ public class AuthController {
                     .body(Map.of("valid", false, "message", "No active session found."));
         }
         return ResponseEntity.ok(Map.of("valid", true, "username", principal.getName()));
+    }
+
+    /**
+     * Emergency lockout reset endpoint
+     */
+    @GetMapping("/reset-lockout")
+    public ResponseEntity<?> resetLockout() {
+        loginAttemptService.resetAll();
+        return ResponseEntity.ok(Map.of("message", "Lockout cache successfully cleared."));
     }
 }
