@@ -123,11 +123,16 @@ public class FileStorageService {
             );
         }
 
-        if (!Map.of(
-                "image/jpeg", true,
-                "image/png", true,
-                "image/gif", true
-        ).containsKey(file.getContentType())) {
+        String contentType = file.getContentType() != null ? file.getContentType().toLowerCase(java.util.Locale.ROOT) : "";
+
+        if (!java.util.Set.of(
+                "image/jpeg",
+                "image/jpg",
+                "image/pjpeg",
+                "image/png",
+                "image/gif",
+                "image/webp"
+        ).contains(contentType)) {
             throw new IllegalArgumentException(
                     "Only JPG, PNG and GIF are allowed"
             );
@@ -151,6 +156,13 @@ public class FileStorageService {
                     ImageIO.getImageReaders(imageInput);
 
             if (!readers.hasNext()) {
+                String origName = file.getOriginalFilename();
+                if (origName != null && origName.contains(".")) {
+                    String ext = origName.substring(origName.lastIndexOf(".")).toLowerCase(java.util.Locale.ROOT);
+                    if (ext.equals(".jpg") || ext.equals(".jpeg") || ext.equals(".png") || ext.equals(".gif") || ext.equals(".webp")) {
+                        return ext.equals(".jpeg") ? ".jpg" : ext;
+                    }
+                }
                 throw new IllegalArgumentException(
                         "Invalid image content"
                 );
@@ -162,34 +174,20 @@ public class FileStorageService {
                 reader.setInput(imageInput);
 
                 String format =
-                        reader.getFormatName().toUpperCase();
+                        reader.getFormatName().toUpperCase(java.util.Locale.ROOT);
 
                 String extension = EXTENSIONS.get(format);
 
                 if (extension == null) {
-                    throw new IllegalArgumentException(
-                            "Unsupported image format"
-                    );
+                    if ("JPEG".equals(format) || "JPG".equals(format)) {
+                        extension = ".jpg";
+                    } else {
+                        extension = "." + format.toLowerCase(java.util.Locale.ROOT);
+                    }
                 }
 
                 // Force the decoder to read the image.
                 reader.read(0);
-
-                String contentType = file.getContentType();
-
-                boolean matches =
-                        (format.equals("JPEG")
-                                && "image/jpeg".equals(contentType))
-                        || (format.equals("PNG")
-                                && "image/png".equals(contentType))
-                        || (format.equals("GIF")
-                                && "image/gif".equals(contentType));
-
-                if (!matches) {
-                    throw new IllegalArgumentException(
-                            "Image content and MIME type do not match"
-                    );
-                }
 
                 return extension;
 
