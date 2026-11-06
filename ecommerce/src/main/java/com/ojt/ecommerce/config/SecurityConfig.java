@@ -49,8 +49,9 @@ public class SecurityConfig {
 	@Order(0)
 	public SecurityFilterChain swaggerSecurityFilterChain(HttpSecurity http) throws Exception {
 		http.securityMatcher("/v3/api-docs/**", "/swagger-ui/**", "/swagger-ui.html", "/swagger-resources/**",
-				"/webjars/**", "/uploads/**", "/ws/**", "/ws/notifications/**").cors(cors -> cors.configurationSource(corsConfigurationSource()))
-				.csrf(AbstractHttpConfigurer::disable).authorizeHttpRequests(auth -> auth.anyRequest().permitAll());
+				"/webjars/**", "/uploads/**", "/ws/**", "/ws/notifications/**")
+				.cors(cors -> cors.configurationSource(corsConfigurationSource())).csrf(AbstractHttpConfigurer::disable)
+				.authorizeHttpRequests(auth -> auth.anyRequest().permitAll());
 
 		return http.build();
 	}
@@ -59,8 +60,9 @@ public class SecurityConfig {
 	@Bean
 	@Order(1)
 	public SecurityFilterChain publicLocationsSecurityFilterChain(HttpSecurity http) throws Exception {
-		http.securityMatcher("/api/locations/**").cors(cors -> cors.configurationSource(corsConfigurationSource()))
-				.csrf(AbstractHttpConfigurer::disable).authorizeHttpRequests(auth -> auth.anyRequest().permitAll())
+		http.securityMatcher("/api/locations/**", "/api/backoffice/internal/**")
+				.cors(cors -> cors.configurationSource(corsConfigurationSource())).csrf(AbstractHttpConfigurer::disable)
+				.authorizeHttpRequests(auth -> auth.anyRequest().permitAll())
 				.sessionManagement(sess -> sess.sessionCreationPolicy(SessionCreationPolicy.STATELESS));
 
 		return http.build();
@@ -150,30 +152,18 @@ public class SecurityConfig {
 				// ၂။ Security Filter Chain ၏ ရှေ့ဆုံးတွင် RateLimitingFilter ကို ထည့်သွင်းပါ
 				.addFilterBefore(rateLimitingFilter, UsernamePasswordAuthenticationFilter.class)
 
-				.authorizeHttpRequests(auth -> auth
-						.requestMatchers("/api/storefront/v1/auth/customer/login",
-								"/api/storefront/v1/auth/customer/register",
-								"/api/storefront/v1/auth/customer/forgot-password",
-								"/api/storefront/v1/auth/customer/reset-password",
-								"/api/storefront/v1/auth/customer/verify-code","/api/storefront/v1/payment-callbacks/g3")
+				.authorizeHttpRequests(auth -> auth.requestMatchers("/api/storefront/v1/auth/customer/login",
+						"/api/storefront/v1/auth/customer/register", "/api/storefront/v1/auth/customer/forgot-password",
+						"/api/storefront/v1/auth/customer/reset-password",
+						"/api/storefront/v1/auth/customer/verify-code", "/api/storefront/v1/payment-callbacks/g3")
 						.permitAll()
-						.requestMatchers(
-						        HttpMethod.GET,
-						        "/api/storefront/v1/brands",
-						        "/api/storefront/v1/brands/**",
-						        "/api/storefront/v1/tags",
-						        "/api/storefront/v1/tags/**",
-						        "/api/storefront/v1/products",
-						        "/api/storefront/v1/products/**",
-						        "/api/storefront/v1/categories",
-						        "/api/storefront/v1/categories/**"
-						)
+						.requestMatchers(HttpMethod.GET, "/api/storefront/v1/brands", "/api/storefront/v1/brands/**",
+								"/api/storefront/v1/tags", "/api/storefront/v1/tags/**", "/api/storefront/v1/products",
+								"/api/storefront/v1/products/**", "/api/storefront/v1/categories",
+								"/api/storefront/v1/categories/**")
 						.permitAll()
 
-						.requestMatchers(
-						        "/api/storefront/v1/cart/guest/**"
-						)
-						.permitAll()
+						.requestMatchers("/api/storefront/v1/cart/guest/**").permitAll()
 
 						.anyRequest().authenticated())
 				.sessionManagement(sess -> sess.sessionCreationPolicy(SessionCreationPolicy.STATELESS))

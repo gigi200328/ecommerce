@@ -2,10 +2,12 @@ package com.ojt.ecommerce.backofficeinventory.service;
 
 import java.time.LocalDateTime;
 import java.util.ArrayList;
+import java.util.HashSet;
 import java.util.LinkedHashMap;
 import java.util.List;
 import java.util.Map;
 import java.util.Optional;
+import java.util.Set;
 
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
@@ -172,6 +174,10 @@ public class ShippingService {
 			// request အတွင်းရှိ Data ကို မူလအတိုင်း ပြန်ထားရန်
 			request.setZoneName(originalZoneName);
 		}
+
+		notificationService.sendCustomNotification("SHIPPING_CREATE", "New Shipping Zone Created",
+				"A new delivery zone '" + request.getZoneName() + "' has been successfully created.",
+				"/admin/shipping-rates", null);
 	}
 
 	// ၃။ ရှိပြီးသား Zone Group ၏ ဈေးနှုန်း (Shipping Fee) နှင့် Status
@@ -179,25 +185,61 @@ public class ShippingService {
 	@Transactional
 	public void updateZoneGroupRate(UpdateZoneRateRequest request) {
 		LocalDateTime now = LocalDateTime.now();
+
+		// ⭐️ ပြင်ဆင်ချက်: Foreign Key ငြိနေသဖြင့် Delete အစား Soft Delete (Update)
+		// ကိုသာ သုံးမည်
+		if (request.getRemovedZoneIds() != null && !request.getRemovedZoneIds().isEmpty()) {
+			List<DeliveryZone> removedZones = zoneRepository.findAllById(request.getRemovedZoneIds());
+
+			for (DeliveryZone removedZone : removedZones) {
+				// ၁။ Add New Zone တွင် မြို့ကို ပြန်ရွေး၍ရစေရန် လက်ရှိမြို့နာမည်ကို
+				// ပြောင်းပစ်မည် (လွတ်သွားစေရန်)
+				removedZone.setTownship(removedZone.getTownship() + "_DELETED_" + removedZone.getZoneId());
+
+				// ၂။ UI တွင် လာမရှုပ်စေရန် (Unassigned အဖြစ် Group မဖွဲ့စေရန်)
+				// သီးသန့်နာမည်ပေးမည်
+				removedZone.setZoneName("DELETED_ZONE_" + removedZone.getZoneId());
+
+				// ၃။ Status ကို INACTIVE အဖြစ် ပြောင်းမည်
+				removedZone.setStatus("INACTIVE");
+
+				zoneRepository.save(removedZone);
+
+				// ၄။ Shipping Rate အဟောင်းရှိပါက ပိတ်မည်
+				rateRepository.findCurrentRateByZoneId(removedZone.getZoneId(), now).ifPresent(oldRate -> {
+					shipmentMapper.deactivateRateEntity(oldRate, now);
+					rateRepository.save(oldRate);
+				});
+			}
+		}
+
+		// ⭐️ အဆင့် (၂): ကျန်ရှိနေသော (သို့မဟုတ် အသစ်ထည့်ထားသော) မြို့များကို Update
+		// လုပ်ခြင်း
 		List<DeliveryZone> zones = zoneRepository.findAllById(request.getZoneIds());
+		Set<String> updatedZoneNames = new HashSet<>();
 
 		for (DeliveryZone zone : zones) {
 			shipmentMapper.updateZoneEntity(zone, request, now);
 			zoneRepository.save(zone);
+
+			if (zone.getZoneName() != null) {
+				updatedZoneNames.add(zone.getZoneName());
+			}
 
 			rateRepository.findCurrentRateByZoneId(zone.getZoneId(), now).ifPresent(oldRate -> {
 				shipmentMapper.deactivateRateEntity(oldRate, now);
 				rateRepository.save(oldRate);
 			});
 
-			if (!zones.isEmpty()) {
-				notificationService.sendCustomNotification("SHIPPING_UPDATE", "Shipping Rates Updated",
-						"Shipping fees have been updated for " + zones.size() + " zones.", "/admin/shipping-rates",
-						null);
-			}
-
 			rateRepository.save(shipmentMapper.toShippingRateEntity(zone, request.getShippingFee(),
 					request.getEstimatedDays(), now));
+		}
+
+		if (!updatedZoneNames.isEmpty()) {
+			String joinedNames = String.join(", ", updatedZoneNames);
+
+			notificationService.sendCustomNotification("SHIPPING_UPDATE", "Shipping Rates Updated",
+					"Shipping fees have been updated for: " + joinedNames, "/admin/shipping-rates", null);
 		}
 	}
 
