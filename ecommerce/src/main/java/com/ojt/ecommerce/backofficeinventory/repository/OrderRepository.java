@@ -31,4 +31,7 @@ public interface OrderRepository extends JpaRepository<Order, Long>, JpaSpecific
 
 	@Query("SELECT DISTINCT o FROM Order o LEFT JOIN FETCH o.orderItems oi LEFT JOIN FETCH oi.variant v LEFT JOIN FETCH v.product p WHERE o.createdAt BETWEEN :start AND :end")
 	List<Order> findWithItemsByCreatedAtBetween(@Param("start") LocalDateTime start, @Param("end") LocalDateTime end);
+
+	@Query("SELECT o.orderStatus, COUNT(o) FROM Order o GROUP BY o.orderStatus")
+	List<Object[]> countOrdersByStatus();
 }

@@ -6,6 +6,7 @@ import java.time.LocalTime;
 import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.Collections;
+import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
 import java.util.stream.Collectors;
@@ -242,6 +243,23 @@ public class OrderManagementService {
 
 		// ၃။ Mapper အသုံးပြု၍ DTO သို့ ပြောင်းမည် (Code အလွန်ရှင်းသွားပါပြီ)
 		return histories.stream().map(orderMapper::toHistoryDto).collect(Collectors.toList());
+	}
+
+	@Transactional(readOnly = true)
+	public Map<String, Long> getOrderStatusCounts() {
+		List<Object[]> rows = orderRepository.countOrdersByStatus();
+		Map<String, Long> counts = new HashMap<>();
+		long total = 0;
+		for (Object[] row : rows) {
+			if (row != null && row.length >= 2 && row[0] != null && row[1] != null) {
+				String status = row[0].toString().toUpperCase();
+				long count = ((Number) row[1]).longValue();
+				counts.put(status, count);
+				total += count;
+			}
+		}
+		counts.put("TOTAL", total);
+		return counts;
 	}
 
 }
