@@ -28,8 +28,23 @@ public class StaffService {
     private final PasswordEncoder passwordEncoder;
 
     public StaffResponseDTO createStaff(StaffRequestDTO request) {
-        if (userRepository.findByEmail(request.getEmail()).isPresent()) {
+        if (request.getEmail() == null || request.getEmail().trim().isEmpty()) {
+            throw new RuntimeException("Email address is required.");
+        }
+        String normalizedEmail = request.getEmail().trim().toLowerCase();
+
+        // Email syntax validation
+        if (!normalizedEmail.matches("^[A-Za-z0-9+_.-]+@[A-Za-z0-9.-]+\\.[A-Za-z]{2,}$")) {
+            throw new RuntimeException("Invalid email format.");
+        }
+
+        if (userRepository.findByEmail(normalizedEmail).isPresent()) {
             throw new RuntimeException("This email address is already registered.");
+        }
+
+        String normalizedUserName = request.getUserName() != null ? request.getUserName().trim() : "";
+        if (normalizedUserName.isEmpty()) {
+            throw new RuntimeException("Full name is required.");
         }
 
         User currentUser = getCurrentUser();
@@ -45,13 +60,14 @@ public class StaffService {
         Role role = roleRepository.findByRoleName(request.getRoleName())
                 .orElseThrow(() -> new RuntimeException("Role not found: " + request.getRoleName()));
 
+        String password = request.getPassword() != null ? request.getPassword().trim() : "";
         // Validate password complexity rules
-        validatePasswordStrength(request.getPassword());
+        validatePasswordStrength(password);
 
         User newStaff = User.builder()
-                .userName(request.getUserName())
-                .email(request.getEmail())
-                .passwordHash(passwordEncoder.encode(request.getPassword()))
+                .userName(normalizedUserName)
+                .email(normalizedEmail)
+                .passwordHash(passwordEncoder.encode(password))
                 .status("ACTIVE")
                 .createdAt(LocalDateTime.now())
                 .createdBy(currentUserId)
@@ -93,6 +109,20 @@ public class StaffService {
         User currentUser = getCurrentUser();
         Long currentUserId = currentUser != null ? currentUser.getUserId() : null;
 
+        if (request.getEmail() == null || request.getEmail().trim().isEmpty()) {
+            throw new RuntimeException("Email address is required.");
+        }
+        String normalizedEmail = request.getEmail().trim().toLowerCase();
+
+        if (!normalizedEmail.matches("^[A-Za-z0-9+_.-]+@[A-Za-z0-9.-]+\\.[A-Za-z]{2,}$")) {
+            throw new RuntimeException("Invalid email format.");
+        }
+
+        String normalizedUserName = request.getUserName() != null ? request.getUserName().trim() : "";
+        if (normalizedUserName.isEmpty()) {
+            throw new RuntimeException("Full name is required.");
+        }
+
         // 1. Super Admin Protection: Other admins cannot modify the primary Super Admin
         if (isSuperAdmin(existingStaff)) {
             if (currentUser == null || !isSuperAdmin(currentUser)) {
@@ -100,6 +130,9 @@ public class StaffService {
             }
             if (!"ADMIN".equalsIgnoreCase(request.getRoleName())) {
                 throw new RuntimeException("The primary Super Administrator role cannot be demoted.");
+            }
+            if (!existingStaff.getEmail().equalsIgnoreCase(normalizedEmail)) {
+                throw new RuntimeException("The primary Super Administrator root email address cannot be changed.");
             }
         }
 
@@ -141,22 +174,30 @@ public class StaffService {
             existingStaff.setTokenVersion((existingStaff.getTokenVersion() == null ? 1 : existingStaff.getTokenVersion()) + 1);
         }
 
-        existingStaff.setUserName(request.getUserName());
+        existingStaff.setUserName(normalizedUserName);
         existingStaff.setUserRole(role);
         
-        if (!existingStaff.getEmail().equals(request.getEmail()) && 
-            userRepository.findByEmail(request.getEmail()).isPresent()) {
-            throw new RuntimeException("This email address is already in use.");
+        // 5. Email Update Policy (Option 2): Only Super Admin can update an account's email address
+        if (!existingStaff.getEmail().equalsIgnoreCase(normalizedEmail)) {
+            if (currentUser == null || !isSuperAdmin(currentUser)) {
+                throw new RuntimeException("Only the primary Super Administrator has the authority to change or update staff email addresses.");
+            }
+            if (userRepository.findByEmail(normalizedEmail).isPresent()) {
+                throw new RuntimeException("This email address is already in use.");
+            }
+            existingStaff.setEmail(normalizedEmail);
+            // Invalidate session if email changes so they must re-authenticate with new email
+            existingStaff.setTokenVersion((existingStaff.getTokenVersion() == null ? 1 : existingStaff.getTokenVersion()) + 1);
         }
-        existingStaff.setEmail(request.getEmail());
 
         // If password is reset by admin, require user to change it on their next login
-        if (request.getPassword() != null && !request.getPassword().isEmpty()) {
+        if (request.getPassword() != null && !request.getPassword().trim().isEmpty()) {
             if (isSuperAdmin(existingStaff)) {
                 throw new RuntimeException("Super Administrator password cannot be reset from this staff management form. Please use the Change Password settings in Profile.");
             }
-            validatePasswordStrength(request.getPassword());
-            existingStaff.setPasswordHash(passwordEncoder.encode(request.getPassword()));
+            String newPassword = request.getPassword().trim();
+            validatePasswordStrength(newPassword);
+            existingStaff.setPasswordHash(passwordEncoder.encode(newPassword));
             existingStaff.setMustChangePassword(true);
             existingStaff.setTokenVersion((existingStaff.getTokenVersion() == null ? 1 : existingStaff.getTokenVersion()) + 1);
         }
@@ -193,8 +234,9 @@ public class StaffService {
     }
     
     public void changePassword(String email, ChangePasswordRequest request) {
-        User user = userRepository.findByEmail(email)
-                .orElseThrow(() -> new RuntimeException("Account not found with email: " + email));
+        String normalizedEmail = email != null ? email.trim().toLowerCase() : "";
+        User user = userRepository.findByEmail(normalizedEmail)
+                .orElseThrow(() -> new RuntimeException("Account not found with email: " + normalizedEmail));
 
         if (!passwordEncoder.matches(request.getCurrentPassword(), user.getPasswordHash())) {
             throw new RuntimeException("Current password is incorrect.");
@@ -237,6 +279,14 @@ public class StaffService {
     public StaffResponseDTO getStaffById(Long id) {
         User staff = userRepository.findById(id)
                 .orElseThrow(() -> new RuntimeException("Staff member not found with ID: " + id));
+
+        // If target is Super Admin, only Super Admin can view or edit details
+        if (isSuperAdmin(staff)) {
+            User currentUser = getCurrentUser();
+            if (currentUser == null || !isSuperAdmin(currentUser)) {
+                throw new RuntimeException("Access denied: You do not have permission to view or edit the Super Administrator account.");
+            }
+        }
 
         return StaffResponseDTO.builder()
                 .userId(staff.getUserId())
@@ -304,7 +354,7 @@ public class StaffService {
                 return userDetails.getUser();
             }
             if (auth.getName() != null) {
-                return userRepository.findByEmail(auth.getName()).orElse(null);
+                return userRepository.findByEmail(auth.getName().trim().toLowerCase()).orElse(null);
             }
         }
         return null;
