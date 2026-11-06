@@ -182,11 +182,21 @@ public class ProductService {
                             );
 
             for (ProductVariant v : variants) {
-                if (v.getProduct() != null && !variantMap.containsKey(v.getProduct().getProductId())) {
-                    variantMap.put(
-                            v.getProduct().getProductId(),
-                            v
-                    );
+                if (v.getProduct() != null) {
+                    Long pId = v.getProduct().getProductId();
+                    if (!variantMap.containsKey(pId)) {
+                        variantMap.put(pId, v);
+                    }
+                    if (!imageMap.containsKey(pId)) {
+                        List<ProductVariantImage> vImgs = productVariantImageRepository.findByProductVariantVariantId(v.getVariantId());
+                        if (vImgs != null && !vImgs.isEmpty()) {
+                            var primary = vImgs.stream().filter(img -> Boolean.TRUE.equals(img.getIsPrimary())).findFirst();
+                            String imgUrl = primary.map(ProductVariantImage::getImageUrl).orElseGet(() -> vImgs.get(0).getImageUrl());
+                            if (imgUrl != null && !imgUrl.isBlank()) {
+                                imageMap.put(pId, imgUrl);
+                            }
+                        }
+                    }
                 }
             }
 
@@ -266,6 +276,18 @@ public class ProductService {
 
         List<ProductVariant> variants =
                 productVariantRepository.findByProduct_ProductId(id);
+
+        if (imageUrl == null && !variants.isEmpty()) {
+            for (ProductVariant v : variants) {
+                List<ProductVariantImage> varImgs = productVariantImageRepository.findByProductVariantVariantId(v.getVariantId());
+                if (varImgs != null && !varImgs.isEmpty()) {
+                    var primaryImg = varImgs.stream().filter(img -> Boolean.TRUE.equals(img.getIsPrimary())).findFirst();
+                    imageUrl = primaryImg.map(ProductVariantImage::getImageUrl).orElseGet(() -> varImgs.get(0).getImageUrl());
+                    if (imageUrl != null && !imageUrl.isBlank()) break;
+                }
+            }
+        }
+
         ProductVariant firstVariant =
                 variants.isEmpty() ? null : variants.get(0);
         String sku = firstVariant != null ? firstVariant.getSku() : null;
@@ -451,6 +473,18 @@ public class ProductService {
 
         List<ProductVariant> variants =
                 productVariantRepository.findByProduct_ProductId(id);
+
+        if (imageUrl == null && !variants.isEmpty()) {
+            for (ProductVariant v : variants) {
+                List<ProductVariantImage> varImgs = productVariantImageRepository.findByProductVariantVariantId(v.getVariantId());
+                if (varImgs != null && !varImgs.isEmpty()) {
+                    var primaryImg = varImgs.stream().filter(img -> Boolean.TRUE.equals(img.getIsPrimary())).findFirst();
+                    imageUrl = primaryImg.map(ProductVariantImage::getImageUrl).orElseGet(() -> varImgs.get(0).getImageUrl());
+                    if (imageUrl != null && !imageUrl.isBlank()) break;
+                }
+            }
+        }
+
         ProductVariant firstVariant =
                 variants.isEmpty() ? null : variants.get(0);
         String sku = firstVariant != null ? firstVariant.getSku() : null;
