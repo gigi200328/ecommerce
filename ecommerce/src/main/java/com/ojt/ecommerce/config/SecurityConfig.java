@@ -2,6 +2,7 @@ package com.ojt.ecommerce.config;
 
 import java.util.List;
 
+import org.springframework.beans.factory.annotation.Value;
 import org.springframework.context.annotation.Bean;
 import org.springframework.context.annotation.Configuration;
 import org.springframework.core.annotation.Order;
@@ -45,13 +46,18 @@ public class SecurityConfig {
 		return config.getAuthenticationManager();
 	}
 
+	@Value("${app.cors.allowed-origins}")
+	private List<String> allowedOrigins;
+
 	@Bean
 	@Order(0)
 	public SecurityFilterChain swaggerSecurityFilterChain(HttpSecurity http) throws Exception {
 		http.securityMatcher("/v3/api-docs/**", "/swagger-ui/**", "/swagger-ui.html", "/swagger-resources/**",
 				"/webjars/**", "/uploads/**", "/ws/**", "/ws/notifications/**")
-				.cors(cors -> cors.configurationSource(corsConfigurationSource())).csrf(AbstractHttpConfigurer::disable)
-				.authorizeHttpRequests(auth -> auth.anyRequest().permitAll());
+				.cors(cors -> cors.configurationSource(corsConfigurationSource()))
+				.csrf(AbstractHttpConfigurer::disable)
+				.authorizeHttpRequests(auth -> auth.anyRequest()
+						.permitAll());
 
 		return http.build();
 	}
@@ -61,8 +67,10 @@ public class SecurityConfig {
 	@Order(1)
 	public SecurityFilterChain publicLocationsSecurityFilterChain(HttpSecurity http) throws Exception {
 		http.securityMatcher("/api/locations/**", "/api/backoffice/internal/**")
-				.cors(cors -> cors.configurationSource(corsConfigurationSource())).csrf(AbstractHttpConfigurer::disable)
-				.authorizeHttpRequests(auth -> auth.anyRequest().permitAll())
+				.cors(cors -> cors.configurationSource(corsConfigurationSource()))
+				.csrf(AbstractHttpConfigurer::disable)
+				.authorizeHttpRequests(auth -> auth.anyRequest()
+						.permitAll())
 				.sessionManagement(sess -> sess.sessionCreationPolicy(SessionCreationPolicy.STATELESS));
 
 		return http.build();
@@ -76,7 +84,8 @@ public class SecurityConfig {
 		JwtAuthenticationFilter backofficeFilter = new JwtAuthenticationFilter(jwtUtil, userDetailsService);
 
 		http.securityMatcher("/api/backoffice/**", "/api/v1/reports/**", "/api/v1/admin/**", "/api/admin/**")
-				.cors(cors -> cors.configurationSource(corsConfigurationSource())).csrf(AbstractHttpConfigurer::disable)
+				.cors(cors -> cors.configurationSource(corsConfigurationSource()))
+				.csrf(AbstractHttpConfigurer::disable)
 				.authorizeHttpRequests(auth -> auth
 						.requestMatchers("/api/backoffice/auth/**", "/api/backoffice/products/excel-template",
 								"/api/backoffice/products/excel-template.xlsx")
@@ -130,7 +139,8 @@ public class SecurityConfig {
 						.requestMatchers("/api/backoffice/reports", "/api/backoffice/reports/**")
 						.hasAnyAuthority("ADMIN", "ROLE_ADMIN")
 
-						.anyRequest().authenticated())
+						.anyRequest()
+						.authenticated())
 
 				.sessionManagement(sess -> sess.sessionCreationPolicy(SessionCreationPolicy.STATELESS))
 				.addFilterBefore(backofficeFilter, UsernamePasswordAuthenticationFilter.class);
@@ -146,7 +156,8 @@ public class SecurityConfig {
 		// ၁။ RateLimitingFilter ကို Object တည်ဆောက်ပါ
 		RateLimitingFilter rateLimitingFilter = new RateLimitingFilter();
 
-		http.securityMatcher("/api/storefront/v1/**").cors(cors -> cors.configurationSource(corsConfigurationSource()))
+		http.securityMatcher("/api/storefront/v1/**")
+				.cors(cors -> cors.configurationSource(corsConfigurationSource()))
 				.csrf(csrf -> csrf.disable())
 
 				// ၂။ Security Filter Chain ၏ ရှေ့ဆုံးတွင် RateLimitingFilter ကို ထည့်သွင်းပါ
@@ -163,9 +174,11 @@ public class SecurityConfig {
 								"/api/storefront/v1/categories/**")
 						.permitAll()
 
-						.requestMatchers("/api/storefront/v1/cart/guest/**").permitAll()
+						.requestMatchers("/api/storefront/v1/cart/guest/**")
+						.permitAll()
 
-						.anyRequest().authenticated())
+						.anyRequest()
+						.authenticated())
 				.sessionManagement(sess -> sess.sessionCreationPolicy(SessionCreationPolicy.STATELESS))
 				.addFilterBefore(storefrontFilter, UsernamePasswordAuthenticationFilter.class);
 
@@ -176,8 +189,7 @@ public class SecurityConfig {
 	public CorsConfigurationSource corsConfigurationSource() {
 		CorsConfiguration configuration = new CorsConfiguration();
 		configuration.setAllowedOriginPatterns(List.of("http://localhost:*", "http://127.0.0.1:*"));
-		configuration.setAllowedOrigins(List.of("http://localhost:5173", "http://localhost:5174",
-				"http://localhost:5175", "http://localhost:3000"));
+		configuration.setAllowedOrigins(allowedOrigins);
 		configuration.setAllowedMethods(List.of("GET", "POST", "PUT", "DELETE", "PATCH", "OPTIONS"));
 		configuration.setAllowedHeaders(
 				List.of("Authorization", "Content-Type", "Cache-Control", "Accept", "X-Requested-With"));
