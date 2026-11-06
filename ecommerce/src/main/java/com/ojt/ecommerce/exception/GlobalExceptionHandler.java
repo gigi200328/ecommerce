@@ -132,7 +132,18 @@ public class GlobalExceptionHandler {
         return buildErrorResponse(HttpStatus.CONFLICT, message);
     }
 
-    // --- 8. Generic Exception (Catch-all) - 500 ---
+    // --- 8. Multipart & Media Type Exceptions - 415 / 400 ---
+    @ExceptionHandler(org.springframework.web.HttpMediaTypeNotSupportedException.class)
+    public ResponseEntity<ErrorResponse> handleMediaTypeNotSupported(org.springframework.web.HttpMediaTypeNotSupportedException ex) {
+        return buildErrorResponse(HttpStatus.UNSUPPORTED_MEDIA_TYPE, "Unsupported media type: " + ex.getMessage());
+    }
+
+    @ExceptionHandler(org.springframework.web.multipart.MultipartException.class)
+    public ResponseEntity<ErrorResponse> handleMultipartException(org.springframework.web.multipart.MultipartException ex) {
+        return buildErrorResponse(HttpStatus.BAD_REQUEST, "File upload error: " + ex.getMessage());
+    }
+
+    // --- 9. Generic Exception (Catch-all) - 500 ---
     @ExceptionHandler(Exception.class)
     public ResponseEntity<ErrorResponse> handleGenericException(Exception ex) {
         ex.printStackTrace(); // Log actual exception for debugging
