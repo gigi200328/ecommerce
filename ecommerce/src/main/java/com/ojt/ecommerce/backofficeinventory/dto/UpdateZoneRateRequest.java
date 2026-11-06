@@ -14,6 +14,7 @@ import lombok.NoArgsConstructor;
 @AllArgsConstructor
 public class UpdateZoneRateRequest {
 	private List<Long> zoneIds; // ပြင်ဆင်မည့် Zone Group ထဲရှိ zone_id များအားလုံး
+	private List<Long> removedZoneIds;
 	private String zoneName; // Zone အမည်ပြင်ချင်ပါက သုံးရန်
 	private BigDecimal shippingFee; // ဈေးနှုန်းအသစ်
 	private Integer estimatedDays; // ကြာချိန်အသစ်

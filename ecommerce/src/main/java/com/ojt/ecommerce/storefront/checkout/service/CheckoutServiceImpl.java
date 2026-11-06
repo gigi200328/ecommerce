@@ -1,289 +1,313 @@
 package com.ojt.ecommerce.storefront.checkout.service;
 
-import com.ojt.ecommerce.entity.*;
-import com.ojt.ecommerce.storefront.exception.*;
-import com.ojt.ecommerce.storefront.auth.repository.CustomerRepository;
-import com.ojt.ecommerce.storefront.cart.repository.CartItemRepository;
-import com.ojt.ecommerce.storefront.cart.repository.CartRepository;
-import com.ojt.ecommerce.storefront.catalog.repository.*;
-import com.ojt.ecommerce.storefront.checkout.dto.*;
-import com.ojt.ecommerce.storefront.checkout.repository.*;
-import com.ojt.ecommerce.storefront.profile.repository.CustomerAddressRepository;
-import com.ojt.ecommerce.storefront.reservation.dto.ReservationItem;
-import com.ojt.ecommerce.storefront.reservation.service.InventoryReservationService;
-import com.ojt.ecommerce.storefront.shipping.service.ShippingService;
-import lombok.RequiredArgsConstructor;
-import org.springframework.stereotype.Service;
-import org.springframework.transaction.annotation.Transactional;
-
 import java.math.BigDecimal;
 import java.time.LocalDateTime;
 import java.time.ZoneId;
 import java.time.format.DateTimeFormatter;
-import java.util.*;
+import java.util.ArrayList;
+import java.util.HashMap;
+import java.util.List;
+import java.util.Map;
+import java.util.Optional;
+import java.util.UUID;
+
+import org.springframework.stereotype.Service;
+import org.springframework.transaction.annotation.Transactional;
+
+import com.ojt.ecommerce.entity.Cart;
+import com.ojt.ecommerce.entity.CartItem;
+import com.ojt.ecommerce.entity.Customer;
+import com.ojt.ecommerce.entity.CustomerAddress;
+import com.ojt.ecommerce.entity.Order;
+import com.ojt.ecommerce.entity.OrderAddress;
+import com.ojt.ecommerce.entity.OrderItem;
+import com.ojt.ecommerce.entity.OrderStatusHistory;
+import com.ojt.ecommerce.entity.Product;
+import com.ojt.ecommerce.entity.ProductVariant;
+import com.ojt.ecommerce.entity.VariantOptionValue;
+import com.ojt.ecommerce.storefront.auth.repository.CustomerRepository;
+import com.ojt.ecommerce.storefront.cart.repository.CartItemRepository;
+import com.ojt.ecommerce.storefront.cart.repository.CartRepository;
+import com.ojt.ecommerce.storefront.catalog.repository.G5InventoryRepository;
+import com.ojt.ecommerce.storefront.catalog.repository.G5ProductVariantRepository;
+import com.ojt.ecommerce.storefront.catalog.repository.G5VariantOptionValueRepository;
+import com.ojt.ecommerce.storefront.checkout.dto.BuyNowItemRequest;
+import com.ojt.ecommerce.storefront.checkout.dto.CreateOrderRequest;
+import com.ojt.ecommerce.storefront.checkout.dto.CustomShippingAddressRequest;
+import com.ojt.ecommerce.storefront.checkout.dto.CustomShippingQuoteRequest;
+import com.ojt.ecommerce.storefront.checkout.dto.OrderResponse;
+import com.ojt.ecommerce.storefront.checkout.dto.ShippingQuoteResponse;
+import com.ojt.ecommerce.storefront.checkout.repository.G5OrderAddressRepository;
+import com.ojt.ecommerce.storefront.checkout.repository.G5OrderItemRepository;
+import com.ojt.ecommerce.storefront.checkout.repository.G5OrderRepository;
+import com.ojt.ecommerce.storefront.checkout.repository.G5OrderStatusHistoryRepository;
+import com.ojt.ecommerce.storefront.exception.InvalidRequestException;
+import com.ojt.ecommerce.storefront.exception.ResourceNotFoundException;
+import com.ojt.ecommerce.storefront.profile.repository.CustomerAddressRepository;
+import com.ojt.ecommerce.storefront.reservation.dto.ReservationItem;
+import com.ojt.ecommerce.storefront.reservation.service.InventoryReservationService;
+import com.ojt.ecommerce.storefront.shipping.service.ShippingService;
+
+import lombok.RequiredArgsConstructor;
 
 @Service
 @RequiredArgsConstructor
 public class CheckoutServiceImpl implements CheckoutService {
 
-    private final G5OrderRepository orderRepository;
-    private final G5OrderItemRepository orderItemRepository;
-    private final G5OrderAddressRepository orderAddressRepository;
-    private final G5OrderStatusHistoryRepository orderStatusHistoryRepository;
-    
-    private final CartRepository cartRepository;
-    private final CartItemRepository cartItemRepository;
-    private final CustomerRepository customerRepository;
-    private final CustomerAddressRepository customerAddressRepository;
-    private final G5InventoryRepository inventoryRepository;
-    private final G5VariantOptionValueRepository optionValueRepository;
-    private final G5ProductVariantRepository variantRepository;
-    
-    private final ShippingService shippingService;
-    private final InventoryReservationService reservationService;
+	private final G5OrderRepository orderRepository;
+	private final G5OrderItemRepository orderItemRepository;
+	private final G5OrderAddressRepository orderAddressRepository;
+	private final G5OrderStatusHistoryRepository orderStatusHistoryRepository;
 
-    private String buildJson(java.util.Map<String, String> map) {
-        StringBuilder sb = new StringBuilder("{");
-        boolean first = true;
-        for (java.util.Map.Entry<String, String> e : map.entrySet()) {
-            if (!first) sb.append(",");
-            sb.append("\"").append(e.getKey()).append("\":\"").append(e.getValue()).append("\"");
-            first = false;
-        }
-        sb.append("}");
-        return sb.toString();
-    }
+	private final CartRepository cartRepository;
+	private final CartItemRepository cartItemRepository;
+	private final CustomerRepository customerRepository;
+	private final CustomerAddressRepository customerAddressRepository;
+	private final G5InventoryRepository inventoryRepository;
+	private final G5VariantOptionValueRepository optionValueRepository;
+	private final G5ProductVariantRepository variantRepository;
 
-    private String generateOrderNo() {
-        String dateStr = LocalDateTime.now().format(DateTimeFormatter.ofPattern("yyMMddHHmmss"));
-        String randomStr = UUID.randomUUID().toString().substring(0, 6).toUpperCase();
-        return "ORD-" + dateStr + "-" + randomStr;
-    }
+	private final ShippingService shippingService;
+	private final InventoryReservationService reservationService;
 
-    private void createOrderItem(Order order, ProductVariant v, int qty, BigDecimal unitPrice, BigDecimal itemSubtotal) {
-        List<VariantOptionValue> options = optionValueRepository.findByVariantVariantId(v.getVariantId());
-        Map<String, String> optsMap = new HashMap<>();
-        if (options != null) {
-            for (VariantOptionValue opt : options) {
-                optsMap.put(opt.getOption().getVariation().getName(), opt.getOption().getValue());
-            }
-        }
-        
-        String variantAttributesJson = buildJson(optsMap);
-        
-        OrderItem orderItem = new OrderItem();
-        orderItem.setOrder(order);
-        orderItem.setVariant(v);
-        orderItem.setQty(qty);
-        orderItem.setUnitPrice(unitPrice);
-        orderItem.setSubtotal(itemSubtotal);
-        BigDecimal itemCost = (v != null && v.getCostPrice() != null) ? v.getCostPrice() : BigDecimal.ZERO;
-        orderItem.setCostPrice(itemCost);
-        orderItem.setProductName(v.getProduct().getProductName());
-        orderItem.setVariantAttributes(variantAttributesJson);
-        
-        orderItemRepository.save(orderItem);
-    }
+	private String buildJson(java.util.Map<String, String> map) {
+		StringBuilder sb = new StringBuilder("{");
+		boolean first = true;
+		for (java.util.Map.Entry<String, String> e : map.entrySet()) {
+			if (!first)
+				sb.append(",");
+			sb.append("\"").append(e.getKey()).append("\":\"").append(e.getValue()).append("\"");
+			first = false;
+		}
+		sb.append("}");
+		return sb.toString();
+	}
 
-    @Override
-    @Transactional
-    public OrderResponse createOrder(Long customerId, CreateOrderRequest request) {
-        Customer customer = customerRepository.findById(customerId)
-                .orElseThrow(() -> new ResourceNotFoundException("Customer not found"));
+	private String generateOrderNo() {
+		String dateStr = LocalDateTime.now().format(DateTimeFormatter.ofPattern("yyMMddHHmmss"));
+		String randomStr = UUID.randomUUID().toString().substring(0, 6).toUpperCase();
+		return "ORD-" + dateStr + "-" + randomStr;
+	}
 
-        // Validate and normalize checkoutType
-        String rawType = request.getCheckoutType();
-        String checkoutType;
-        if (rawType == null || rawType.trim().isEmpty()) {
-            checkoutType = "CART";
-        } else {
-            checkoutType = rawType.trim().toUpperCase();
-        }
+	private void createOrderItem(Order order, ProductVariant v, int qty, BigDecimal unitPrice,
+			BigDecimal itemSubtotal) {
+		List<VariantOptionValue> options = optionValueRepository.findByVariantVariantId(v.getVariantId());
+		Map<String, String> optsMap = new HashMap<>();
+		if (options != null) {
+			for (VariantOptionValue opt : options) {
+				optsMap.put(opt.getOption().getVariation().getName(), opt.getOption().getValue());
+			}
+		}
 
-        if (!"CART".equals(checkoutType) && !"BUY_NOW".equals(checkoutType)) {
-            throw new InvalidRequestException("Invalid checkout type: " + rawType + ". Allowed values: CART, BUY_NOW");
-        }
+		String variantAttributesJson = buildJson(optsMap);
 
-        boolean isBuyNow = "BUY_NOW".equals(checkoutType);
+		OrderItem orderItem = new OrderItem();
+		orderItem.setOrder(order);
+		orderItem.setVariant(v);
+		orderItem.setQty(qty);
+		orderItem.setUnitPrice(unitPrice);
+		orderItem.setSubtotal(itemSubtotal);
+		BigDecimal itemCost = (v != null && v.getCostPrice() != null) ? v.getCostPrice() : BigDecimal.ZERO;
+		orderItem.setCostPrice(itemCost);
+		orderItem.setProductName(v.getProduct().getProductName());
+		orderItem.setVariantAttributes(variantAttributesJson);
 
-        BigDecimal subtotal = BigDecimal.ZERO;
-        List<CartItem> cartItems = null;
-        Cart cart = null;
-        ProductVariant buyNowVariant = null;
-        int buyNowQuantity = 0;
-        BigDecimal buyNowUnitPrice = BigDecimal.ZERO;
+		orderItemRepository.save(orderItem);
+	}
 
-        if (isBuyNow) {
-            BuyNowItemRequest itemReq = request.getBuyNowItem();
-            if (itemReq == null) {
-                throw new InvalidRequestException("buyNowItem is required for BUY_NOW checkout");
-            }
-            if (itemReq.getVariantId() == null) {
-                throw new InvalidRequestException("variantId is required for BUY_NOW checkout");
-            }
-            if (itemReq.getQuantity() == null || itemReq.getQuantity() <= 0) {
-                throw new InvalidRequestException("Quantity must be greater than 0 for BUY_NOW checkout");
-            }
+	@Override
+	@Transactional
+	public OrderResponse createOrder(Long customerId, CreateOrderRequest request) {
+		Customer customer = customerRepository.findById(customerId)
+				.orElseThrow(() -> new ResourceNotFoundException("Customer not found"));
 
-            buyNowVariant = variantRepository.findById(itemReq.getVariantId())
-                    .orElseThrow(() -> new ResourceNotFoundException("Product variant not found"));
-            Product product = buyNowVariant.getProduct();
-            if (!"ACTIVE".equals(buyNowVariant.getStatus().name()) || !"ACTIVE".equals(product.getStatus().name())) {
-                throw new InvalidRequestException("Product or variant is no longer available: " + product.getProductName());
-            }
+		// Validate and normalize checkoutType
+		String rawType = request.getCheckoutType();
+		String checkoutType;
+		if (rawType == null || rawType.trim().isEmpty()) {
+			checkoutType = "CART";
+		} else {
+			checkoutType = rawType.trim().toUpperCase();
+		}
 
-            int available = reservationService.getAvailableStock(buyNowVariant.getVariantId());
-            buyNowQuantity = itemReq.getQuantity();
+		if (!"CART".equals(checkoutType) && !"BUY_NOW".equals(checkoutType)) {
+			throw new InvalidRequestException("Invalid checkout type: " + rawType + ". Allowed values: CART, BUY_NOW");
+		}
 
-            if (available < buyNowQuantity) {
-                throw new InvalidRequestException("Insufficient stock for product: " + product.getProductName());
-            }
+		boolean isBuyNow = "BUY_NOW".equals(checkoutType);
 
-            buyNowUnitPrice = buyNowVariant.getSellingPrice();
-            subtotal = buyNowUnitPrice.multiply(BigDecimal.valueOf(buyNowQuantity));
-        } else {
-            // CART Checkout
-            if (request.getBuyNowItem() != null) {
-                throw new InvalidRequestException("buyNowItem must not be provided for CART checkout");
-            }
+		BigDecimal subtotal = BigDecimal.ZERO;
+		List<CartItem> cartItems = null;
+		Cart cart = null;
+		ProductVariant buyNowVariant = null;
+		int buyNowQuantity = 0;
+		BigDecimal buyNowUnitPrice = BigDecimal.ZERO;
 
-            cart = cartRepository.findByCustomerCustomerIdAndStatus(customerId, "ACTIVE")
-                    .orElseThrow(() -> new InvalidRequestException("Empty cart"));
-                    
-            cartItems = cartItemRepository.findByCartCartId(cart.getCartId());
-            if (cartItems.isEmpty()) {
-                throw new InvalidRequestException("Empty cart");
-            }
+		if (isBuyNow) {
+			BuyNowItemRequest itemReq = request.getBuyNowItem();
+			if (itemReq == null) {
+				throw new InvalidRequestException("buyNowItem is required for BUY_NOW checkout");
+			}
+			if (itemReq.getVariantId() == null) {
+				throw new InvalidRequestException("variantId is required for BUY_NOW checkout");
+			}
+			if (itemReq.getQuantity() == null || itemReq.getQuantity() <= 0) {
+				throw new InvalidRequestException("Quantity must be greater than 0 for BUY_NOW checkout");
+			}
 
-            for (CartItem ci : cartItems) {
-                ProductVariant v = ci.getVariant();
-                Product p = v.getProduct();
-                if (!"ACTIVE".equals(v.getStatus().name()) || !"ACTIVE".equals(p.getStatus().name())) {
-                    throw new InvalidRequestException("Product or variant is no longer available: " + p.getProductName());
-                }
-                
-                int available = reservationService.getAvailableStock(v.getVariantId());
-                
-                if (available < ci.getQuantity()) {
-                    throw new InvalidRequestException("Insufficient stock for product: " + p.getProductName());
-                }
-                
-                BigDecimal unitPrice = v.getSellingPrice();
-                subtotal = subtotal.add(unitPrice.multiply(BigDecimal.valueOf(ci.getQuantity())));
-            }
-        }
+			buyNowVariant = variantRepository.findById(itemReq.getVariantId())
+					.orElseThrow(() -> new ResourceNotFoundException("Product variant not found"));
+			Product product = buyNowVariant.getProduct();
+			if (!"ACTIVE".equals(buyNowVariant.getStatus().name()) || !"ACTIVE".equals(product.getStatus().name())) {
+				throw new InvalidRequestException(
+						"Product or variant is no longer available: " + product.getProductName());
+			}
 
-        OrderAddress address = new OrderAddress();
-        ShippingQuoteResponse quote;
+			int available = reservationService.getAvailableStock(buyNowVariant.getVariantId());
+			buyNowQuantity = itemReq.getQuantity();
 
-        if (request.getSavedAddressId() != null) {
-            CustomerAddress ca = customerAddressRepository.findByAddressIdAndCustomerCustomerId(request.getSavedAddressId(), customerId)
-                    .orElseThrow(() -> new ResourceNotFoundException("Saved address not found"));
-            address.setRecipientName(ca.getRecipientName());
-            address.setPhoneNumber(ca.getPhoneNumber());
-            address.setAddressLine1(ca.getAddressLine1());
-            address.setAddressLine2(ca.getAddressLine2());
-            address.setTownship(ca.getTownship());
-            address.setCity(ca.getCity());
-            address.setRegionOrState(ca.getRegionOrState());
-            
-            quote = shippingService.getShippingQuote(customerId, request.getSavedAddressId());
-        } else if (request.getShippingAddress() != null) {
-            CustomShippingAddressRequest csa = request.getShippingAddress();
-            address.setRecipientName(csa.getRecipientName());
-            address.setPhoneNumber(csa.getPhoneNumber());
-            address.setAddressLine1(csa.getAddressLine1());
-            address.setAddressLine2(csa.getAddressLine2());
-            address.setTownship(csa.getTownship());
-            address.setCity(csa.getCity());
-            address.setRegionOrState(csa.getRegionOrState());
-            
-            CustomShippingQuoteRequest csq = new CustomShippingQuoteRequest();
-            csq.setCity(csa.getCity());
-            csq.setTownship(csa.getTownship());
-            quote = shippingService.getCustomShippingQuote(csq);
-        } else {
-            throw new InvalidRequestException("Shipping address is required");
-        }
+			if (available < buyNowQuantity) {
+				throw new InvalidRequestException("Insufficient stock for product: " + product.getProductName());
+			}
 
-        BigDecimal discount = BigDecimal.ZERO;
-        BigDecimal tax = BigDecimal.ZERO;
-        BigDecimal shippingFee = quote.getShippingFee();
-        BigDecimal total = subtotal.subtract(discount).add(tax).add(shippingFee);
+			buyNowUnitPrice = buyNowVariant.getSellingPrice();
+			subtotal = buyNowUnitPrice.multiply(BigDecimal.valueOf(buyNowQuantity));
+		} else {
+			// CART Checkout
+			if (request.getBuyNowItem() != null) {
+				throw new InvalidRequestException("buyNowItem must not be provided for CART checkout");
+			}
 
-        Order order = new Order();
-        order.setOrderNo(generateOrderNo());
-        order.setCustomer(customer);
-        order.setSubtotalAmount(subtotal);
-        order.setDiscountAmount(discount);
-        order.setTaxAmount(tax);
-        order.setShippingFee(shippingFee);
-        order.setTotalAmount(total);
-        order.setOrderStatus("PENDING");
-        order.setPaymentStatus("PENDING");
-        order.setCheckoutType(checkoutType);
-        order.setCreatedAt(LocalDateTime.now());
-        if (!isBuyNow && cart != null) {
-            order.setCart(cart);
-        }
-        
-        order = orderRepository.save(order);
+			cart = cartRepository.findByCustomerCustomerIdAndStatus(customerId, "ACTIVE")
+					.orElseThrow(() -> new InvalidRequestException("Empty cart"));
 
-        address.setOrder(order);
-        orderAddressRepository.save(address);
+			cartItems = cartItemRepository.findByCartCartId(cart.getCartId());
+			if (cartItems.isEmpty()) {
+				throw new InvalidRequestException("Empty cart");
+			}
 
-        List<ReservationItem> reservationItems = new ArrayList<>();
-        if (isBuyNow) {
-            createOrderItem(order, buyNowVariant, buyNowQuantity, buyNowUnitPrice, subtotal);
-            reservationItems.add(new ReservationItem(buyNowVariant, buyNowQuantity));
-        } else {
-            for (CartItem ci : cartItems) {
-                ProductVariant v = ci.getVariant();
-                BigDecimal unitPrice = v.getSellingPrice();
-                BigDecimal itemSubtotal = unitPrice.multiply(BigDecimal.valueOf(ci.getQuantity()));
-                createOrderItem(order, v, ci.getQuantity(), unitPrice, itemSubtotal);
-                reservationItems.add(new ReservationItem(v, ci.getQuantity()));
-            }
-        }
+			for (CartItem ci : cartItems) {
+				ProductVariant v = ci.getVariant();
+				Product p = v.getProduct();
+				if (!"ACTIVE".equals(v.getStatus().name()) || !"ACTIVE".equals(p.getStatus().name())) {
+					throw new InvalidRequestException(
+							"Product or variant is no longer available: " + p.getProductName());
+				}
 
-        // Phase 7: Atomically reserve stock under row locks and synchronize reserved_quantity
-        reservationService.reserveStockForOrder(order, reservationItems);
+				int available = reservationService.getAvailableStock(v.getVariantId());
 
-        if (!isBuyNow && cart != null) {
-            cart.setStatus("PENDING_PAYMENT");
-            cart.setModifiedAt(LocalDateTime.now());
-            cartRepository.save(cart);
-        }
+				if (available < ci.getQuantity()) {
+					throw new InvalidRequestException("Insufficient stock for product: " + p.getProductName());
+				}
 
-        OrderStatusHistory history = new OrderStatusHistory();
-        history.setOrder(order);
-        history.setOldStatus(null);
-        history.setNewStatus("PENDING");
-        history.setChangedAt(LocalDateTime.now());
-        history.setRemark("Order created");
-        
-        orderStatusHistoryRepository.save(history);
+				BigDecimal unitPrice = v.getSellingPrice();
+				subtotal = subtotal.add(unitPrice.multiply(BigDecimal.valueOf(ci.getQuantity())));
+			}
+		}
 
-        Optional<LocalDateTime> expiryOpt = reservationService.getReservationExpiryForOrder(order.getOrderId());
-        String expiresAtIso = expiryOpt
-                .map(exp -> exp.atZone(ZoneId.systemDefault()).toInstant().toString())
-                .orElse(null);
-        boolean reservationActive = reservationService.isReservationActiveForOrder(order.getOrderId());
+		OrderAddress address = new OrderAddress();
+		ShippingQuoteResponse quote;
 
-        return OrderResponse.builder()
-                .orderId(order.getOrderId())
-                .orderNo(order.getOrderNo())
-                .subtotalAmount(order.getSubtotalAmount())
-                .discountAmount(order.getDiscountAmount())
-                .taxAmount(order.getTaxAmount())
-                .shippingFee(order.getShippingFee())
-                .totalAmount(order.getTotalAmount())
-                .orderStatus(order.getOrderStatus())
-                .paymentStatus(order.getPaymentStatus())
-                .createdAt(order.getCreatedAt().toString())
-                .checkoutType(order.getCheckoutType())
-                .reservationExpiresAt(expiresAtIso)
-                .reservationActive(reservationActive)
-                .build();
-    }
+		if (request.getSavedAddressId() != null) {
+			CustomerAddress ca = customerAddressRepository
+					.findByAddressIdAndCustomerCustomerId(request.getSavedAddressId(), customerId)
+					.orElseThrow(() -> new ResourceNotFoundException("Saved address not found"));
+			address.setRecipientName(ca.getRecipientName());
+			address.setPhoneNumber(ca.getPhoneNumber());
+			address.setAddressLine1(ca.getAddressLine1());
+			address.setAddressLine2(ca.getAddressLine2());
+			address.setTownship(ca.getTownship());
+			address.setCity(ca.getCity());
+			address.setRegionOrState(ca.getRegionOrState());
+
+			quote = shippingService.getShippingQuote(customerId, request.getSavedAddressId());
+		} else if (request.getShippingAddress() != null) {
+			CustomShippingAddressRequest csa = request.getShippingAddress();
+			address.setRecipientName(csa.getRecipientName());
+			address.setPhoneNumber(csa.getPhoneNumber());
+			address.setAddressLine1(csa.getAddressLine1());
+			address.setAddressLine2(csa.getAddressLine2());
+			address.setTownship(csa.getTownship());
+			address.setCity(csa.getCity());
+			address.setRegionOrState(csa.getRegionOrState());
+
+			CustomShippingQuoteRequest csq = new CustomShippingQuoteRequest();
+			csq.setCity(csa.getCity());
+			csq.setTownship(csa.getTownship());
+			quote = shippingService.getCustomShippingQuote(csq);
+		} else {
+			throw new InvalidRequestException("Shipping address is required");
+		}
+
+		BigDecimal discount = BigDecimal.ZERO;
+		BigDecimal tax = BigDecimal.ZERO;
+		BigDecimal shippingFee = quote.getShippingFee();
+		BigDecimal total = subtotal.subtract(discount).add(tax).add(shippingFee);
+
+		Order order = new Order();
+		order.setOrderNo(generateOrderNo());
+		order.setCustomer(customer);
+		order.setSubtotalAmount(subtotal);
+		order.setDiscountAmount(discount);
+		order.setTaxAmount(tax);
+		order.setShippingFee(shippingFee);
+		order.setTotalAmount(total);
+		order.setOrderStatus("PENDING");
+		order.setPaymentStatus("PENDING");
+		order.setCheckoutType(checkoutType);
+		order.setCreatedAt(LocalDateTime.now());
+		if (!isBuyNow && cart != null) {
+			order.setCart(cart);
+		}
+
+		order = orderRepository.save(order);
+
+		address.setOrder(order);
+		orderAddressRepository.save(address);
+
+		List<ReservationItem> reservationItems = new ArrayList<>();
+		if (isBuyNow) {
+			createOrderItem(order, buyNowVariant, buyNowQuantity, buyNowUnitPrice, subtotal);
+			reservationItems.add(new ReservationItem(buyNowVariant, buyNowQuantity));
+		} else {
+			for (CartItem ci : cartItems) {
+				ProductVariant v = ci.getVariant();
+				BigDecimal unitPrice = v.getSellingPrice();
+				BigDecimal itemSubtotal = unitPrice.multiply(BigDecimal.valueOf(ci.getQuantity()));
+				createOrderItem(order, v, ci.getQuantity(), unitPrice, itemSubtotal);
+				reservationItems.add(new ReservationItem(v, ci.getQuantity()));
+			}
+		}
+
+		// Phase 7: Atomically reserve stock under row locks and synchronize
+		// reserved_quantity
+		reservationService.reserveStockForOrder(order, reservationItems);
+
+		if (!isBuyNow && cart != null) {
+			cart.setStatus("PENDING_PAYMENT");
+			cart.setModifiedAt(LocalDateTime.now());
+			cartRepository.save(cart);
+		}
+
+		OrderStatusHistory history = new OrderStatusHistory();
+		history.setOrder(order);
+		history.setOldStatus(null);
+		history.setNewStatus("PENDING");
+		history.setChangedAt(LocalDateTime.now());
+		history.setRemark("Order created");
+
+		orderStatusHistoryRepository.save(history);
+
+		Optional<LocalDateTime> expiryOpt = reservationService.getReservationExpiryForOrder(order.getOrderId());
+		String expiresAtIso = expiryOpt.map(exp -> exp.atZone(ZoneId.systemDefault()).toInstant().toString())
+				.orElse(null);
+		boolean reservationActive = reservationService.isReservationActiveForOrder(order.getOrderId());
+
+		return OrderResponse.builder().orderId(order.getOrderId()).orderNo(order.getOrderNo())
+				.subtotalAmount(order.getSubtotalAmount()).discountAmount(order.getDiscountAmount())
+				.taxAmount(order.getTaxAmount()).shippingFee(order.getShippingFee()).totalAmount(order.getTotalAmount())
+				.orderStatus(order.getOrderStatus()).paymentStatus(order.getPaymentStatus())
+				.createdAt(order.getCreatedAt().toString()).checkoutType(order.getCheckoutType())
+				.reservationExpiresAt(expiresAtIso).reservationActive(reservationActive).build();
+	}
 }
