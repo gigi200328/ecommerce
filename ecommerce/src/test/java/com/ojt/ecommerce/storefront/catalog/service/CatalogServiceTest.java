@@ -12,12 +12,14 @@ import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.extension.ExtendWith;
 import org.mockito.InjectMocks;
 import org.mockito.Mock;
+import org.mockito.ArgumentMatchers;
 import org.mockito.junit.jupiter.MockitoExtension;
 import org.springframework.data.domain.Page;
 import org.springframework.data.domain.PageImpl;
 import org.springframework.data.domain.Pageable;
 import org.springframework.data.jpa.domain.Specification;
 import org.springframework.data.domain.PageRequest;
+import java.math.BigDecimal;
 
 import java.util.List;
 import java.util.Optional;
@@ -25,6 +27,9 @@ import java.util.Optional;
 import static org.junit.jupiter.api.Assertions.*;
 import static org.mockito.ArgumentMatchers.*;
 import static org.mockito.Mockito.*;
+
+import com.ojt.ecommerce.enums.ProductStatus;
+import com.ojt.ecommerce.entity.ProductVariantStatus;
 
 @ExtendWith(MockitoExtension.class)
 class CatalogServiceTest {
@@ -108,7 +113,7 @@ class CatalogServiceTest {
 
     @Test
     void suggestions_noCandidates_returnsEmpty() {
-        when(productRepository.findAll(any(Specification.class), any(Pageable.class)))
+        when(productRepository.findAll(ArgumentMatchers.<Specification<Product>>any(), any(Pageable.class)))
                 .thenReturn(new PageImpl<Product>(List.of()));
         assertTrue(catalogService.getTrendingSuggestions("iphone").isEmpty());
         verifyNoInteractions(searchKeywordStatsRepository);
@@ -126,7 +131,7 @@ void products_emptyPage_returnsEmptyResponse() {
     );
 
     when(productRepository.findAll(
-            any(Specification.class),
+    		ArgumentMatchers.<Specification<Product>>any(),
             any(Pageable.class)
     )).thenReturn(emptyPage);
 
@@ -148,7 +153,7 @@ void products_emptyPage_returnsEmptyResponse() {
 
     verify(productRepository, times(1))
             .findAll(
-                    any(Specification.class),
+            		ArgumentMatchers.<Specification<Product>>any(),
                     any(Pageable.class)
             );
 }
@@ -171,4 +176,180 @@ void products_emptyPage_returnsEmptyResponse() {
         assertEquals(4, result.getSize());
         verifyNoInteractions(productRepository);
     }
+    
+
+@Test
+void products_filtersByCategoryAndPrice() {
+
+    // Arrange
+    BigDecimal minPrice = new BigDecimal("50000");
+    BigDecimal maxPrice = new BigDecimal("500000");
+
+    when(categoryRepository.findAll())
+            .thenReturn(List.of());
+
+    when(productRepository.findAll(
+    		ArgumentMatchers.<Specification<Product>>any(),
+            any(Pageable.class)
+    )).thenReturn(new PageImpl<Product>(List.of()));
+
+    // Act
+    PageResponse<ProductListResponse> result =
+            catalogService.getProducts(
+                    1L,        // categoryId
+                    null,      // brandId
+                    null,      // search
+                    minPrice,
+                    maxPrice,
+                    null,      // availability
+                    null,      // tags
+                    null,      // sort
+                    0,         // page
+                    20         // size
+            );
+
+    // Assert
+    assertNotNull(result);
+    assertTrue(result.getContent().isEmpty());
+
+    verify(categoryRepository).findAll();
+
+    verify(productRepository).findAll(
+    		ArgumentMatchers.<Specification<Product>>any(),
+            any(Pageable.class)
+    );
+}
+
+
+@Test
+void productDetail_returnsProductWithVariantsAndImages() {
+
+    // Arrange
+    Product product = mock(Product.class);
+    ProductVariant variant = mock(ProductVariant.class);
+    ProductImage image = mock(ProductImage.class);
+
+    // Use actual enum types without hardcoding their names
+    when(product.getStatus()).thenReturn(ProductStatus.ACTIVE);
+
+    when(variant.getStatus()).thenReturn(ProductVariantStatus.ACTIVE);
+
+    when(productRepository.findById(1L))
+            .thenReturn(Optional.of(product));
+
+    when(product.getProductId()).thenReturn(1L);
+    when(product.getProductName()).thenReturn("iPhone 16 Pro");
+
+    when(variantRepository.findByProductProductId(1L))
+            .thenReturn(List.of(variant));
+
+    when(variant.getVariantId()).thenReturn(10L);
+    when(variant.getSku()).thenReturn("IPH16PRO-128-BLK");
+
+    when(imageRepository.findByProductProductId(1L))
+            .thenReturn(List.of(image));
+
+    when(image.getImageUrl())
+            .thenReturn("/uploads/product-images/iphone.jpg");
+
+    when(variantImageRepository
+            .findByProductVariantVariantIdIn(List.of(10L)))
+            .thenReturn(List.of());
+
+    when(inventoryRepository.findByVariantVariantIdIn(List.of(10L)))
+            .thenReturn(List.of());
+
+    when(variantOptionValueRepository
+            .findByVariantVariantIdIn(List.of(10L)))
+            .thenReturn(List.of());
+
+    when(productTagRepository.findByProductProductId(1L))
+            .thenReturn(List.of());
+
+    // Act
+    ProductDetailResponse result =
+            catalogService.getProductDetail(1L);
+
+    // Assert
+    assertNotNull(result);
+    assertEquals("iPhone 16 Pro", result.getProductName());
+    assertEquals(1, result.getImages().size());
+    assertEquals(1, result.getVariants().size());
+    assertEquals(
+            "IPH16PRO-128-BLK",
+            result.getVariants().get(0).getSku()
+    );
+}
+
+
+@Test
+void bestSellers_usesCorrectPagination() {
+
+    // Arrange
+    when(productRepository.findBestSellers(
+            PageRequest.of(0, 4)
+    )).thenReturn(
+            new PageImpl<>(
+                    List.of(),
+                    PageRequest.of(0, 4),
+                    0
+            )
+    );
+
+    // Act
+    PageResponse<ProductListResponse> result =
+            catalogService.getBestSellers(0, 4);
+
+    // Assert
+    assertEquals(4, result.getSize());
+    assertTrue(result.getContent().isEmpty());
+
+    verify(productRepository).findBestSellers(
+            PageRequest.of(0, 4)
+    );
+}
+
+
+@Test
+void products_reservedStock_returnsSoldOut() {
+
+    // Arrange
+    Product product = mock(Product.class);
+    ProductVariant variant = mock(ProductVariant.class);
+
+    when(product.getProductId()).thenReturn(1L);
+    when(product.getStatus()).thenReturn(ProductStatus.ACTIVE);
+    when(variant.getStatus()).thenReturn(ProductVariantStatus.ACTIVE);
+
+    when(variant.getProduct()).thenReturn(product);
+    when(variant.getVariantId()).thenReturn(10L);
+
+    when(productRepository.findAll(
+            ArgumentMatchers.<Specification<Product>>any(),
+            any(Pageable.class)
+    )).thenReturn(new PageImpl<>(List.of(product)));
+
+    when(variantRepository.findByProductProductIdIn(List.of(1L)))
+            .thenReturn(List.of(variant));
+
+    // Mock available stock from reservation service
+    when(reservationService.getAvailableStockForVariants(List.of(10L)))
+            .thenReturn(java.util.Map.of(10L, 0));
+
+    // Act
+    PageResponse<ProductListResponse> result =
+            catalogService.getProducts(
+                    null, null, null, null, null,
+                    null, null, null, 0, 20
+            );
+
+    // Assert
+    assertEquals(1, result.getContent().size());
+
+    assertEquals(
+            "SOLD_OUT",
+            result.getContent().get(0).getStockStatus()
+    );
+}
+
 }

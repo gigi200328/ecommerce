@@ -305,7 +305,10 @@ public class CatalogServiceImpl implements CatalogService {
             }
             
             if (!variantIds.isEmpty()) {
-                Map<Long, Integer> availableMap = reservationService.getAvailableStockForVariants(variantIds);
+
+                Map<Long, Integer> availableMap =
+                        reservationService.getAvailableStockForVariants(variantIds);
+
                 inventoryMap.putAll(availableMap);
             }
             
@@ -683,7 +686,7 @@ variantImageResponses.sort(
             .variants(variantResponses)
             .tags(tags)
 
-            // NEW: Perishable Status
+            //  Perishable Status
             .isPerishable(product.getIsPerishable())
 
             .build();
