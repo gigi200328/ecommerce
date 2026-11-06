@@ -40,17 +40,26 @@ public class OrderManagementController {
 
 	private final OrderManagementService orderManagementService;
 
+	@GetMapping("/status-counts")
+	public ResponseEntity<Map<String, Long>> getOrderStatusCounts() {
+		return ResponseEntity.ok(orderManagementService.getOrderStatusCounts());
+	}
+
 	@GetMapping
 	public ResponseEntity<PaginatedResponseDto<OrderResponseDto>> getOrders(
 			@RequestParam(value = "status", required = false) String status,
-			@RequestParam(value = "search", required = false) String search, // ⬅️ အသစ်
-			@RequestParam(value = "startDate", required = false) String startDate, // ⬅️ အသစ်
-			@RequestParam(value = "endDate", required = false) String endDate, // ⬅️ အသစ်
-			@RequestParam(defaultValue = "0") int page, @RequestParam(defaultValue = "10") int pageSize) {
+			@RequestParam(value = "search", required = false) String search,
+			@RequestParam(value = "startDate", required = false) String startDate,
+			@RequestParam(value = "endDate", required = false) String endDate,
+			@RequestParam(value = "page", defaultValue = "0") int page,
+			@RequestParam(value = "pageSize", required = false) Integer pageSize,
+			@RequestParam(value = "size", required = false) Integer size) {
+
+		int limit = pageSize != null ? pageSize : (size != null ? size : 10);
 
 		// Service သို့ Parameter အားလုံး လွှဲပြောင်းပေးမည်
 		PaginatedResponseDto<OrderResponseDto> orders = orderManagementService.getOrders(status, search, startDate,
-				endDate, page, pageSize);
+				endDate, page, limit);
 
 		return ResponseEntity.ok(orders);
 	}
