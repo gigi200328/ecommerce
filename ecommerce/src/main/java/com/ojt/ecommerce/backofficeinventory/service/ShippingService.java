@@ -260,6 +260,11 @@ public class ShippingService {
 
 		// Zone များကို Name နှင့် City တူရာ Group ဖွဲ့မည်
 		for (DeliveryZone zone : allZones) {
+			if (zone.getTownship() == null
+					|| (zone.getZoneName() != null && zone.getZoneName().startsWith("DELETED_ZONE"))) {
+				continue;
+			}
+
 			String groupKey = zone.getZoneName() + "_" + zone.getCity();
 			groupStatusMap.putIfAbsent(groupKey, zone.getStatus());
 		}
