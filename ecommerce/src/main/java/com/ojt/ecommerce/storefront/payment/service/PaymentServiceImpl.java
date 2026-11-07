@@ -15,6 +15,7 @@ import org.springframework.transaction.annotation.Transactional;
 import org.springframework.web.client.RestTemplate;
 
 import com.fasterxml.jackson.databind.ObjectMapper;
+import com.ojt.ecommerce.backofficeinventory.service.AdminNotificationService;
 import com.ojt.ecommerce.backofficeinventory.service.InventoryService;
 import com.ojt.ecommerce.common.util.HmacSignatureUtil;
 import com.ojt.ecommerce.entity.Cart;
@@ -58,6 +59,7 @@ public class PaymentServiceImpl implements PaymentService {
 	private final CartService cartService;
 	private final InventoryService inventoryService;
 	private final InventoryReservationService reservationService;
+	private final AdminNotificationService notificationService;
 
 	private final ApplicationEventPublisher eventPublisher;
 	private final ObjectMapper objectMapper = new ObjectMapper().findAndRegisterModules();
@@ -299,6 +301,12 @@ public class PaymentServiceImpl implements PaymentService {
 				// an isolated REQUIRES_NEW transaction
 				eventPublisher.publishEvent(new OrderPaidEvent(order.getOrderId(), order.getOrderNo(),
 						payment.getTransactionRef(), payment.getAmount(), payment.getPaidAt()));
+
+				notificationService.sendCustomNotification("PAYMENT_SUCCESS", "New Order Paid",
+						"Payment received for Order " + order.getOrderNo() + ". Total: " + payment.getAmount()
+								+ " MMK.",
+						"/admin/orders/" + order.getOrderNo(), // Admin Dashboard က Order Details ဆီ ညွှန်းရန်
+						null);
 			}
 
 			callback.setProcessingStatus("PROCESSED");
