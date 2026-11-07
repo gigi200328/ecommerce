@@ -4,6 +4,8 @@ import java.math.BigDecimal;
 import java.time.LocalDateTime;
 import java.util.List;
 
+import com.fasterxml.jackson.annotation.JsonFormat;
+
 import lombok.AllArgsConstructor;
 import lombok.Builder;
 import lombok.Data;
@@ -20,6 +22,7 @@ public class OrderResponseDto {
 	private BigDecimal totalAmount; // Entity ပါအတိုင်း
 	private String orderStatus; // Entity ပါအတိုင်း (PENDING, PROCESSING, SHIPPED, etc.)
 	private String paymentStatus; // Entity ပါအတိုင်း (PENDING, SUCCESS, FAILED, etc.)
+	@JsonFormat(shape = JsonFormat.Shape.STRING, pattern = "yyyy-MM-dd'T'HH:mm:ss.SSSSSS")
 	private LocalDateTime createdAt; // Entity ပါအတိုင်း
 	// အော်ဒါအသေးစိတ် ကြည့်သည့်အခါ ပြရန် ပစ္စည်းစာရင်း
 	private List<OrderItemDto> items;
