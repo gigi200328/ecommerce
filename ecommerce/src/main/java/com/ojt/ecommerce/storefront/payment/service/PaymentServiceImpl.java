@@ -302,11 +302,10 @@ public class PaymentServiceImpl implements PaymentService {
 				eventPublisher.publishEvent(new OrderPaidEvent(order.getOrderId(), order.getOrderNo(),
 						payment.getTransactionRef(), payment.getAmount(), payment.getPaidAt()));
 
-				notificationService.sendCustomNotification("PAYMENT_SUCCESS", "New Order Paid",
-						"Payment received for Order " + order.getOrderNo() + ". Total: " + payment.getAmount()
-								+ " MMK.",
-						"/admin/orders/" + order.getOrderNo(), // Admin Dashboard က Order Details ဆီ ညွှန်းရန်
-						null);
+				notificationService.sendCustomNotification(
+						"PAYMENT_SUCCESS", "New Order Paid", "Payment received for Order " + order.getOrderNo()
+								+ ". Total: " + payment.getAmount() + " MMK.",
+						"/admin/orders/" + order.getOrderNo(), null);
 			}
 
 			callback.setProcessingStatus("PROCESSED");

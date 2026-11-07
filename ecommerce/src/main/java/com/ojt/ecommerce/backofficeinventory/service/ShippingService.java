@@ -1,5 +1,6 @@
 package com.ojt.ecommerce.backofficeinventory.service;
 
+import java.math.BigDecimal;
 import java.time.LocalDateTime;
 import java.util.ArrayList;
 import java.util.HashSet;
@@ -186,39 +187,30 @@ public class ShippingService {
 	public void updateZoneGroupRate(UpdateZoneRateRequest request) {
 		LocalDateTime now = LocalDateTime.now();
 
-		// ⭐️ ပြင်ဆင်ချက်: Foreign Key ငြိနေသဖြင့် Delete အစား Soft Delete (Update)
-		// ကိုသာ သုံးမည်
+		// ⭐️ အဆင့် (၁): Soft Delete လုပ်မည့် Zone များရှိလျှင် ဖယ်ရှားမည်
 		if (request.getRemovedZoneIds() != null && !request.getRemovedZoneIds().isEmpty()) {
 			List<DeliveryZone> removedZones = zoneRepository.findAllById(request.getRemovedZoneIds());
 
 			for (DeliveryZone removedZone : removedZones) {
-				// ၁။ Add New Zone တွင် မြို့ကို ပြန်ရွေး၍ရစေရန် လက်ရှိမြို့နာမည်ကို
-				// ပြောင်းပစ်မည် (လွတ်သွားစေရန်)
 				removedZone.setTownship(removedZone.getTownship() + "_DELETED_" + removedZone.getZoneId());
-
-				// ၂။ UI တွင် လာမရှုပ်စေရန် (Unassigned အဖြစ် Group မဖွဲ့စေရန်)
-				// သီးသန့်နာမည်ပေးမည်
 				removedZone.setZoneName("DELETED_ZONE_" + removedZone.getZoneId());
-
-				// ၃။ Status ကို INACTIVE အဖြစ် ပြောင်းမည်
 				removedZone.setStatus("INACTIVE");
-
 				zoneRepository.save(removedZone);
 
-				// ၄။ Shipping Rate အဟောင်းရှိပါက ပိတ်မည်
 				rateRepository.findCurrentRateByZoneId(removedZone.getZoneId(), now).ifPresent(oldRate -> {
 					shipmentMapper.deactivateRateEntity(oldRate, now);
 					rateRepository.save(oldRate);
 				});
 			}
-		}
+		} // <-- အဆင့် (၁) ဤနေရာတွင် ပြီးဆုံးပါသည်။ (Curly brace အပိတ် မှန်ကန်ပါပြီ)
 
-		// ⭐️ အဆင့် (၂): ကျန်ရှိနေသော (သို့မဟုတ် အသစ်ထည့်ထားသော) မြို့များကို Update
-		// လုပ်ခြင်း
+		// ⭐️ အဆင့် (၂): ကျန်ရှိနေသော Zone များကို Update လုပ်ခြင်း (တစ်ခါတည်းသာ
+		// ခေါ်ပါမည်)
 		List<DeliveryZone> zones = zoneRepository.findAllById(request.getZoneIds());
 		Set<String> updatedZoneNames = new HashSet<>();
 
 		for (DeliveryZone zone : zones) {
+			// DeliveryZone ၏ Name နှင့် Status ကို DTO တွင် ပါလာသလောက် Update လုပ်မည်
 			shipmentMapper.updateZoneEntity(zone, request, now);
 			zoneRepository.save(zone);
 
@@ -226,20 +218,48 @@ public class ShippingService {
 				updatedZoneNames.add(zone.getZoneName());
 			}
 
-			rateRepository.findCurrentRateByZoneId(zone.getZoneId(), now).ifPresent(oldRate -> {
+			// Shipping Fee နှင့် Estimated Days အတွက် Null စစ်ဆေးသည့် Fallback Logic
+			BigDecimal finalFee = request.getShippingFee();
+			Integer finalDays = request.getEstimatedDays();
+
+			Optional<ShippingRate> oldRateOpt = rateRepository.findCurrentRateByZoneId(zone.getZoneId(), now);
+
+			if (oldRateOpt.isPresent()) {
+				ShippingRate oldRate = oldRateOpt.get();
+
+				// Request တွင် Fee (သို့) Days အလွတ်ဖြစ်နေပါက Rate အဟောင်း၏ တန်ဖိုးများကို
+				// ပြန်ယူမည်
+				if (finalFee == null) {
+					finalFee = oldRate.getFee();
+				}
+				if (finalDays == null) {
+					finalDays = oldRate.getEstimatedDays();
+				}
+
+				// Rate အဟောင်းကို Inactive အဖြစ် ပိတ်မည်
 				shipmentMapper.deactivateRateEntity(oldRate, now);
 				rateRepository.save(oldRate);
-			});
+			}
 
-			rateRepository.save(shipmentMapper.toShippingRateEntity(zone, request.getShippingFee(),
-					request.getEstimatedDays(), now));
+			// အကယ်၍ အဟောင်းလည်းမရှိ၊ အသစ်လည်း မပို့ခဲ့လျှင် Error မတက်စေရန် Default (0 / 1)
+			// ထားမည်
+			if (finalFee == null) {
+				finalFee = BigDecimal.ZERO;
+			}
+			if (finalDays == null) {
+				finalDays = 1;
+			}
+
+			// ⭐️ အရေးကြီးသည်: Fallback ပြုလုပ်ထားသော finalFee, finalDays ဖြင့်သာ Rate
+			// အသစ်ကို သိမ်းမည် ⭐️
+			rateRepository.save(shipmentMapper.toShippingRateEntity(zone, finalFee, finalDays, now));
 		}
 
 		if (!updatedZoneNames.isEmpty()) {
 			String joinedNames = String.join(", ", updatedZoneNames);
 
 			notificationService.sendCustomNotification("SHIPPING_UPDATE", "Shipping Rates Updated",
-					"Shipping fees have been updated for: " + joinedNames, "/admin/shipping-rates", null);
+					"Shipping parameters have been updated for: " + joinedNames, "/admin/shipping-rates", null);
 		}
 	}
 
