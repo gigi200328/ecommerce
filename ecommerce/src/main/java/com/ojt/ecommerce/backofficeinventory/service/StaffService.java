@@ -38,7 +38,8 @@ public class StaffService {
             throw new RuntimeException("Invalid email format.");
         }
 
-        if (userRepository.findByEmail(normalizedEmail).isPresent()) {
+        // Duplicate Email check (Case-insensitive & space-trimmed)
+        if (userRepository.existsByEmailIgnoreCase(normalizedEmail)) {
             throw new RuntimeException("This email address is already registered.");
         }
 
@@ -164,9 +165,10 @@ public class StaffService {
                 .orElseThrow(() -> new RuntimeException("Role not found: " + request.getRoleName()));
 
         // If demoting an Admin, ensure they are not the last remaining active Admin
-        if (existingStaff.getUserRole() != null && "ADMIN".equalsIgnoreCase(existingStaff.getUserRole().getRoleName())
-                && !"ADMIN".equalsIgnoreCase(request.getRoleName())) {
-            validateDeactivationAllowed(existingStaff);
+        if (existingStaff.getUserRole() != null && "ADMIN".equalsIgnoreCase(existingStaff.getUserRole().getRoleName())) {
+            if (!"ADMIN".equalsIgnoreCase(request.getRoleName())) {
+                validateDeactivationAllowed(existingStaff);
+            }
         }
 
         // If role changes, invalidate their existing session token
@@ -182,7 +184,7 @@ public class StaffService {
             if (currentUser == null || !isSuperAdmin(currentUser)) {
                 throw new RuntimeException("Only the primary Super Administrator has the authority to change or update staff email addresses.");
             }
-            if (userRepository.findByEmail(normalizedEmail).isPresent()) {
+            if (userRepository.existsByEmailIgnoreCase(normalizedEmail)) {
                 throw new RuntimeException("This email address is already in use.");
             }
             existingStaff.setEmail(normalizedEmail);
@@ -194,6 +196,9 @@ public class StaffService {
         if (request.getPassword() != null && !request.getPassword().trim().isEmpty()) {
             if (isSuperAdmin(existingStaff)) {
                 throw new RuntimeException("Super Administrator password cannot be reset from this staff management form. Please use the Change Password settings in Profile.");
+            }
+            if (currentUser != null && currentUser.getUserId().equals(existingStaff.getUserId())) {
+                throw new RuntimeException("You cannot reset your own password from the staff management form. Please use the Change Password settings in your Profile.");
             }
             String newPassword = request.getPassword().trim();
             validatePasswordStrength(newPassword);

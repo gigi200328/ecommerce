@@ -58,7 +58,7 @@ public class AuthController {
                 AuditAction.LOGIN,
                 "[SECURITY ALERT] Blocked login attempt for " + email + " from IP " + clientIp + " (Lock active: " + remainingMins + " mins left)",
                 null,
-                request.getEmail(),
+                email,
                 "FAILED (BLOCKED)"
             );
 
@@ -66,17 +66,17 @@ public class AuthController {
                     .body(Map.of("field", "password", "message", errorMsg, "blocked", true, "remainingMinutes", remainingMins));
         }
 
-        // 2. Find user account by Email
-        Optional<User> userOpt = userRepository.findByEmail(request.getEmail());
+        // 2. Find user account by Email (normalized)
+        Optional<User> userOpt = userRepository.findByEmail(email);
         if (userOpt.isEmpty()) {
             int remainingAttempts = loginAttemptService.loginFailed(email, clientIp);
             String errorMsg = "Email not registered.";
 
             auditLogService.logAuthAction(
                 AuditAction.LOGIN,
-                "Failed login attempt (Unregistered email: " + request.getEmail() + ") from IP " + clientIp,
+                "Failed login attempt (Unregistered email: " + email + ") from IP " + clientIp,
                 null,
-                request.getEmail(),
+                email,
                 "FAILED"
             );
 
@@ -168,6 +168,56 @@ public class AuthController {
                 .build();
 
         return ResponseEntity.ok(response);
+    }
+
+    /**
+     * Endpoint for authenticated user to update their own profile name
+     */
+    @Auditable(action = AuditAction.UPDATE, moduleName = "Authentication")
+    @PutMapping("/profile")
+    public ResponseEntity<?> updateProfile(@RequestBody Map<String, String> request, Principal principal) {
+        if (principal == null) {
+            return ResponseEntity.status(HttpStatus.UNAUTHORIZED).body(Map.of("message", "Unauthorized"));
+        }
+        String newUserName = request.get("userName");
+        if (newUserName == null || newUserName.trim().isEmpty()) {
+            return ResponseEntity.badRequest().body(Map.of("message", "Full name cannot be blank."));
+        }
+        String trimmedName = newUserName.trim();
+        if (trimmedName.length() < 2 || trimmedName.length() > 50) {
+            return ResponseEntity.badRequest().body(Map.of("message", "Full name must be between 2 and 50 characters."));
+        }
+
+        String email = principal.getName() != null ? principal.getName().trim().toLowerCase() : "";
+        Optional<User> userOpt = userRepository.findByEmail(email);
+        if (userOpt.isEmpty()) {
+            return ResponseEntity.status(HttpStatus.NOT_FOUND).body(Map.of("message", "User account not found."));
+        }
+
+        User user = userOpt.get();
+        String oldName = user.getUserName();
+        user.setUserName(trimmedName);
+        user.setModifiedAt(java.time.LocalDateTime.now());
+        user.setModifiedBy(user.getUserId());
+        userRepository.save(user);
+
+        try {
+            auditLogService.logAuthAction(
+                AuditAction.UPDATE,
+                "User updated own profile full name from '" + oldName + "' to '" + user.getUserName() + "'",
+                user.getUserId(),
+                user.getUserName(),
+                "SUCCESS"
+            );
+        } catch (Exception e) {
+            System.err.println("Audit Log Failed for Profile Update: " + e.getMessage());
+        }
+
+        return ResponseEntity.ok(Map.of(
+            "message", "Profile updated successfully.",
+            "userName", user.getUserName(),
+            "email", user.getEmail()
+        ));
     }
 
     @Auditable(action = AuditAction.UPDATE, moduleName = "Authentication")
