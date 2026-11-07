@@ -4,21 +4,26 @@ import com.fasterxml.jackson.databind.ObjectMapper;
 import com.fasterxml.jackson.datatype.jsr310.JavaTimeModule;
 import com.ojt.ecommerce.backofficeinventory.dto.AdminNotificationDto;
 import com.ojt.ecommerce.backofficeinventory.repository.AdminNotificationRepository;
+import com.ojt.ecommerce.backofficeinventory.repository.AdminNotificationUserReadRepository;
+import com.ojt.ecommerce.backofficeinventory.repository.UserRepository;
+import com.ojt.ecommerce.backofficeinventory.security.CustomUserDetails;
 import com.ojt.ecommerce.config.websocket.NotificationWebSocketHandler;
 import com.ojt.ecommerce.entity.AdminNotification;
+import com.ojt.ecommerce.entity.AdminNotificationUserRead;
 import com.ojt.ecommerce.entity.Order;
 import com.ojt.ecommerce.entity.OrderItem;
 import com.ojt.ecommerce.entity.RefundRequest;
+import com.ojt.ecommerce.entity.User;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
+import org.springframework.security.core.Authentication;
+import org.springframework.security.core.context.SecurityContextHolder;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
 import java.math.BigDecimal;
 import java.time.LocalDateTime;
-import java.util.HashMap;
-import java.util.List;
-import java.util.Map;
+import java.util.*;
 import java.util.stream.Collectors;
 
 @Slf4j
@@ -27,8 +32,23 @@ import java.util.stream.Collectors;
 public class AdminNotificationServiceImpl implements AdminNotificationService {
 
     private final AdminNotificationRepository notificationRepository;
+    private final AdminNotificationUserReadRepository userReadRepository;
+    private final UserRepository userRepository;
     private final NotificationWebSocketHandler webSocketHandler;
     private final ObjectMapper objectMapper = new ObjectMapper().registerModule(new JavaTimeModule());
+
+    private User getCurrentUser() {
+        Authentication auth = SecurityContextHolder.getContext().getAuthentication();
+        if (auth != null) {
+            if (auth.getPrincipal() instanceof CustomUserDetails userDetails) {
+                return userDetails.getUser();
+            }
+            if (auth.getName() != null && !auth.getName().isBlank() && !"anonymousUser".equals(auth.getName())) {
+                return userRepository.findByEmail(auth.getName().trim().toLowerCase()).orElse(null);
+            }
+        }
+        return null;
+    }
 
     @Override
     @Transactional
@@ -124,20 +144,44 @@ public class AdminNotificationServiceImpl implements AdminNotificationService {
     @Override
     @Transactional(readOnly = true)
     public List<AdminNotificationDto> getRecentNotifications() {
+        User currentUser = getCurrentUser();
+        Set<Long> readIds = (currentUser != null && currentUser.getUserId() != null)
+                ? userReadRepository.findReadNotificationIdsByUserId(currentUser.getUserId())
+                : Collections.emptySet();
+
         return notificationRepository.findTop20ByOrderByCreatedAtDesc()
                 .stream()
-                .map(this::toDto)
+                .map(entity -> {
+                    AdminNotificationDto dto = toDto(entity);
+                    if (currentUser != null && currentUser.getUserId() != null) {
+                        dto.setRead(readIds.contains(entity.getNotificationId()));
+                    }
+                    return dto;
+                })
                 .collect(Collectors.toList());
     }
 
     @Override
     @Transactional(readOnly = true)
     public Map<String, Object> getUnreadSummary() {
-        long unreadCount = notificationRepository.countByIsReadFalse();
-        List<AdminNotificationDto> unreadList = notificationRepository.findByIsReadFalseOrderByCreatedAtDesc()
-                .stream()
-                .map(this::toDto)
-                .collect(Collectors.toList());
+        User currentUser = getCurrentUser();
+        long unreadCount;
+        List<AdminNotificationDto> unreadList;
+
+        if (currentUser != null && currentUser.getUserId() != null) {
+            unreadCount = userReadRepository.countUnreadByUserId(currentUser.getUserId());
+            unreadList = userReadRepository.findUnreadByUserIdOrderByCreatedAtDesc(currentUser.getUserId())
+                    .stream()
+                    .map(this::toDto)
+                    .peek(dto -> dto.setRead(false))
+                    .collect(Collectors.toList());
+        } else {
+            unreadCount = notificationRepository.countByIsReadFalse();
+            unreadList = notificationRepository.findByIsReadFalseOrderByCreatedAtDesc()
+                    .stream()
+                    .map(this::toDto)
+                    .collect(Collectors.toList());
+        }
 
         Map<String, Object> result = new HashMap<>();
         result.put("unreadCount", unreadCount);
@@ -148,16 +192,47 @@ public class AdminNotificationServiceImpl implements AdminNotificationService {
     @Override
     @Transactional
     public void markAsRead(Long notificationId) {
-        notificationRepository.findById(notificationId).ifPresent(n -> {
-            n.setRead(true);
-            notificationRepository.save(n);
-        });
+        User currentUser = getCurrentUser();
+        if (currentUser != null && currentUser.getUserId() != null) {
+            Long userId = currentUser.getUserId();
+            if (!userReadRepository.existsByNotificationIdAndUserId(notificationId, userId)) {
+                AdminNotificationUserRead userRead = AdminNotificationUserRead.builder()
+                        .notificationId(notificationId)
+                        .userId(userId)
+                        .readAt(LocalDateTime.now())
+                        .build();
+                userReadRepository.save(userRead);
+            }
+        } else {
+            notificationRepository.findById(notificationId).ifPresent(n -> {
+                n.setRead(true);
+                notificationRepository.save(n);
+            });
+        }
     }
 
     @Override
     @Transactional
     public void markAllAsRead() {
-        notificationRepository.markAllAsRead();
+        User currentUser = getCurrentUser();
+        if (currentUser != null && currentUser.getUserId() != null) {
+            Long userId = currentUser.getUserId();
+            Set<Long> alreadyReadIds = userReadRepository.findReadNotificationIdsByUserId(userId);
+            List<AdminNotification> allNotifs = notificationRepository.findAll();
+            List<AdminNotificationUserRead> newReads = allNotifs.stream()
+                    .filter(n -> !alreadyReadIds.contains(n.getNotificationId()))
+                    .map(n -> AdminNotificationUserRead.builder()
+                            .notificationId(n.getNotificationId())
+                            .userId(userId)
+                            .readAt(LocalDateTime.now())
+                            .build())
+                    .collect(Collectors.toList());
+            if (!newReads.isEmpty()) {
+                userReadRepository.saveAll(newReads);
+            }
+        } else {
+            notificationRepository.markAllAsRead();
+        }
     }
 
     private AdminNotificationDto toDto(AdminNotification entity) {
