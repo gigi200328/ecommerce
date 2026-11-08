@@ -124,6 +124,19 @@ public class ProductController {
 	}
 
 	// =========================================================
+	// =========================================================
+	// 8.1 UPDATE STATUS (ACTIVE <-> INACTIVE)
+	// =========================================================
+	@Auditable(action = AuditAction.UPDATE, moduleName = "Product Management")
+	@PatchMapping("/{id}/status")
+	public ResponseEntity<ProductResponseDto> updateProductStatus(
+			@PathVariable Long id,
+			@RequestParam ProductStatus status) {
+
+		return ResponseEntity.ok(productService.updateProductStatus(id, status));
+	}
+
+	// =========================================================
 	// 9. DELETE
 	// =========================================================
 	@Auditable(action = AuditAction.DELETE, moduleName = "Product Management")
