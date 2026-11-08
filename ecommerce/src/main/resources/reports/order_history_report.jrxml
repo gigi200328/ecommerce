@@ -48,6 +48,12 @@
     <field name="shippingFee"        class="java.math.BigDecimal"/>
     <field name="discountAmount"     class="java.math.BigDecimal"/>
     <field name="totalAmount"        class="java.math.BigDecimal"/>
+    <field name="orderDate"          class="java.time.LocalDateTime"/>
+
+    <variable name="PAID_GRAND_TOTAL" class="java.math.BigDecimal" calculation="Sum">
+        <variableExpression><![CDATA["PAID".equalsIgnoreCase($F{orderStatus}) || "SHIPPED".equalsIgnoreCase($F{orderStatus}) || "DELIVERED".equalsIgnoreCase($F{orderStatus}) || "PROCESSING".equalsIgnoreCase($F{orderStatus}) ? $F{totalAmount} : java.math.BigDecimal.ZERO]]></variableExpression>
+        <initialValueExpression><![CDATA[java.math.BigDecimal.ZERO]]></initialValueExpression>
+    </variable>
 
     <!-- ================================================================
          TITLE BAND
@@ -231,7 +237,7 @@
                 <reportElement x="345" y="4" width="55" height="14"
                                forecolor="#166534" uuid="3b241102-0000-4000-8000-000000000028"/>
                 <textElement textAlignment="Center" verticalAlignment="Middle"><font size="7" isBold="true"/></textElement>
-                <textFieldExpression><![CDATA[$F{orderStatus}]]></textFieldExpression>
+                <textFieldExpression><![CDATA["PENDING".equalsIgnoreCase($F{orderStatus}) ? ($F{orderDate} != null && $F{orderDate}.plusMinutes(3).isBefore(java.time.LocalDateTime.now()) ? "EXPIRED" : "PENDING") : $F{orderStatus}]]></textFieldExpression>
             </textField>
 
             <!-- Payment Method -->
@@ -239,7 +245,7 @@
                 <reportElement x="403" y="4" width="55" height="14"
                                forecolor="#475569" uuid="3b241102-0000-4000-8000-000000000029"/>
                 <textElement textAlignment="Center" verticalAlignment="Middle"><font size="7"/></textElement>
-                <textFieldExpression><![CDATA["MINI_BANKING".equalsIgnoreCase($F{paymentMethod}) ? "EKARAJ  BANK" : $F{paymentMethod}]]></textFieldExpression>
+                <textFieldExpression><![CDATA["CANCELLED".equalsIgnoreCase($F{orderStatus}) || "EXPIRED".equalsIgnoreCase($F{orderStatus}) || ("PENDING".equalsIgnoreCase($F{orderStatus}) && $F{orderDate} != null && $F{orderDate}.plusMinutes(3).isBefore(java.time.LocalDateTime.now())) ? "N/A" : ("MINI_BANKING".equalsIgnoreCase($F{paymentMethod}) ? "EKARAJ  BANK" : ($F{paymentMethod} != null ? $F{paymentMethod} : "N/A"))]]></textFieldExpression>
             </textField>
 
             <!-- Total Amount -->
@@ -310,7 +316,7 @@
                 <reportElement x="415" y="36" width="110" height="18"
                                forecolor="#6B21A8" uuid="3b241102-0000-4000-8000-000000000036"/>
                 <textElement textAlignment="Right" verticalAlignment="Middle"><font size="10" isBold="true"/></textElement>
-                <textFieldExpression><![CDATA[new java.text.DecimalFormat("#,##0").format($P{GRAND_TOTAL_AMOUNT} != null ? $P{GRAND_TOTAL_AMOUNT} : java.math.BigDecimal.ZERO) + " MMK"]]></textFieldExpression>
+                <textFieldExpression><![CDATA[new java.text.DecimalFormat("#,##0").format($V{PAID_GRAND_TOTAL} != null ? $V{PAID_GRAND_TOTAL} : ($P{GRAND_TOTAL_AMOUNT} != null ? $P{GRAND_TOTAL_AMOUNT} : java.math.BigDecimal.ZERO)) + " MMK"]]></textFieldExpression>
             </textField>
 
             <staticText>
