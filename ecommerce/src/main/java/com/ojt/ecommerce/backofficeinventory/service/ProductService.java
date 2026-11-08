@@ -510,6 +510,22 @@ public class ProductService {
 
 
     // =========================================================
+    // =========================================================
+    // 7.1 UPDATE STATUS (ACTIVE <-> INACTIVE)
+    // =========================================================
+    @Transactional
+    public ProductResponseDto updateProductStatus(Long id, ProductStatus status) {
+        Product product = productRepository.findById(id)
+                .orElseThrow(() -> new EntityNotFoundException("Product not found with id: " + id));
+
+        product.setStatus(status);
+        product.setModifiedAt(LocalDateTime.now());
+        productRepository.save(product);
+
+        return getProductById(id);
+    }
+
+    // =========================================================
     // 8. DELETE
     // =========================================================
 

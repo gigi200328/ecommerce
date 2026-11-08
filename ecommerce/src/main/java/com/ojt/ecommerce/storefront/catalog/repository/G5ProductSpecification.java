@@ -16,7 +16,7 @@ public class G5ProductSpecification {
                                                         BigDecimal minPrice, BigDecimal maxPrice,
                                                         String availability, List<String> tags) {
         return (root, query, cb) -> {
-            Predicate p = cb.equal(root.get("status"), "ACTIVE");
+            Predicate p = cb.equal(root.get("status"), com.ojt.ecommerce.enums.ProductStatus.ACTIVE);
 
             if (categoryIds != null && !categoryIds.isEmpty()) {
                 p = cb.and(p, root.get("category").get("categoryId").in(categoryIds));
