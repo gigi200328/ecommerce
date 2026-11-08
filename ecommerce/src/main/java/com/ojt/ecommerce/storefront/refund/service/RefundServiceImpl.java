@@ -289,6 +289,7 @@ public class RefundServiceImpl implements RefundService {
     private RefundResponseDto buildResponse(RefundRequest req, int remainingQty) {
         return RefundResponseDto.builder()
                 .refundId(req.getRefundId())
+                .orderId(req.getOrderItem() != null && req.getOrderItem().getOrder() != null ? req.getOrderItem().getOrder().getOrderId() : null)
                 .orderItemId(req.getOrderItem().getOrderItemId())
                 .productName(req.getOrderItem().getProductName())
                 .variantAttributes(req.getOrderItem().getVariantAttributes())

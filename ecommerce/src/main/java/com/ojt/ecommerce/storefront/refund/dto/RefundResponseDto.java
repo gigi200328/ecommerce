@@ -4,6 +4,7 @@ import lombok.Data;
 import java.math.BigDecimal;
 @Data @Builder public class RefundResponseDto {
     private Long refundId;
+    private Long orderId;
     private Long orderItemId;
     private String productName;
     private String variantAttributes;

@@ -129,7 +129,7 @@ public class OrderHistoryServiceImpl implements OrderHistoryService {
 			List<OrderItem> allItems = orderItemRepository.findByOrderOrderIdIn(orderIds);
 			for (OrderItem item : allItems) {
 				itemsMap.computeIfAbsent(item.getOrder().getOrderId(), k -> new ArrayList<>())
-						.add(OrderItemSummary.builder().productName(item.getProductName()).qty(item.getQty()).build());
+						.add(OrderItemSummary.builder().orderItemId(item.getOrderItemId()).productName(item.getProductName()).qty(item.getQty()).build());
 			}
 
 			List<Shipment> allShipments = shipmentRepository.findByOrderOrderIdIn(orderIds);
