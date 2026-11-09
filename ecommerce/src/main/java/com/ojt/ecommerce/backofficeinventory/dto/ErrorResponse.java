@@ -15,6 +15,10 @@ public class ErrorResponse {
     private int status;
     private String error;
     private String message;
+    private String errorCode;
+    private Long existingOrderId;
+    private String existingOrderNo;
+    private String expiresAt;
     private LocalDateTime timestamp;
     private Map<String, String> validationErrors;
 }

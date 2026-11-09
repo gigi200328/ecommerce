@@ -31,6 +31,7 @@ import com.ojt.ecommerce.entity.Order;
 import com.ojt.ecommerce.entity.OrderItem;
 import com.ojt.ecommerce.entity.ProductVariant;
 import com.ojt.ecommerce.entity.User;
+import com.ojt.ecommerce.storefront.exception.InvalidRequestException;
 
 import jakarta.persistence.EntityNotFoundException;
 import lombok.RequiredArgsConstructor;
@@ -319,7 +320,10 @@ public class InventoryServiceImpl implements InventoryService {
 
 			int beforeQty = inventory.getQuantity() != null ? inventory.getQuantity() : 0;
 			int deductQty = item.getQty() != null ? item.getQty() : 1;
-			int afterQty = Math.max(0, beforeQty - deductQty);
+			if (beforeQty < deductQty) {
+				throw new InvalidRequestException("Insufficient physical stock for variant " + variantId + ": available " + beforeQty + ", requested " + deductQty);
+			}
+			int afterQty = beforeQty - deductQty;
 
 			inventory.setQuantity(afterQty);
 			inventory.setStatus(calculateStatus(afterQty, inventory.getReorderLevel()));

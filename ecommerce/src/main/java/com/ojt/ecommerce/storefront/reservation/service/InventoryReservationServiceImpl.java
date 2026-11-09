@@ -30,8 +30,8 @@ public class InventoryReservationServiceImpl implements InventoryReservationServ
     private final G5OrderItemRepository orderItemRepository;
     private final G5PaymentRepository paymentRepository;
 
-    @Value("${storefront.inventory.reservation-ttl-minutes:3}")
-    private int reservationTtlMinutes = 3;
+    @Value("${storefront.inventory.reservation-ttl-minutes:15}")
+    private int reservationTtlMinutes = 15;
 
     @Override
     @Transactional
@@ -414,5 +414,15 @@ public class InventoryReservationServiceImpl implements InventoryReservationServ
             log.info("Re-reserved {} units of variant #{} for order #{}. Physical: {}, New Reserved: {}, Available: {}",
                     requestedQty, variantId, order.getOrderId(), physical, newTotalReserved, physical - newTotalReserved);
         }
+    }
+
+    @Override
+    @Transactional(readOnly = true)
+    public Optional<InventoryReservation> findActiveReservationForCustomer(Long customerId) {
+        if (customerId == null) {
+            return Optional.empty();
+        }
+        List<InventoryReservation> reservations = reservationRepository.findActiveReservationsByCustomerId(customerId, LocalDateTime.now());
+        return reservations.isEmpty() ? Optional.empty() : Optional.of(reservations.get(0));
     }
 }

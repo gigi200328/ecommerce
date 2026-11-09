@@ -30,4 +30,7 @@ public interface InventoryReservationRepository extends JpaRepository<InventoryR
 
     @Query("SELECT r FROM InventoryReservation r WHERE r.status = 'RESERVED' AND r.expiresAt <= :now")
     List<InventoryReservation> findExpiredReservations(@Param("now") LocalDateTime now);
+
+    @Query("SELECT r FROM InventoryReservation r JOIN FETCH r.order o WHERE o.customer.customerId = :customerId AND r.status = 'RESERVED' AND r.expiresAt > :now ORDER BY r.expiresAt ASC")
+    List<InventoryReservation> findActiveReservationsByCustomerId(@Param("customerId") Long customerId, @Param("now") LocalDateTime now);
 }

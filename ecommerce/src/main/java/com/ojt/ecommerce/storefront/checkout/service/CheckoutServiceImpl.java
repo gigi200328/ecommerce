@@ -41,10 +41,12 @@ import com.ojt.ecommerce.storefront.checkout.repository.G5OrderAddressRepository
 import com.ojt.ecommerce.storefront.checkout.repository.G5OrderItemRepository;
 import com.ojt.ecommerce.storefront.checkout.repository.G5OrderRepository;
 import com.ojt.ecommerce.storefront.checkout.repository.G5OrderStatusHistoryRepository;
+import com.ojt.ecommerce.storefront.exception.ActiveHoldConflictException;
 import com.ojt.ecommerce.storefront.exception.InvalidRequestException;
 import com.ojt.ecommerce.storefront.exception.ResourceNotFoundException;
 import com.ojt.ecommerce.storefront.profile.repository.CustomerAddressRepository;
 import com.ojt.ecommerce.storefront.reservation.dto.ReservationItem;
+import com.ojt.ecommerce.storefront.reservation.entity.InventoryReservation;
 import com.ojt.ecommerce.storefront.reservation.service.InventoryReservationService;
 import com.ojt.ecommerce.storefront.shipping.service.ShippingService;
 
@@ -118,8 +120,24 @@ public class CheckoutServiceImpl implements CheckoutService {
 	@Override
 	@Transactional
 	public OrderResponse createOrder(Long customerId, CreateOrderRequest request) {
-		Customer customer = customerRepository.findById(customerId)
+		Customer customer = customerRepository.findByIdForUpdate(customerId)
 				.orElseThrow(() -> new ResourceNotFoundException("Customer not found"));
+
+		// Enforce one active stock hold per customer:
+		// Check whether customer currently has an active, unexpired reservation on an unpaid order
+		Optional<InventoryReservation> activeHold = reservationService.findActiveReservationForCustomer(customerId);
+		if (activeHold.isPresent()) {
+			InventoryReservation hold = activeHold.get();
+			String expiresAtIso = hold.getExpiresAt() != null
+					? hold.getExpiresAt().atZone(ZoneId.systemDefault()).toInstant().toString()
+					: null;
+			throw new ActiveHoldConflictException(
+					hold.getOrder().getOrderId(),
+					hold.getOrder().getOrderNo(),
+					expiresAtIso,
+					"You already have an active unpaid order (" + hold.getOrder().getOrderNo() + ") holding stock. Please complete or cancel that order before placing a new one."
+			);
+		}
 
 		// Validate and normalize checkoutType
 		String rawType = request.getCheckoutType();

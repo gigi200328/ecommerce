@@ -2,6 +2,7 @@ package com.ojt.ecommerce.storefront.reservation.service;
 
 import com.ojt.ecommerce.entity.Order;
 import com.ojt.ecommerce.storefront.reservation.dto.ReservationItem;
+import com.ojt.ecommerce.storefront.reservation.entity.InventoryReservation;
 
 import java.time.LocalDateTime;
 import java.util.List;
@@ -31,4 +32,6 @@ public interface InventoryReservationService {
     boolean isOrderExpired(Long orderId);
 
     void reReserveStockForOrder(Order order);
+
+    Optional<InventoryReservation> findActiveReservationForCustomer(Long customerId);
 }

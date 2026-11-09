@@ -15,6 +15,7 @@ import org.springframework.web.bind.annotation.RestControllerAdvice;
 
 import com.ojt.ecommerce.backofficeinventory.dto.ErrorResponse;
 import com.ojt.ecommerce.storefront.exception.AccessDeniedException;
+import com.ojt.ecommerce.storefront.exception.ActiveHoldConflictException;
 import com.ojt.ecommerce.storefront.exception.ConflictException;
 import com.ojt.ecommerce.storefront.exception.InvalidRequestException;
 import com.ojt.ecommerce.storefront.exception.ResourceNotFoundException;
@@ -94,6 +95,22 @@ public class GlobalExceptionHandler {
     @ExceptionHandler(AccessDeniedException.class)
     public ResponseEntity<ErrorResponse> handleAccessDenied(AccessDeniedException ex) {
         return buildErrorResponse(HttpStatus.FORBIDDEN, ex.getMessage());
+    }
+
+    // --- 5.5. Active Hold Conflict Exception - 409 ---
+    @ExceptionHandler(ActiveHoldConflictException.class)
+    public ResponseEntity<ErrorResponse> handleActiveHoldConflict(ActiveHoldConflictException ex) {
+        ErrorResponse response = ErrorResponse.builder()
+                .status(HttpStatus.CONFLICT.value())
+                .error(HttpStatus.CONFLICT.getReasonPhrase())
+                .message(ex.getMessage())
+                .errorCode("ACTIVE_HOLD_EXISTS")
+                .existingOrderId(ex.getExistingOrderId())
+                .existingOrderNo(ex.getExistingOrderNo())
+                .expiresAt(ex.getExpiresAt())
+                .timestamp(LocalDateTime.now())
+                .build();
+        return ResponseEntity.status(HttpStatus.CONFLICT).body(response);
     }
 
     // --- 6. Conflict Exception - 409 ---

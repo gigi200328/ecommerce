@@ -31,6 +31,7 @@ import com.ojt.ecommerce.storefront.checkout.repository.G5OrderAddressRepository
 import com.ojt.ecommerce.storefront.checkout.repository.G5OrderItemRepository;
 import com.ojt.ecommerce.storefront.checkout.repository.G5OrderRepository;
 import com.ojt.ecommerce.storefront.checkout.repository.G5OrderStatusHistoryRepository;
+import com.ojt.ecommerce.storefront.exception.ActiveHoldConflictException;
 import com.ojt.ecommerce.storefront.exception.InvalidRequestException;
 import com.ojt.ecommerce.storefront.exception.ResourceNotFoundException;
 import com.ojt.ecommerce.storefront.order.dto.OrderAddressSnapshot;
@@ -44,6 +45,7 @@ import com.ojt.ecommerce.storefront.order.dto.OrderStatusHistoryDto;
 import com.ojt.ecommerce.storefront.order.dto.ShipmentTracking;
 import com.ojt.ecommerce.storefront.order.port.ShipmentTrackingPort;
 import com.ojt.ecommerce.storefront.payment.repository.G5PaymentRepository;
+import com.ojt.ecommerce.storefront.reservation.entity.InventoryReservation;
 import com.ojt.ecommerce.storefront.reservation.service.InventoryReservationService;
 import com.ojt.ecommerce.storefront.shipping.repository.G5ShipmentRepository;
 
@@ -262,6 +264,21 @@ public class OrderHistoryServiceImpl implements OrderHistoryService {
 		boolean isActive = reservationService.isReservationActiveForOrder(orderId);
 		if (!isActive) {
 			throw new InvalidRequestException("The order has expired and can no longer be paid.");
+		}
+
+		// Enforce one active hold per customer rule: cannot resume if another order is actively holding stock
+		Optional<InventoryReservation> activeHold = reservationService.findActiveReservationForCustomer(customerId);
+		if (activeHold.isPresent() && !activeHold.get().getOrder().getOrderId().equals(orderId)) {
+			InventoryReservation hold = activeHold.get();
+			String expiresAtIso = hold.getExpiresAt() != null
+					? hold.getExpiresAt().atZone(ZoneId.systemDefault()).toInstant().toString()
+					: null;
+			throw new ActiveHoldConflictException(
+					hold.getOrder().getOrderId(),
+					hold.getOrder().getOrderNo(),
+					expiresAtIso,
+					"You already have an active unpaid order (" + hold.getOrder().getOrderNo() + ") holding stock. Please complete or cancel that order before resuming another."
+			);
 		}
 
 		return getOrderById(customerId, orderId);
