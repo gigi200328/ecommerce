@@ -204,12 +204,25 @@ public class PaymentServiceImpl implements PaymentService {
 			throw new AccessDeniedException("Invalid payment callback signature! Request rejected.");
 		}
 
+		if ("TEST_PING".equalsIgnoreCase(request.getEvent())) {
+			log.info("Received valid TEST_PING webhook from MMSPG with valid signature");
+			return MockCallbackResponse.builder()
+					.paymentStatus("SUCCESS")
+					.build();
+		}
+
 		return executeCallback(request, rawPayload, true);
 	}
 
 	@Override
 	@Transactional
 	public MockCallbackResponse processMockCallback(MockCallbackRequest request) {
+		if ("TEST_PING".equalsIgnoreCase(request.getEvent())) {
+			log.info("Received valid TEST_PING webhook from MMSPG");
+			return MockCallbackResponse.builder()
+					.paymentStatus("SUCCESS")
+					.build();
+		}
 		return executeCallback(request, "{\"status\":\"" + request.getStatus() + "\"}", true);
 	}
 

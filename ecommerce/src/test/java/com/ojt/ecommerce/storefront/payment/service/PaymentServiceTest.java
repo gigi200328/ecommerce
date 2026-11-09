@@ -1,5 +1,6 @@
 package com.ojt.ecommerce.storefront.payment.service;
 
+import com.ojt.ecommerce.backofficeinventory.service.AdminNotificationService;
 import com.ojt.ecommerce.backofficeinventory.service.InventoryService;
 import com.ojt.ecommerce.entity.Cart;
 import com.ojt.ecommerce.entity.Customer;
@@ -87,6 +88,9 @@ public class PaymentServiceTest {
 
     @Mock
     private InventoryReservationService reservationService;
+
+    @Mock
+    private AdminNotificationService notificationService;
 
     @InjectMocks
     private PaymentServiceImpl paymentService;
@@ -341,6 +345,33 @@ public class PaymentServiceTest {
     // =========================================================================
     // processMockCallback Tests
     // =========================================================================
+
+    @Test
+    @DisplayName("processMockCallback: TEST_PING request returns SUCCESS without looking up payment")
+    void processMockCallback_WhenTestPingRequest_ShouldReturnSuccess() {
+        MockCallbackRequest request = new MockCallbackRequest();
+        request.setEvent("TEST_PING");
+
+        MockCallbackResponse response = paymentService.processMockCallback(request);
+
+        assertThat(response).isNotNull();
+        assertThat(response.getPaymentStatus()).isEqualTo("SUCCESS");
+        verifyNoInteractions(paymentRepository, orderRepository);
+    }
+
+    @Test
+    @DisplayName("processMockCallback: TEST_PING with raw payload and valid signature returns SUCCESS")
+    void processMockCallback_WhenTestPingWithSignature_ShouldReturnSuccess() {
+        org.springframework.test.util.ReflectionTestUtils.setField(paymentService, "pgWebhookSecret", "test-secret-123");
+        String rawPayload = "{\"event\":\"TEST_PING\",\"timestamp\":\"2026-11-09T15:00:00\"}";
+        String signature = com.ojt.ecommerce.common.util.HmacSignatureUtil.generateSignature(rawPayload, "test-secret-123");
+
+        MockCallbackResponse response = paymentService.processMockCallback(rawPayload, signature);
+
+        assertThat(response).isNotNull();
+        assertThat(response.getPaymentStatus()).isEqualTo("SUCCESS");
+        verifyNoInteractions(paymentRepository, orderRepository);
+    }
 
     @Test
     @DisplayName("processMockCallback: Unknown transactionRef throws ResourceNotFoundException")
