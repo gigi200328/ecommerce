@@ -183,13 +183,13 @@
 
             <!-- Method label -->
             <staticText>
-                <reportElement x="275" y="30" width="90" height="14"
-                               forecolor="#94A3B8" uuid="3b241101-0000-4000-8000-000000000020"/>
-                <textElement verticalAlignment="Middle">
-                    <font size="9"/>
-                </textElement>
-                <text><![CDATA[Method:]]></text>
-            </staticText>
+    <reportElement x="275" y="30" width="100" height="14"
+                   forecolor="#94A3B8" uuid="3b241101-0000-4000-8000-000000000020"/>
+    <textElement verticalAlignment="Middle">
+        <font size="9"/>
+    </textElement>
+    <text><![CDATA[Payment:]]></text>
+</staticText>
             <!-- Method value -->
             <textField isBlankWhenNull="true">
                 <reportElement x="365" y="30" width="170" height="14" uuid="3b241101-0000-4000-8000-000000000021"/>
